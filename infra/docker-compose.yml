@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: cenat_cs_postgres
+    environment:
+      POSTGRES_DB: cenat_cs
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - cenat_cs_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: cenat_cs_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - cenat_cs_redisdata:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+
+volumes:
+  cenat_cs_pgdata:
+  cenat_cs_redisdata:
