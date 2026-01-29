@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner'; // Feedback visual
 
 import AppLayout from '@/components/AppLayout';
 import LoadingState from '@/components/LoadingState';
@@ -45,7 +46,6 @@ const levelColors: Record<string, string> = {
   low: 'bg-green-100 text-green-800',
 };
 
-// Cores de fundo suave para estado ativo dos cards
 const levelBgActive: Record<string, string> = {
   critical: 'bg-red-50',
   high: 'bg-orange-50',
@@ -76,6 +76,101 @@ function formatDateTimeBR(iso?: string | null) {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+// --- Sub-componente: Card Mobile ---
+function MobileStudentCard({ 
+  student, 
+  onNavigate, 
+  onCreateTicket, 
+  isCreating 
+}: { 
+  student: StudentAtRisk; 
+  onNavigate: () => void; 
+  onCreateTicket: (e: React.MouseEvent) => void;
+  isCreating: boolean;
+}) {
+  const score = Math.max(0, Math.min(100, Number(student.score ?? 0)));
+  const barClass = levelBar[student.level] ?? 'bg-gray-400';
+  const wa = normalizePhoneToWa(student.student_phone);
+  
+  return (
+    <div 
+      onClick={onNavigate}
+      className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3 active:scale-[0.98] transition-transform cursor-pointer"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-semibold text-[#27273D] text-sm">{student.student_name}</h3>
+          <p className="text-xs text-gray-500">{student.student_email}</p>
+        </div>
+        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-full ${levelColors[student.level]}`}>
+           {levelLabel[student.level]}
+        </span>
+      </div>
+
+      {/* Barra de Score */}
+      <div className="mb-4">
+        <div className="flex justify-between text-xs mb-1">
+           <span className="text-gray-500">Risco Calculado</span>
+           <span className="font-bold text-[#27273D]">{score.toFixed(1)}/100</span>
+        </div>
+        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+           <div className={`h-full ${barClass}`} style={{ width: `${score}%` }} />
+        </div>
+      </div>
+
+      {/* Fatores (Tags) */}
+      <div className="flex flex-wrap gap-1 mb-4">
+         {(student.factors || []).slice(0, 3).map((f, i) => (
+           <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] border border-gray-100 rounded uppercase tracking-wide">
+             {f}
+           </span>
+         ))}
+         {(student.factors || []).length > 3 && (
+            <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] rounded">
+                +{(student.factors || []).length - 3}
+            </span>
+         )}
+      </div>
+
+      {/* Ações Mobile (Botões Grandes) */}
+      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-50">
+        <button
+           onClick={(e) => { e.stopPropagation(); onCreateTicket(e); }}
+           disabled={isCreating}
+           className={`flex justify-center items-center py-2.5 rounded-lg border text-xs font-medium transition-colors
+             ${isCreating 
+                ? 'bg-gray-100 text-gray-400 border-gray-100' 
+                : 'border-[#2A658F] text-[#2A658F] active:bg-blue-50'
+             }`}
+        >
+           {isCreating ? 'Criando...' : 'Criar Ticket'}
+        </button>
+
+        <div className="flex gap-2">
+            <a 
+              href={`mailto:${student.student_email}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 flex justify-center items-center bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 border border-transparent"
+            >
+               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </a>
+            {wa && (
+              <a 
+                href={`https://wa.me/${wa}`}
+                target="_blank" 
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 flex justify-center items-center bg-green-50 active:bg-green-100 rounded-lg text-green-600 border border-transparent"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
+              </a>
+            )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RiskDashboard() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -94,7 +189,6 @@ export default function RiskDashboard() {
 
   // Ações
   const [creatingTicketFor, setCreatingTicketFor] = useState<number | null>(null);
-  const [createTicketError, setCreateTicketError] = useState<string>('');
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -120,18 +214,22 @@ export default function RiskDashboard() {
       setSummary(null);
       setStudentsAtRisk([]);
       setLoadError(true);
+      toast.error('Erro ao carregar dados de risco');
     } finally {
       setLoadingData(false);
     }
   };
 
   const handleRecalculateAll = async () => {
+    const toastId = toast.loading('Recalculando scores de risco...');
     try {
       setRecalculating(true);
       await api.post('/risk/calculate-all');
       await loadData();
+      toast.success('Cálculo concluído com sucesso!', { id: toastId });
     } catch (error) {
       console.error('Erro ao recalcular:', error);
+      toast.error('Falha ao recalcular scores', { id: toastId });
     } finally {
       setRecalculating(false);
     }
@@ -181,8 +279,9 @@ export default function RiskDashboard() {
 
   const createTicket = async (e: React.MouseEvent, s: StudentAtRisk) => {
     e.stopPropagation(); // Evita navegar para detalhes
-    setCreateTicketError('');
     setCreatingTicketFor(s.student_id);
+
+    const toastId = toast.loading('Criando ticket de acompanhamento...');
 
     try {
       const payload = {
@@ -193,15 +292,22 @@ export default function RiskDashboard() {
       };
 
       const res = await api.post('/tickets', payload);
-      const ticketId = res?.data?.id;
-      if (ticketId) {
-        router.push(`/tickets/${ticketId}`);
-        return;
-      }
-      router.push('/tickets');
+      
+      toast.success(`Ticket criado para ${s.student_name}`, {
+        id: toastId,
+        description: 'O chamado foi aberto na fila acadêmica.',
+        action: {
+          label: 'Ver Ticket',
+          onClick: () => router.push(`/tickets/${res.data.id}`),
+        },
+      });
+
     } catch (err: any) {
       console.error('Erro ao criar ticket:', err);
-      setCreateTicketError('Falha ao criar ticket.');
+      toast.error('Falha ao criar ticket', {
+        id: toastId,
+        description: 'Tente novamente ou verifique sua conexão.',
+      });
     } finally {
       setCreatingTicketFor(null);
     }
@@ -215,15 +321,15 @@ export default function RiskDashboard() {
     );
   }
 
-  // Helper para renderizar card
-  const RiskCard = ({ level, label, count, colorClass, borderClass }: any) => {
+  // Helper para renderizar card de estatística (Dashboard top)
+  const RiskCard = ({ level, label, count, borderClass }: any) => {
     const isActive = levelFilter === level;
     return (
       <button
         onClick={() => handleCardFilter(level)}
         type="button"
         className={`
-          text-left p-6 rounded-xl shadow-sm border-l-4 transition-all duration-200 group
+          text-left p-6 rounded-xl shadow-sm border-l-4 transition-all duration-200 group w-full
           ${borderClass} 
           ${isActive ? `${levelBgActive[level]} ring-2 ring-offset-2 ring-opacity-50 ring-gray-300` : 'bg-white hover:-translate-y-1 hover:shadow-md'}
         `}
@@ -233,7 +339,6 @@ export default function RiskDashboard() {
             <p className="text-sm font-medium text-gray-500 uppercase">{label}</p>
             <p className="text-3xl font-bold text-gray-800 mt-2">{count}</p>
           </div>
-          {/* Indicador visual de seleção */}
           {isActive && (
             <div className="h-2 w-2 rounded-full bg-gray-400"></div>
           )}
@@ -296,7 +401,7 @@ export default function RiskDashboard() {
         <RiskCard level="low" label="Baixo" count={summary?.low ?? 0} borderClass="border-green-500" />
       </div>
 
-      {/* Barra de Ferramentas Refatorada */}
+      {/* Barra de Ferramentas */}
       <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-col lg:flex-row gap-4 lg:items-end">
         <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-[#27273D] mb-1">Buscar</label>
@@ -324,7 +429,7 @@ export default function RiskDashboard() {
             <select
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white cursor-pointer"
             >
               <option value="">Todos</option>
               <option value="critical">Crítico</option>
@@ -351,7 +456,7 @@ export default function RiskDashboard() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white cursor-pointer"
             >
               <option value="score_desc">Maior Risco</option>
               <option value="score_asc">Menor Risco</option>
@@ -373,11 +478,12 @@ export default function RiskDashboard() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden min-h-[400px]">
+      {/* Lista Principal (Tabela ou Cards Mobile) */}
+      <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm overflow-hidden min-h-[400px]">
         {loadingData ? (
           <LoadingState label="Analisando dados de evasão..." />
         ) : loadError ? (
-          <div className="py-20 text-center">
+          <div className="py-20 text-center bg-white rounded-xl">
             <EmptyState
               title="Erro ao carregar dados"
               description="Não foi possível recuperar os dados de risco."
@@ -385,144 +491,157 @@ export default function RiskDashboard() {
             <button onClick={loadData} className="mt-4 text-[#2A658F] font-medium hover:underline">Tentar novamente</button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-10">
+          <div className="py-10 bg-white rounded-xl">
             <EmptyState
               title="Nenhum aluno encontrado"
               description="Tente ajustar os filtros para ver mais resultados."
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#CCE4F4]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Aluno</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Score de Risco</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Nível</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Fatores Principais</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-[#27273D] uppercase tracking-wider">Ações Rápidas</th>
-                </tr>
-              </thead>
+          <>
+            {/* VERSÃO MOBILE: Cards */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((s) => (
+                <MobileStudentCard
+                  key={s.student_id}
+                  student={s}
+                  onNavigate={() => router.push(`/risk/${s.student_id}`)}
+                  onCreateTicket={(e) => createTicket(e, s)}
+                  isCreating={creatingTicketFor === s.student_id}
+                />
+              ))}
+            </div>
 
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filtered.map((s) => {
-                  const score = Math.max(0, Math.min(100, Number(s.score ?? 0)));
-                  const barClass = levelBar[s.level] ?? 'bg-gray-400';
-                  const wa = normalizePhoneToWa(s.student_phone);
-                  const isCreating = creatingTicketFor === s.student_id;
+            {/* VERSÃO DESKTOP: Tabela */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-[#CCE4F4]">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Aluno</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Score de Risco</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Nível</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Fatores Principais</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-[#27273D] uppercase tracking-wider">Ações Rápidas</th>
+                  </tr>
+                </thead>
 
-                  // Fatores escondidos para tooltip
-                  const hiddenFactors = (s.factors || []).slice(3);
-                  const tooltipText = hiddenFactors.length > 0 ? hiddenFactors.join(', ') : '';
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtered.map((s) => {
+                    const score = Math.max(0, Math.min(100, Number(s.score ?? 0)));
+                    const barClass = levelBar[s.level] ?? 'bg-gray-400';
+                    const wa = normalizePhoneToWa(s.student_phone);
+                    const isCreating = creatingTicketFor === s.student_id;
+                    const hiddenFactors = (s.factors || []).slice(3);
+                    const tooltipText = hiddenFactors.length > 0 ? hiddenFactors.join(', ') : '';
 
-                  return (
-                    <tr
-                      key={s.student_id}
-                      className="hover:bg-[#E2ECF4] group cursor-pointer transition-colors"
-                      onClick={() => router.push(`/risk/${s.student_id}`)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className={`w-1 h-8 rounded-full mr-3 ${barClass}`}></div>
-                          <div>
-                            <p className="text-sm font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors">{s.student_name}</p>
-                            <p className="text-xs text-gray-500">{s.student_email}</p>
+                    return (
+                      <tr
+                        key={s.student_id}
+                        className="hover:bg-[#E2ECF4] group cursor-pointer transition-colors"
+                        onClick={() => router.push(`/risk/${s.student_id}`)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className={`w-1 h-8 rounded-full mr-3 ${barClass}`}></div>
+                            <div>
+                              <p className="text-sm font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors">{s.student_name}</p>
+                              <p className="text-xs text-gray-500">{s.student_email}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1 w-32">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="font-bold text-[#27273D]">{score.toFixed(1)}</span>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1 w-32">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="font-bold text-[#27273D]">{score.toFixed(1)}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${barClass}`}
+                                style={{ width: `${score}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${barClass}`}
-                              style={{ width: `${score}%` }}
-                            />
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${levelColors[s.level] ?? 'bg-gray-100 text-gray-700'
+                              }`}
+                          >
+                            {levelLabel[s.level] ?? s.level}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {(s.factors || []).slice(0, 3).map((factor, idx) => (
+                              <span key={idx} className="px-2 py-0.5 bg-gray-50 border border-gray-100 text-gray-600 text-[10px] uppercase tracking-wide rounded">
+                                {factor}
+                              </span>
+                            ))}
+                            {(s.factors || []).length > 3 && (
+                              <span
+                                title={tooltipText}
+                                className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded cursor-help border border-transparent hover:border-gray-300 transition-colors"
+                              >
+                                +{hiddenFactors.length}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${levelColors[s.level] ?? 'bg-gray-100 text-gray-700'
-                            }`}
-                        >
-                          {levelLabel[s.level] ?? s.level}
-                        </span>
-                      </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
 
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {(s.factors || []).slice(0, 3).map((factor, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-gray-50 border border-gray-100 text-gray-600 text-[10px] uppercase tracking-wide rounded">
-                              {factor}
-                            </span>
-                          ))}
-                          {(s.factors || []).length > 3 && (
-                            <span
-                              title={tooltipText}
-                              className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded cursor-help border border-transparent hover:border-gray-300 transition-colors"
-                            >
-                              +{hiddenFactors.length}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-
-                          {/* Botão Principal: Ticket */}
-                          <button
-                            onClick={(e) => createTicket(e, s)}
-                            disabled={isCreating}
-                            className={`
+                            {/* Botão Principal: Ticket */}
+                            <button
+                              onClick={(e) => createTicket(e, s)}
+                              disabled={isCreating}
+                              className={`
                                 flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border transition-all
                                 ${isCreating
-                                ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
-                                : 'border-[#2A658F] text-[#2A658F] hover:bg-[#2A658F] hover:text-white'
-                              }
-                            `}
-                            title="Criar ticket de acompanhamento"
-                          >
-                            {isCreating ? '...' : 'Ticket'}
-                          </button>
-
-                          <div className="h-4 w-px bg-gray-300 mx-1"></div>
-
-                          {/* Ações de Comunicação (Ícones) */}
-                          <a
-                            href={`mailto:${s.student_email}`}
-                            className="p-1.5 text-gray-400 hover:text-[#27273D] hover:bg-gray-100 rounded-full transition-colors"
-                            title={`Enviar e-mail para ${s.student_email}`}
-                          >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                          </a>
-
-                          {/* CORREÇÃO AQUI: Usando operador ternário (? :) ao invés de lógico (&&) */}
-                          {wa ? (
-                            <a
-                              href={`https://wa.me/${wa}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                              title="Abrir WhatsApp Web"
+                                  ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
+                                  : 'border-[#2A658F] text-[#2A658F] hover:bg-[#2A658F] hover:text-white'
+                                }
+                              `}
+                              title="Criar ticket de acompanhamento"
                             >
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-                            </a>
-                          ) : null}
+                              {isCreating ? '...' : 'Ticket'}
+                            </button>
 
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            <div className="h-4 w-px bg-gray-300 mx-1"></div>
+
+                            {/* Ações de Comunicação (Ícones) */}
+                            <a
+                              href={`mailto:${s.student_email}`}
+                              className="p-1.5 text-gray-400 hover:text-[#27273D] hover:bg-gray-100 rounded-full transition-colors"
+                              title={`Enviar e-mail para ${s.student_email}`}
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </a>
+
+                            {wa ? (
+                              <a
+                                href={`https://wa.me/${wa}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
+                                title="Abrir WhatsApp Web"
+                              >
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
+                              </a>
+                            ) : null}
+
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </AppLayout>
