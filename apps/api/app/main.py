@@ -15,6 +15,7 @@ from app.api.routes.students import router as students_router
 from app.api.routes.risk import router as risk_router
 from app.api.routes.playbooks import router as playbooks_router
 from app.api.routes.triggers import router as triggers_router
+from app.api.routes.feedback import router as feedback_router
 from app.jobs.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -45,6 +46,7 @@ app.include_router(students_router, prefix="/api")
 app.include_router(risk_router, prefix="/api")
 app.include_router(playbooks_router, prefix="/api")
 app.include_router(triggers_router, prefix="/api")
+app.include_router(feedback_router, prefix="/api")
 
 
 @app.get("/health")
