@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from app.db.base import Base
-from app.models import User, Student, Course, Enrollment, Ticket, TicketMessage, TicketStatusHistory, TicketStatusHistory  # noqa
+from app.models import User, Student, Course, Enrollment, Ticket, TicketMessage, TicketStatusHistory, MoodleSignal, TicketStatusHistory  # noqa
 
 # Carrega variáveis do .env (se existir) na raiz do apps/api
 load_dotenv()
