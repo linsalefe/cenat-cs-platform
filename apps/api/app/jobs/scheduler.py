@@ -34,9 +34,25 @@ def recalculate_all_risks():
         db.close()
 
 
+def sync_moodle_students():
+    """Job que sincroniza alunos do Moodle"""
+    from app.jobs.sync_students import sync_students_from_moodle
+    sync_students_from_moodle()
+
+
 def start_scheduler():
     """Inicia o scheduler com os jobs configurados"""
-    # Recalcula scores todos os dias às 6h
+    
+    # Sincroniza alunos do Moodle todos os dias às 5h
+    scheduler.add_job(
+        sync_moodle_students,
+        trigger=CronTrigger(hour=5, minute=0),
+        id="sync_moodle_students_daily",
+        name="Sincronização diária de alunos do Moodle",
+        replace_existing=True,
+    )
+    
+    # Recalcula scores todos os dias às 6h (depois da sincronização)
     scheduler.add_job(
         recalculate_all_risks,
         trigger=CronTrigger(hour=6, minute=0),
@@ -46,7 +62,9 @@ def start_scheduler():
     )
     
     scheduler.start()
-    print("⏰ Scheduler iniciado - Recálculo de riscos agendado para 6h diariamente")
+    print("⏰ Scheduler iniciado:")
+    print("   - Sync Moodle: 5h diariamente")
+    print("   - Recálculo de riscos: 6h diariamente")
 
 
 def shutdown_scheduler():

@@ -91,3 +91,84 @@ async def get_all_courses() -> list:
     """Busca todos os cursos"""
     result = await call_moodle("core_course_get_courses")
     return result or []
+
+
+async def get_all_active_users() -> list:
+    """Busca todos os usuários ativos do Moodle (não suspensos e não deletados)"""
+    result = await call_moodle("core_user_get_users", {
+        "criteria[0][key]": "suspended",
+        "criteria[0][value]": "0"
+    })
+    
+    users = result.get("users", []) if isinstance(result, dict) else []
+    
+    # Filtra apenas usuários ativos e com email válido
+    active_users = [
+        u for u in users 
+        if u.get("confirmed", 0) == 1 
+        and not u.get("deleted", False)
+        and u.get("email")
+        and "@" in u.get("email", "")
+    ]
+    
+    return active_users
+
+
+async def get_enrolled_users_in_course(course_id: int) -> list:
+    """Busca todos os alunos matriculados em um curso específico"""
+    result = await call_moodle("core_enrol_get_enrolled_users", {
+        "courseid": str(course_id)
+    })
+    return result or []
+
+
+async def get_all_enrolled_students() -> list:
+    """
+    Busca todos os alunos que estão matriculados em pelo menos um curso.
+    Retorna lista de alunos ativos com email e telefone.
+    """
+    # Primeiro busca todos os cursos
+    courses = await get_all_courses()
+    
+    # Set para evitar duplicatas (aluno pode estar em vários cursos)
+    students_dict = {}
+    
+    for course in courses:
+        course_id = course.get("id")
+        if not course_id or course_id == 1:  # Ignora curso padrão do Moodle
+            continue
+        
+        try:
+            enrolled = await get_enrolled_users_in_course(course_id)
+            
+            for user in enrolled:
+                user_id = user.get("id")
+                
+                # Ignora se já processou ou se é admin/guest
+                if user_id in students_dict:
+                    continue
+                if user.get("username") in ["admin", "guest"]:
+                    continue
+                
+                # Só pega usuários ativos
+                if user.get("suspended", False):
+                    continue
+                
+                email = user.get("email", "")
+                if not email or "@" not in email:
+                    continue
+                
+                students_dict[user_id] = {
+                    "id": user_id,
+                    "username": user.get("username"),
+                    "firstname": user.get("firstname", ""),
+                    "lastname": user.get("lastname", ""),
+                    "fullname": user.get("fullname", f"{user.get('firstname', '')} {user.get('lastname', '')}".strip()),
+                    "email": email,
+                    "phone": user.get("phone1") or user.get("phone2") or "",
+                }
+        except Exception as e:
+            print(f"Erro ao buscar alunos do curso {course_id}: {e}")
+            continue
+    
+    return list(students_dict.values())

@@ -71,3 +71,18 @@ async def get_course_grades(
         return grades
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-students")
+async def sync_students(current_user: User = Depends(get_current_user)):
+    """Sincroniza todos os alunos ativos do Moodle"""
+    try:
+        from app.jobs.sync_students import sync_students_from_moodle_async
+        result = await sync_students_from_moodle_async()
+        return {
+            "status": "ok",
+            "message": "Sincronização concluída",
+            **result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
