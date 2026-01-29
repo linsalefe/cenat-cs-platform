@@ -8,3 +8,4 @@ from app.models.ticket_status_history import TicketStatusHistory
 from app.models.moodle_signal import MoodleSignal
 from app.models.risk_score import RiskScore, RiskLevel
 from app.models.playbook import Playbook, PlaybookAction, PlaybookExecution, ActionType
+from app.models.trigger import Trigger, TriggerExecution, TriggerConditionType, TriggerActionType

@@ -1,3 +1,4 @@
+import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -40,6 +41,22 @@ def sync_moodle_students():
     sync_students_from_moodle()
 
 
+def run_triggers():
+    """Job que executa todos os triggers ativos"""
+    print("🎯 Iniciando execução de triggers...")
+    
+    from app.services import trigger_service
+    
+    db = SessionLocal()
+    try:
+        results = asyncio.run(trigger_service.run_all_triggers(db))
+        print(f"✅ Triggers executados: {results['actions_executed']} ações, {results['actions_skipped']} ignorados")
+    except Exception as e:
+        print(f"❌ Erro no job de triggers: {e}")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Inicia o scheduler com os jobs configurados"""
     
@@ -61,10 +78,20 @@ def start_scheduler():
         replace_existing=True,
     )
     
+    # Executa triggers todos os dias às 7h (depois do recálculo de risco)
+    scheduler.add_job(
+        run_triggers,
+        trigger=CronTrigger(hour=7, minute=0),
+        id="run_triggers_daily",
+        name="Execução diária de triggers automáticos",
+        replace_existing=True,
+    )
+    
     scheduler.start()
     print("⏰ Scheduler iniciado:")
     print("   - Sync Moodle: 5h diariamente")
     print("   - Recálculo de riscos: 6h diariamente")
+    print("   - Execução de triggers: 7h diariamente")
 
 
 def shutdown_scheduler():
