@@ -1,11 +1,12 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.student import Student
 from app.models.moodle_signal import MoodleSignal
 from app.models.ticket import Ticket, TicketStatus, TicketCategory
 from app.models.risk_score import RiskScore, RiskLevel
+from app.models.playbook import Playbook, PlaybookExecution
 
 
 # Pesos dos indicadores (total = 100%)
@@ -71,9 +72,59 @@ def determine_risk_level(score: float) -> RiskLevel:
     return RiskLevel.LOW
 
 
+def trigger_playbook_if_needed(db: Session, student: Student, old_level: RiskLevel | None, new_level: RiskLevel):
+    """
+    Dispara playbook automaticamente se o nível de risco subiu para HIGH ou CRITICAL.
+    Evita disparos duplicados verificando execuções recentes.
+    """
+    # Só dispara se o nível subiu para HIGH ou CRITICAL
+    if new_level not in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
+        return
+    
+    # Se já estava nesse nível, não dispara novamente
+    if old_level == new_level:
+        return
+    
+    # Busca playbook ativo para esse nível de risco
+    playbook = db.query(Playbook).filter(
+        Playbook.trigger_risk_level == new_level,
+        Playbook.is_active == True
+    ).first()
+    
+    if not playbook:
+        return
+    
+    # Verifica se já executou esse playbook para esse aluno nas últimas 24h
+    recent_execution = db.query(PlaybookExecution).filter(
+        PlaybookExecution.playbook_id == playbook.id,
+        PlaybookExecution.student_id == student.id,
+        PlaybookExecution.started_at >= datetime.utcnow() - timedelta(hours=24)
+    ).first()
+    
+    if recent_execution:
+        return
+    
+    # Cria execução pendente (será processada pelo job ou manualmente)
+    execution = PlaybookExecution(
+        playbook_id=playbook.id,
+        student_id=student.id,
+        status="pending",
+    )
+    db.add(execution)
+    db.commit()
+    
+    print(f"🎯 Playbook '{playbook.name}' agendado para aluno {student.name} (risco: {new_level.value})")
+
+
 def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     """Calcula o score de risco de um aluno"""
     factors = []
+    
+    # Busca score anterior para comparar
+    existing_score = db.query(RiskScore).filter(
+        RiskScore.student_id == student.id
+    ).first()
+    old_level = existing_score.level if existing_score else None
     
     # 1. Busca sinais do Moodle (mais recentes)
     moodle_signals = db.query(MoodleSignal).filter(
@@ -132,19 +183,17 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
         ticket_score * WEIGHTS["ticket"]
     )
     
-    level = determine_risk_level(final_score)
+    new_level = determine_risk_level(final_score)
     
     # 5. Cria ou atualiza registro
-    risk_score = db.query(RiskScore).filter(
-        RiskScore.student_id == student.id
-    ).first()
+    risk_score = existing_score
     
     if not risk_score:
         risk_score = RiskScore(student_id=student.id)
         db.add(risk_score)
     
     risk_score.score = final_score
-    risk_score.level = level
+    risk_score.level = new_level
     risk_score.engagement_score = engagement_score
     risk_score.progress_score = progress_score
     risk_score.grade_score = grade_score
@@ -155,5 +204,8 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     
     db.commit()
     db.refresh(risk_score)
+    
+    # 6. Dispara playbook se necessário
+    trigger_playbook_if_needed(db, student, old_level, new_level)
     
     return risk_score
