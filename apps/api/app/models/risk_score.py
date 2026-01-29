@@ -30,6 +30,7 @@ class RiskScore(Base):
     grade_score = Column(Float, default=0.0)       # Baseado em notas
     financial_score = Column(Float, default=0.0)   # Baseado em inadimplência
     ticket_score = Column(Float, default=0.0)      # Baseado em reclamações
+    nps_score = Column(Float, default=0.0)         # Baseado em NPS/CSAT
     
     # Detalhes
     factors = Column(String, nullable=True)  # JSON com fatores de risco

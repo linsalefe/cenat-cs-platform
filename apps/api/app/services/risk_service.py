@@ -1,21 +1,23 @@
 import json
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models.student import Student
 from app.models.moodle_signal import MoodleSignal
 from app.models.ticket import Ticket, TicketStatus, TicketCategory
 from app.models.risk_score import RiskScore, RiskLevel
-from app.models.playbook import Playbook, PlaybookExecution
+from app.models.feedback import Feedback, FeedbackType
 
 
 # Pesos dos indicadores (total = 100%)
 WEIGHTS = {
-    "engagement": 0.30,   # 30% - dias sem acesso
+    "engagement": 0.25,   # 25% - dias sem acesso
     "progress": 0.25,     # 25% - progresso no curso
-    "grade": 0.20,        # 20% - notas
-    "financial": 0.15,    # 15% - inadimplência
+    "grade": 0.15,        # 15% - notas
+    "financial": 0.15,    # 15% - inadimplência (ASAAS)
     "ticket": 0.10,       # 10% - reclamações abertas
+    "nps": 0.10,          # 10% - NPS/CSAT
 }
 
 
@@ -61,6 +63,43 @@ def calculate_ticket_score(open_tickets: int, complaint_tickets: int) -> float:
     return min(base_score + complaint_score, 100)
 
 
+def calculate_nps_score(db: Session, student_id: int) -> float:
+    """
+    Calcula score de risco baseado em NPS/CSAT.
+    Promoter/Satisfied = 0, Detractor/Dissatisfied = 100
+    """
+    # Busca último feedback respondido nos últimos 90 dias
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    
+    feedback = db.query(Feedback).filter(
+        Feedback.student_id == student_id,
+        Feedback.answered_at >= cutoff,
+        Feedback.score.isnot(None),
+    ).order_by(Feedback.answered_at.desc()).first()
+    
+    if not feedback:
+        return 50.0  # Sem feedback = risco médio
+    
+    if feedback.feedback_type == FeedbackType.NPS:
+        # NPS: 0-10
+        # 9-10 = Promoter (baixo risco), 7-8 = Passive (médio), 0-6 = Detractor (alto)
+        if feedback.score >= 9:
+            return 0.0
+        elif feedback.score >= 7:
+            return 40.0
+        else:
+            return 100.0
+    else:
+        # CSAT: 1-5
+        # 4-5 = Satisfied (baixo risco), 3 = Neutral (médio), 1-2 = Dissatisfied (alto)
+        if feedback.score >= 4:
+            return 0.0
+        elif feedback.score == 3:
+            return 50.0
+        else:
+            return 100.0
+
+
 def determine_risk_level(score: float) -> RiskLevel:
     """Determina nível de risco baseado no score"""
     if score >= 75:
@@ -72,59 +111,9 @@ def determine_risk_level(score: float) -> RiskLevel:
     return RiskLevel.LOW
 
 
-def trigger_playbook_if_needed(db: Session, student: Student, old_level: RiskLevel | None, new_level: RiskLevel):
-    """
-    Dispara playbook automaticamente se o nível de risco subiu para HIGH ou CRITICAL.
-    Evita disparos duplicados verificando execuções recentes.
-    """
-    # Só dispara se o nível subiu para HIGH ou CRITICAL
-    if new_level not in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
-        return
-    
-    # Se já estava nesse nível, não dispara novamente
-    if old_level == new_level:
-        return
-    
-    # Busca playbook ativo para esse nível de risco
-    playbook = db.query(Playbook).filter(
-        Playbook.trigger_risk_level == new_level,
-        Playbook.is_active == True
-    ).first()
-    
-    if not playbook:
-        return
-    
-    # Verifica se já executou esse playbook para esse aluno nas últimas 24h
-    recent_execution = db.query(PlaybookExecution).filter(
-        PlaybookExecution.playbook_id == playbook.id,
-        PlaybookExecution.student_id == student.id,
-        PlaybookExecution.started_at >= datetime.utcnow() - timedelta(hours=24)
-    ).first()
-    
-    if recent_execution:
-        return
-    
-    # Cria execução pendente (será processada pelo job ou manualmente)
-    execution = PlaybookExecution(
-        playbook_id=playbook.id,
-        student_id=student.id,
-        status="pending",
-    )
-    db.add(execution)
-    db.commit()
-    
-    print(f"🎯 Playbook '{playbook.name}' agendado para aluno {student.name} (risco: {new_level.value})")
-
-
 def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     """Calcula o score de risco de um aluno"""
     factors = []
-    
-    # Busca score anterior para comparar
-    existing_score = db.query(RiskScore).filter(
-        RiskScore.student_id == student.id
-    ).first()
-    old_level = existing_score.level if existing_score else None
     
     # 1. Busca sinais do Moodle (mais recentes)
     moodle_signals = db.query(MoodleSignal).filter(
@@ -171,41 +160,47 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     if len(complaint_tickets) > 0:
         factors.append(f"{len(complaint_tickets)} reclamação(ões) financeira(s)")
     
-    # 3. Financial score (placeholder - será implementado com Conta Azul)
+    # 3. Financial score (placeholder - será implementado com ASAAS)
     financial_score = 0.0
     
-    # 4. Calcula score final ponderado
+    # 4. NPS/CSAT score
+    nps_score = calculate_nps_score(db, student.id)
+    if nps_score >= 70:
+        factors.append("Feedback negativo")
+    
+    # 5. Calcula score final ponderado
     final_score = (
         engagement_score * WEIGHTS["engagement"] +
         progress_score * WEIGHTS["progress"] +
         grade_score * WEIGHTS["grade"] +
         financial_score * WEIGHTS["financial"] +
-        ticket_score * WEIGHTS["ticket"]
+        ticket_score * WEIGHTS["ticket"] +
+        nps_score * WEIGHTS["nps"]
     )
     
-    new_level = determine_risk_level(final_score)
+    level = determine_risk_level(final_score)
     
-    # 5. Cria ou atualiza registro
-    risk_score = existing_score
+    # 6. Cria ou atualiza registro
+    risk_score = db.query(RiskScore).filter(
+        RiskScore.student_id == student.id
+    ).first()
     
     if not risk_score:
         risk_score = RiskScore(student_id=student.id)
         db.add(risk_score)
     
     risk_score.score = final_score
-    risk_score.level = new_level
+    risk_score.level = level
     risk_score.engagement_score = engagement_score
     risk_score.progress_score = progress_score
     risk_score.grade_score = grade_score
     risk_score.financial_score = financial_score
     risk_score.ticket_score = ticket_score
+    risk_score.nps_score = nps_score
     risk_score.factors = json.dumps(factors, ensure_ascii=False)
     risk_score.calculated_at = datetime.utcnow()
     
     db.commit()
     db.refresh(risk_score)
-    
-    # 6. Dispara playbook se necessário
-    trigger_playbook_if_needed(db, student, old_level, new_level)
     
     return risk_score
