@@ -9,6 +9,7 @@ from app.db.session import engine
 from app.api.routes.auth import router as auth_router
 from app.api.routes.tickets import router as tickets_router
 from app.api.routes.webhooks import router as webhooks_router
+from app.api.routes.moodle import router as moodle_router
 
 app = FastAPI(title="CENAT CS Platform")
 
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api")
 app.include_router(tickets_router, prefix="/api")
 app.include_router(webhooks_router, prefix="/api")
+app.include_router(moodle_router, prefix="/api")
 
 
 @app.get("/health")
