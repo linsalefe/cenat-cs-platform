@@ -1,74 +1,119 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useEffect, useState } from 'react';
+import AppLayout from '@/components/AppLayout';
+import api from '@/lib/api';
+
+interface RiskSummary {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
 
 export default function Home() {
-  const { user, loading, logout } = useAuth();
-  const router = useRouter();
+  const [riskSummary, setRiskSummary] = useState<RiskSummary | null>(null);
+  const [ticketCount, setTicketCount] = useState(0);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [riskRes, ticketsRes] = await Promise.all([
+        api.get('/risk/summary').catch(() => null),
+        api.get('/tickets?limit=1').catch(() => null),
+      ]);
+      if (riskRes) setRiskSummary(riskRes.data);
+      if (ticketsRes) setTicketCount(ticketsRes.data?.length || 0);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
     }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#E2ECF4]">
-        <p className="text-[#2A658F]">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-[#E2ECF4]">
-      <header className="bg-[#27273D] shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white tracking-wider">CENAT</h1>
+    <AppLayout>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[#27273D]">Dashboard</h1>
+        <p className="text-gray-600 mt-1">Bem-vindo ao Sistema de Retenção</p>
+      </div>
+
+      {/* Cards Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <a href="/risk" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border-l-4 border-red-500">
+          <p className="text-sm font-medium text-gray-500 uppercase">Risco Crítico</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{riskSummary?.critical || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">alunos</p>
+        </a>
+
+        <a href="/risk" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border-l-4 border-orange-500">
+          <p className="text-sm font-medium text-gray-500 uppercase">Risco Alto</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{riskSummary?.high || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">alunos</p>
+        </a>
+
+        <a href="/risk" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border-l-4 border-yellow-500">
+          <p className="text-sm font-medium text-gray-500 uppercase">Risco Médio</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{riskSummary?.medium || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">alunos</p>
+        </a>
+
+        <a href="/risk" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border-l-4 border-green-500">
+          <p className="text-sm font-medium text-gray-500 uppercase">Risco Baixo</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{riskSummary?.low || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">alunos</p>
+        </a>
+      </div>
+
+      {/* Cards de Ação */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <a href="/tickets" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
-            <span className="text-[#CCE4F4]">{user.name}</span>
-            <span className="text-xs bg-[#2A658F] text-white px-2 py-1 rounded">{user.role}</span>
-            <button onClick={logout} className="text-red-400 hover:text-red-300 text-sm">Sair</button>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">
+              🎫
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Fila de Tickets</h3>
+              <p className="text-sm text-gray-500">Gerencie os chamados</p>
+            </div>
           </div>
-        </div>
-      </header>
+        </a>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-semibold text-[#27273D] mb-6">Dashboard</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <a href="/tickets" className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border-l-4 border-[#2A658F]">
-            <h3 className="text-lg font-semibold text-[#27273D] mb-2">Fila de Tickets</h3>
-            <p className="text-gray-600 text-sm">Gerencie os chamados dos alunos</p>
-          </a>
-          
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-[#CCE4F4]">
-            <h3 className="text-lg font-semibold text-[#27273D] mb-2">Alunos</h3>
-            <p className="text-gray-600 text-sm">Visão 360 dos alunos</p>
-            <span className="text-xs text-gray-400 mt-2 block">Em breve</span>
+        <a href="/risk" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-2xl">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Risco de Evasão</h3>
+              <p className="text-sm text-gray-500">Monitore alunos em risco</p>
+            </div>
           </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-[#CCE4F4]">
-            <h3 className="text-lg font-semibold text-[#27273D] mb-2">Risco de Evasão</h3>
-            <p className="text-gray-600 text-sm">Alunos em risco alto</p>
-            <span className="text-xs text-gray-400 mt-2 block">Em breve</span>
-          </div>
-        </div>
+        </a>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-[#27273D] mb-4">Bem-vindo ao Sistema de Retenção</h3>
-          <p className="text-gray-600">
-            Este sistema ajuda a identificar alunos em risco de evasão e organizar o atendimento 
-            de forma profissional, garantindo que nenhuma solicitação se perca.
-          </p>
-        </div>
-      </main>
-    </div>
+        <a href="/students" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl">
+              👥
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Alunos</h3>
+              <p className="text-sm text-gray-500">Visão 360 dos alunos</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">Sobre o Sistema</h3>
+        <p className="text-gray-600">
+          Este sistema ajuda a identificar alunos em risco de evasão e organizar o atendimento 
+          de forma profissional, garantindo que nenhuma solicitação se perca.
+        </p>
+      </div>
+    </AppLayout>
   );
 }

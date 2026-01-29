@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -12,8 +13,20 @@ from app.api.routes.webhooks import router as webhooks_router
 from app.api.routes.moodle import router as moodle_router
 from app.api.routes.students import router as students_router
 from app.api.routes.risk import router as risk_router
+from app.api.routes.playbooks import router as playbooks_router
+from app.jobs.scheduler import start_scheduler, shutdown_scheduler
 
-app = FastAPI(title="CENAT CS Platform")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    start_scheduler()
+    yield
+    # Shutdown
+    shutdown_scheduler()
+
+
+app = FastAPI(title="CENAT CS Platform", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +42,7 @@ app.include_router(webhooks_router, prefix="/api")
 app.include_router(moodle_router, prefix="/api")
 app.include_router(students_router, prefix="/api")
 app.include_router(risk_router, prefix="/api")
+app.include_router(playbooks_router, prefix="/api")
 
 
 @app.get("/health")
