@@ -10,6 +10,7 @@ const menuItems = [
   { href: '/students', label: 'Alunos', icon: '👥' },
   { href: '/risk', label: 'Risco', icon: '⚠️' },
   { href: '/feedback', label: 'NPS/CSAT', icon: '📈' },
+  { href: '/metrics', label: 'Métricas', icon: '📉' },
 ];
 
 export default function Sidebar() {
