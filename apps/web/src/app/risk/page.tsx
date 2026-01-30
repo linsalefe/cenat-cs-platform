@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner'; // Feedback visual
+import { toast } from 'sonner';
 
 import AppLayout from '@/components/AppLayout';
 import LoadingState from '@/components/LoadingState';
@@ -11,7 +11,6 @@ import EmptyState from '@/components/EmptyState';
 import { useAuth } from '@/contexts/auth-context';
 import api from '@/lib/api';
 
-// --- Interfaces ---
 interface RiskSummary {
   critical: number;
   high: number;
@@ -31,7 +30,13 @@ interface StudentAtRisk {
   calculated_at: string;
 }
 
-// --- Constantes Visuais ---
+interface Pagination {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+
 const levelLabel: Record<string, string> = {
   critical: 'Crítico',
   high: 'Alto',
@@ -46,13 +51,6 @@ const levelColors: Record<string, string> = {
   low: 'bg-green-100 text-green-800',
 };
 
-const levelBgActive: Record<string, string> = {
-  critical: 'bg-red-50',
-  high: 'bg-orange-50',
-  medium: 'bg-amber-50',
-  low: 'bg-green-50',
-};
-
 const levelBar: Record<string, string> = {
   critical: 'bg-red-500',
   high: 'bg-orange-500',
@@ -60,7 +58,6 @@ const levelBar: Record<string, string> = {
   low: 'bg-green-500',
 };
 
-// --- Helpers ---
 function normalizePhoneToWa(phone?: string | null) {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -69,570 +66,254 @@ function normalizePhoneToWa(phone?: string | null) {
   return `55${digits}`;
 }
 
-function formatDateTimeBR(iso?: string | null) {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-// --- Sub-componente: Card Mobile ---
-function MobileStudentCard({ 
-  student, 
-  onNavigate, 
-  onCreateTicket, 
-  isCreating 
-}: { 
-  student: StudentAtRisk; 
-  onNavigate: () => void; 
-  onCreateTicket: (e: React.MouseEvent) => void;
-  isCreating: boolean;
-}) {
-  const score = Math.max(0, Math.min(100, Number(student.score ?? 0)));
-  const barClass = levelBar[student.level] ?? 'bg-gray-400';
-  const wa = normalizePhoneToWa(student.student_phone);
-  
-  return (
-    <div 
-      onClick={onNavigate}
-      className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3 active:scale-[0.98] transition-transform cursor-pointer"
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-semibold text-[#27273D] text-sm">{student.student_name}</h3>
-          <p className="text-xs text-gray-500">{student.student_email}</p>
-        </div>
-        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-full ${levelColors[student.level]}`}>
-           {levelLabel[student.level]}
-        </span>
-      </div>
-
-      {/* Barra de Score */}
-      <div className="mb-4">
-        <div className="flex justify-between text-xs mb-1">
-           <span className="text-gray-500">Risco Calculado</span>
-           <span className="font-bold text-[#27273D]">{score.toFixed(1)}/100</span>
-        </div>
-        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-           <div className={`h-full ${barClass}`} style={{ width: `${score}%` }} />
-        </div>
-      </div>
-
-      {/* Fatores (Tags) */}
-      <div className="flex flex-wrap gap-1 mb-4">
-         {(student.factors || []).slice(0, 3).map((f, i) => (
-           <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] border border-gray-100 rounded uppercase tracking-wide">
-             {f}
-           </span>
-         ))}
-         {(student.factors || []).length > 3 && (
-            <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] rounded">
-                +{(student.factors || []).length - 3}
-            </span>
-         )}
-      </div>
-
-      {/* Ações Mobile (Botões Grandes) */}
-      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-50">
-        <button
-           onClick={(e) => { e.stopPropagation(); onCreateTicket(e); }}
-           disabled={isCreating}
-           className={`flex justify-center items-center py-2.5 rounded-lg border text-xs font-medium transition-colors
-             ${isCreating 
-                ? 'bg-gray-100 text-gray-400 border-gray-100' 
-                : 'border-[#2A658F] text-[#2A658F] active:bg-blue-50'
-             }`}
-        >
-           {isCreating ? 'Criando...' : 'Criar Ticket'}
-        </button>
-
-        <div className="flex gap-2">
-            <a 
-              href={`mailto:${student.student_email}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 flex justify-center items-center bg-gray-50 active:bg-gray-100 rounded-lg text-gray-600 border border-transparent"
-            >
-               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-            </a>
-            {wa && (
-              <a 
-                href={`https://wa.me/${wa}`}
-                target="_blank" 
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex-1 flex justify-center items-center bg-green-50 active:bg-green-100 rounded-lg text-green-600 border border-transparent"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-              </a>
-            )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function RiskDashboard() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { user, loading } = useAuth();
 
   const [summary, setSummary] = useState<RiskSummary | null>(null);
-  const [studentsAtRisk, setStudentsAtRisk] = useState<StudentAtRisk[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [recalculating, setRecalculating] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-
-  // Filtros
-  const [search, setSearch] = useState('');
-  const [levelFilter, setLevelFilter] = useState<string>('');
-  const [minScore, setMinScore] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<'score_desc' | 'score_asc' | 'name_asc'>('score_desc');
-
-  // Ações
+  const [students, setStudents] = useState<StudentAtRisk[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<string>('high');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [creatingTicketFor, setCreatingTicketFor] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
-  }, [user, loading, router]);
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (user) {
+      loadSummary();
+    }
   }, [user]);
 
-  const loadData = async () => {
-    setLoadingData(true);
-    setLoadError(false);
+  useEffect(() => {
+    if (user) {
+      loadStudents();
+    }
+  }, [user, selectedLevel, currentPage]);
+
+  const loadSummary = async () => {
     try {
-      const [summaryRes, studentsRes] = await Promise.all([
-        api.get('/risk/summary'),
-        api.get('/risk/students/at-risk'),
-      ]);
-      setSummary(summaryRes.data);
-      setStudentsAtRisk(studentsRes.data);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      setSummary(null);
-      setStudentsAtRisk([]);
-      setLoadError(true);
-      toast.error('Erro ao carregar dados de risco');
+      const res = await api.get('/risk/summary');
+      setSummary(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar resumo:', err);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      setLoading(true);
+      setError(false);
+      const res = await api.get(`/risk/students/at-risk?level=${selectedLevel}&page=${currentPage}&per_page=30`);
+      setStudents(res.data.data);
+      setPagination(res.data.pagination);
+    } catch (err) {
+      console.error('Erro ao carregar alunos:', err);
+      setError(true);
     } finally {
-      setLoadingData(false);
+      setLoading(false);
     }
   };
 
-  const handleRecalculateAll = async () => {
-    const toastId = toast.loading('Recalculando scores de risco...');
+  const createTicket = async (e: React.MouseEvent, student: StudentAtRisk) => {
+    e.stopPropagation();
+    setCreatingTicketFor(student.student_id);
     try {
-      setRecalculating(true);
-      await api.post('/risk/calculate-all');
-      await loadData();
-      toast.success('Cálculo concluído com sucesso!', { id: toastId });
-    } catch (error) {
-      console.error('Erro ao recalcular:', error);
-      toast.error('Falha ao recalcular scores', { id: toastId });
-    } finally {
-      setRecalculating(false);
-    }
-  };
-
-  const lastCalculatedAt = useMemo(() => {
-    if (!studentsAtRisk?.length) return null;
-    const max = studentsAtRisk.reduce((acc, s) => {
-      const t = new Date(s.calculated_at).getTime();
-      return t > acc ? t : acc;
-    }, 0);
-    return max ? new Date(max).toISOString() : null;
-  }, [studentsAtRisk]);
-
-  const filtered = useMemo(() => {
-    let list = [...studentsAtRisk];
-    const term = search.trim().toLowerCase();
-
-    if (term) {
-      list = list.filter((s) => {
-        const name = (s.student_name || '').toLowerCase();
-        const email = (s.student_email || '').toLowerCase();
-        return name.includes(term) || email.includes(term);
-      });
-    }
-
-    if (levelFilter) list = list.filter((s) => s.level === levelFilter);
-    if (minScore > 0) list = list.filter((s) => (s.score ?? 0) >= minScore);
-
-    if (sortBy === 'score_desc') list.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    if (sortBy === 'score_asc') list.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
-    if (sortBy === 'name_asc') list.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
-
-    return list;
-  }, [studentsAtRisk, search, levelFilter, minScore, sortBy]);
-
-  const handleCardFilter = (lvl: string) => {
-    setLevelFilter((prev) => (prev === lvl ? '' : lvl));
-  };
-
-  const clearFilters = () => {
-    setSearch('');
-    setLevelFilter('');
-    setMinScore(0);
-    setSortBy('score_desc');
-  };
-
-  const createTicket = async (e: React.MouseEvent, s: StudentAtRisk) => {
-    e.stopPropagation(); // Evita navegar para detalhes
-    setCreatingTicketFor(s.student_id);
-
-    const toastId = toast.loading('Criando ticket de acompanhamento...');
-
-    try {
-      const payload = {
-        student_id: s.student_id,
+      await api.post('/tickets', {
+        student_id: student.student_id,
         category: 'academic',
-        priority: 'medium',
-        subject: `Ação proativa - risco ${levelLabel[s.level] ?? s.level} (score ${Math.round(s.score)}/100)`,
-      };
-
-      const res = await api.post('/tickets', payload);
-      
-      toast.success(`Ticket criado para ${s.student_name}`, {
-        id: toastId,
-        description: 'O chamado foi aberto na fila acadêmica.',
-        action: {
-          label: 'Ver Ticket',
-          onClick: () => router.push(`/tickets/${res.data.id}`),
-        },
+        priority: 'high',
+        subject: `Acompanhamento - Risco ${levelLabel[student.level]}`,
+        message: `Aluno identificado em risco de evasão.\n\nScore: ${student.score}\nFatores: ${student.factors.join(', ')}`,
       });
-
-    } catch (err: any) {
-      console.error('Erro ao criar ticket:', err);
-      toast.error('Falha ao criar ticket', {
-        id: toastId,
-        description: 'Tente novamente ou verifique sua conexão.',
-      });
+      toast.success('Ticket criado com sucesso!');
+    } catch (err) {
+      toast.error('Erro ao criar ticket');
     } finally {
       setCreatingTicketFor(null);
     }
   };
 
-  if (loading && !user) {
+  // Filtro local por busca
+  const filtered = useMemo(() => {
+    if (!searchTerm) return students;
+    const term = searchTerm.toLowerCase();
+    return students.filter(
+      (s) =>
+        s.student_name.toLowerCase().includes(term) ||
+        s.student_email.toLowerCase().includes(term)
+    );
+  }, [students, searchTerm]);
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingState label="Carregando..." />
-      </div>
+      <AppLayout>
+        <LoadingState message="Carregando..." />
+      </AppLayout>
     );
   }
 
-  // Helper para renderizar card de estatística (Dashboard top)
-  const RiskCard = ({ level, label, count, borderClass }: any) => {
-    const isActive = levelFilter === level;
-    return (
-      <button
-        onClick={() => handleCardFilter(level)}
-        type="button"
-        className={`
-          text-left p-6 rounded-xl shadow-sm border-l-4 transition-all duration-200 group w-full
-          ${borderClass} 
-          ${isActive ? `${levelBgActive[level]} ring-2 ring-offset-2 ring-opacity-50 ring-gray-300` : 'bg-white hover:-translate-y-1 hover:shadow-md'}
-        `}
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-sm font-medium text-gray-500 uppercase">{label}</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">{count}</p>
-          </div>
-          {isActive && (
-            <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-          )}
-        </div>
-        <p className="text-xs text-gray-400 mt-1 group-hover:text-gray-600 transition-colors">alunos detectados</p>
-      </button>
-    );
-  };
-
   return (
     <AppLayout>
-      <div className="mb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+      <div className="space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-[#27273D]">Risco de Evasão</h1>
-          <p className="text-gray-600 mt-1">Monitoramento preditivo de alunos</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <p className="text-xs text-gray-500">
-              Última atualização da IA: <span className="font-medium text-[#27273D]">{formatDateTimeBR(lastCalculatedAt)}</span>
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-[#27273D]">Gestão de Risco</h1>
+          <p className="text-gray-500 text-sm">Monitore alunos em risco de evasão</p>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={() => router.push('/tickets')}
-            className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-[#27273D] hover:bg-gray-50 transition-colors flex items-center gap-2"
-            type="button"
-          >
-            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
-            Ver Tickets
-          </button>
-
-          <button
-            onClick={handleRecalculateAll}
-            disabled={recalculating}
-            className="px-4 py-2 rounded-md bg-[#2A658F] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
-            type="button"
-          >
-            {recalculating ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path></svg>
-                Processando...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                Recalcular Score
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Cards interativos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <RiskCard level="critical" label="Crítico" count={summary?.critical ?? 0} borderClass="border-red-600" />
-        <RiskCard level="high" label="Alto" count={summary?.high ?? 0} borderClass="border-orange-500" />
-        <RiskCard level="medium" label="Médio" count={summary?.medium ?? 0} borderClass="border-amber-500" />
-        <RiskCard level="low" label="Baixo" count={summary?.low ?? 0} borderClass="border-green-500" />
-      </div>
-
-      {/* Barra de Ferramentas */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-col lg:flex-row gap-4 lg:items-end">
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-sm font-medium text-[#27273D] mb-1">Buscar</label>
-          <div className="relative">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Nome ou e-mail..."
-              className="w-full border border-gray-300 rounded-md pl-9 pr-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F]"
-            />
-            <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-          <div>
-            <label className="block text-sm font-medium text-[#27273D] mb-1">Nível</label>
-            <select
-              value={levelFilter}
-              onChange={(e) => setLevelFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white cursor-pointer"
+        {/* Cards de Resumo */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { key: 'critical', label: 'Crítico', color: 'border-red-500', textColor: 'text-red-600' },
+            { key: 'high', label: 'Alto', color: 'border-orange-500', textColor: 'text-orange-600' },
+            { key: 'medium', label: 'Médio', color: 'border-amber-500', textColor: 'text-amber-600' },
+            { key: 'low', label: 'Baixo', color: 'border-green-500', textColor: 'text-green-600' },
+          ].map((item) => (
+            <button
+              key={item.key}
+              onClick={() => { setSelectedLevel(item.key); setCurrentPage(1); }}
+              className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${item.color} text-left transition-all ${
+                selectedLevel === item.key ? 'ring-2 ring-[#2A658F]' : 'hover:shadow-md'
+              }`}
             >
-              <option value="">Todos</option>
-              <option value="critical">Crítico</option>
-              <option value="high">Alto</option>
-              <option value="medium">Médio</option>
-              <option value="low">Baixo</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#27273D] mb-1">Score Mín.</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={minScore}
-              onChange={(e) => setMinScore(Number(e.target.value || 0))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F]"
-            />
-          </div>
-
-          <div className="col-span-2 md:col-span-1">
-            <label className="block text-sm font-medium text-[#27273D] mb-1">Ordenar</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-[#2A658F] focus:border-[#2A658F] bg-white cursor-pointer"
-            >
-              <option value="score_desc">Maior Risco</option>
-              <option value="score_asc">Menor Risco</option>
-              <option value="name_asc">A - Z</option>
-            </select>
-          </div>
-
-          <div className="flex items-end col-span-2 md:col-span-1">
-            {(search || levelFilter || minScore > 0) && (
-              <button
-                onClick={clearFilters}
-                type="button"
-                className="w-full px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-[#27273D] transition-colors"
-              >
-                Limpar
-              </button>
-            )}
-          </div>
+              <p className="text-sm text-gray-500">{item.label}</p>
+              <p className={`text-3xl font-bold ${item.textColor}`}>
+                {summary?.[item.key as keyof RiskSummary] || 0}
+              </p>
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Lista Principal (Tabela ou Cards Mobile) */}
-      <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm overflow-hidden min-h-[400px]">
-        {loadingData ? (
-          <LoadingState label="Analisando dados de evasão..." />
-        ) : loadError ? (
+        {/* Filtros */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            type="text"
+            placeholder="Buscar por nome ou email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-[#2A658F] focus:border-[#2A658F]"
+          />
+        </div>
+
+        {/* Lista de Alunos */}
+        {loading ? (
+          <LoadingState message="Carregando alunos..." />
+        ) : error ? (
           <div className="py-20 text-center bg-white rounded-xl">
-            <EmptyState
-              title="Erro ao carregar dados"
-              description="Não foi possível recuperar os dados de risco."
-            />
-            <button onClick={loadData} className="mt-4 text-[#2A658F] font-medium hover:underline">Tentar novamente</button>
+            <EmptyState title="Erro ao carregar dados" description="Não foi possível recuperar os dados de risco." />
+            <button onClick={loadStudents} className="mt-4 text-[#2A658F] font-medium hover:underline">
+              Tentar novamente
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-10 bg-white rounded-xl">
-            <EmptyState
-              title="Nenhum aluno encontrado"
-              description="Tente ajustar os filtros para ver mais resultados."
-            />
+            <EmptyState title="Nenhum aluno encontrado" description="Tente ajustar os filtros para ver mais resultados." />
           </div>
         ) : (
           <>
-            {/* VERSÃO MOBILE: Cards */}
-            <div className="md:hidden space-y-3">
-              {filtered.map((s) => (
-                <MobileStudentCard
-                  key={s.student_id}
-                  student={s}
-                  onNavigate={() => router.push(`/risk/${s.student_id}`)}
-                  onCreateTicket={(e) => createTicket(e, s)}
-                  isCreating={creatingTicketFor === s.student_id}
-                />
-              ))}
-            </div>
-
-            {/* VERSÃO DESKTOP: Tabela */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Tabela Desktop */}
+            <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-[#CCE4F4]">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Aluno</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Score de Risco</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Nível</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Fatores Principais</th>
-                    <th className="px-6 py-3 text-right text-xs font-bold text-[#27273D] uppercase tracking-wider">Ações Rápidas</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Fatores</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-[#27273D] uppercase tracking-wider">Ações</th>
                   </tr>
                 </thead>
-
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filtered.map((s) => {
-                    const score = Math.max(0, Math.min(100, Number(s.score ?? 0)));
-                    const barClass = levelBar[s.level] ?? 'bg-gray-400';
                     const wa = normalizePhoneToWa(s.student_phone);
                     const isCreating = creatingTicketFor === s.student_id;
-                    const hiddenFactors = (s.factors || []).slice(3);
-                    const tooltipText = hiddenFactors.length > 0 ? hiddenFactors.join(', ') : '';
 
                     return (
                       <tr
                         key={s.student_id}
-                        className="hover:bg-[#E2ECF4] group cursor-pointer transition-colors"
+                        className="hover:bg-[#E2ECF4] cursor-pointer transition-colors"
                         onClick={() => router.push(`/risk/${s.student_id}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className={`w-1 h-8 rounded-full mr-3 ${barClass}`}></div>
+                            <div className={`w-1 h-8 rounded-full mr-3 ${levelBar[s.level]}`}></div>
                             <div>
-                              <p className="text-sm font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors">{s.student_name}</p>
+                              <p className="text-sm font-medium text-[#27273D]">{s.student_name}</p>
                               <p className="text-xs text-gray-500">{s.student_email}</p>
                             </div>
                           </div>
                         </td>
-
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1 w-32">
+                          <div className="w-24">
                             <div className="flex justify-between text-xs mb-1">
-                              <span className="font-bold text-[#27273D]">{score.toFixed(1)}</span>
+                              <span className="font-bold text-[#27273D]">{s.score.toFixed(1)}</span>
                             </div>
                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${barClass}`}
-                                style={{ width: `${score}%` }}
-                              />
+                              <div className={`h-full ${levelBar[s.level]}`} style={{ width: `${s.score}%` }} />
                             </div>
                           </div>
                         </td>
-
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${levelColors[s.level] ?? 'bg-gray-100 text-gray-700'
-                              }`}
-                          >
-                            {levelLabel[s.level] ?? s.level}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${levelColors[s.level]}`}>
+                            {levelLabel[s.level]}
                           </span>
                         </td>
-
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {(s.factors || []).slice(0, 3).map((factor, idx) => (
-                              <span key={idx} className="px-2 py-0.5 bg-gray-50 border border-gray-100 text-gray-600 text-[10px] uppercase tracking-wide rounded">
-                                {factor}
+                            {s.factors.slice(0, 2).map((f, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-gray-50 border border-gray-100 text-gray-600 text-[10px] uppercase rounded">
+                                {f}
                               </span>
                             ))}
-                            {(s.factors || []).length > 3 && (
-                              <span
-                                title={tooltipText}
-                                className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded cursor-help border border-transparent hover:border-gray-300 transition-colors"
-                              >
-                                +{hiddenFactors.length}
+                            {s.factors.length > 2 && (
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded">
+                                +{s.factors.length - 2}
                               </span>
                             )}
                           </div>
                         </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-
-                            {/* Botão Principal: Ticket */}
                             <button
                               onClick={(e) => createTicket(e, s)}
                               disabled={isCreating}
-                              className={`
-                                flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border transition-all
-                                ${isCreating
-                                  ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
+                              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                                isCreating
+                                  ? 'bg-gray-100 text-gray-400 border-gray-100'
                                   : 'border-[#2A658F] text-[#2A658F] hover:bg-[#2A658F] hover:text-white'
-                                }
-                              `}
-                              title="Criar ticket de acompanhamento"
+                              }`}
                             >
                               {isCreating ? '...' : 'Ticket'}
                             </button>
-
-                            <div className="h-4 w-px bg-gray-300 mx-1"></div>
-
-                            {/* Ações de Comunicação (Ícones) */}
+                            
                             <a
                               href={`mailto:${s.student_email}`}
-                              className="p-1.5 text-gray-400 hover:text-[#27273D] hover:bg-gray-100 rounded-full transition-colors"
-                              title={`Enviar e-mail para ${s.student_email}`}
+                              className="p-1.5 text-gray-400 hover:text-[#27273D] hover:bg-gray-100 rounded-full"
                             >
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
                             </a>
-
-                            {wa ? (
+                            {wa && (
                               <a
                                 href={`https://wa.me/${wa}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                                title="Abrir WhatsApp Web"
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-full"
                               >
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                </svg>
                               </a>
-                            ) : null}
-
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -641,6 +322,90 @@ export default function RiskDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {/* Cards Mobile */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((s) => {
+                const wa = normalizePhoneToWa(s.student_phone);
+                const isCreating = creatingTicketFor === s.student_id;
+
+                return (
+                  <div
+                    key={s.student_id}
+                    onClick={() => router.push(`/risk/${s.student_id}`)}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-semibold text-[#27273D] text-sm">{s.student_name}</h3>
+                        <p className="text-xs text-gray-500">{s.student_email}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-full ${levelColors[s.level]}`}>
+                        {levelLabel[s.level]}
+                      </span>
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-gray-500">Score</span>
+                        <span className="font-bold">{s.score.toFixed(1)}</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full ${levelBar[s.level]}`} style={{ width: `${s.score}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => createTicket(e, s)}
+                        disabled={isCreating}
+                        className="flex-1 py-2 border border-[#2A658F] text-[#2A658F] rounded-lg text-xs font-medium"
+                      >
+                        {isCreating ? '...' : 'Criar Ticket'}
+                      </button>
+                      {wa && (
+                        <a
+                          href={`https://wa.me/${wa}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-4 py-2 bg-green-50 text-green-600 rounded-lg"
+                        >
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Paginação */}
+            {pagination && pagination.total_pages > 1 && (
+              <div className="flex items-center justify-between bg-white rounded-xl shadow-sm p-4">
+                <p className="text-sm text-gray-500">
+                  Mostrando {((pagination.page - 1) * pagination.per_page) + 1} - {Math.min(pagination.page * pagination.per_page, pagination.total)} de {pagination.total}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Anterior
+                  </button>
+                  <span className="px-4 py-2 text-sm text-gray-600">
+                    {pagination.page} / {pagination.total_pages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(pagination.total_pages, p + 1))}
+                    disabled={currentPage === pagination.total_pages}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Próximo
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

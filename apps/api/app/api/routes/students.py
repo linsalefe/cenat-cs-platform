@@ -163,3 +163,84 @@ def get_student_moodle_signals(
             for s in signals
         ]
     }
+
+
+@router.post("/sync-all-moodle")
+async def sync_all_students_moodle(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Sincroniza dados do Moodle de todos os alunos que têm moodle_user_id"""
+    from datetime import date
+    
+    students = db.query(Student).filter(
+        Student.moodle_user_id.isnot(None)
+    ).limit(limit).all()
+    
+    results = {"total": len(students), "synced": 0, "errors": 0}
+    
+    for student in students:
+        try:
+            courses = await moodle.get_user_courses(student.moodle_user_id)
+            
+            for course in courses:
+                try:
+                    # Busca progresso
+                    completion = await moodle.get_course_completion(student.moodle_user_id, course["id"])
+                    activities = completion.get("statuses", [])
+                    total = len(activities)
+                    completed = sum(1 for a in activities if a.get("state") == 1)
+                    progress = (completed / total * 100) if total > 0 else 0
+                    
+                    # Busca notas
+                    grades_data = await moodle.get_user_grades(student.moodle_user_id, course["id"])
+                    grade_items = grades_data.get("usergrades", [{}])[0].get("gradeitems", [])
+                    course_grade = None
+                    for item in grade_items:
+                        if item.get("itemtype") == "course":
+                            course_grade = item.get("graderaw")
+                            break
+                    
+                    # Calcula dias sem acesso
+                    last_access = course.get("lastaccess")
+                    days_since = 0
+                    last_access_dt = None
+                    if last_access:
+                        from datetime import datetime
+                        last_access_dt = datetime.fromtimestamp(last_access)
+                        days_since = (datetime.utcnow() - last_access_dt).days
+                    
+                    # Cria ou atualiza sinal
+                    signal = db.query(MoodleSignal).filter(
+                        MoodleSignal.student_id == student.id,
+                        MoodleSignal.course_id == course["id"],
+                        MoodleSignal.captured_at == date.today()
+                    ).first()
+                    
+                    if not signal:
+                        signal = MoodleSignal(
+                            student_id=student.id,
+                            moodle_user_id=student.moodle_user_id,
+                            course_id=course["id"],
+                            captured_at=date.today()
+                        )
+                        db.add(signal)
+                    
+                    signal.total_activities = total
+                    signal.completed_activities = completed
+                    signal.progress_percent = progress
+                    signal.course_grade = course_grade
+                    signal.last_access = last_access_dt
+                    signal.days_since_access = days_since
+                    
+                except Exception as e:
+                    pass  # Ignora erros em cursos individuais
+            
+            db.commit()
+            results["synced"] += 1
+            
+        except Exception as e:
+            results["errors"] += 1
+    
+    return results
