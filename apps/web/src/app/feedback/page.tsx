@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
-import AppLayout from '@/components/AppLayout';
-import LoadingState from '@/components/LoadingState';
-import EmptyState from '@/components/EmptyState';
-
 import { useAuth } from '@/contexts/auth-context';
+import AppLayout from '@/components/AppLayout';
+import { Avatar } from '@/components/ui';
+import {
+  MessageSquare,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  Star,
+  ThumbsUp,
+  ThumbsDown,
+  Minus,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+} from 'lucide-react';
 import api from '@/lib/api';
 
-// --- Interfaces ---
 interface NPSSummary {
   nps_score: number | null;
   total_responses: number;
@@ -43,95 +51,12 @@ interface FeedbackItem {
   answered_at: string | null;
 }
 
-// --- Constantes & Helpers ---
 const triggerLabels: Record<string, string> = {
   ticket_closed: 'Ticket Fechado',
   course_completed: 'Curso Concluído',
   manual: 'Manual',
   scheduled: 'Agendado',
 };
-
-const getNpsColor = (score: number | null) => {
-  if (score === null) return 'text-gray-400';
-  if (score >= 50) return 'text-green-600';
-  if (score >= 0) return 'text-amber-600';
-  return 'text-red-600';
-};
-
-const getCsatColor = (score: number | null) => {
-  if (score === null) return 'text-gray-400';
-  if (score >= 80) return 'text-green-600';
-  if (score >= 60) return 'text-amber-600';
-  return 'text-red-600';
-};
-
-// Componente de Badge de Score (Reutilizável)
-const ScoreBadge = ({ type, score }: { type: string, score: number | null }) => {
-  if (score === null) return <span className="text-gray-400 text-xs">Pendente</span>;
-  
-  let label = '';
-  let colorClass = '';
-
-  if (type === 'nps') {
-    if (score >= 9) { label = 'Promotor'; colorClass = 'bg-green-100 text-green-800'; }
-    else if (score >= 7) { label = 'Passivo'; colorClass = 'bg-amber-100 text-amber-800'; }
-    else { label = 'Detrator'; colorClass = 'bg-red-100 text-red-800'; }
-  } else {
-    if (score >= 4) { label = 'Satisfeito'; colorClass = 'bg-green-100 text-green-800'; }
-    else if (score === 3) { label = 'Neutro'; colorClass = 'bg-amber-100 text-amber-800'; }
-    else { label = 'Insatisfeito'; colorClass = 'bg-red-100 text-red-800'; }
-  }
-
-  return <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${colorClass}`}>{label}</span>;
-};
-
-// --- Componente: Card Mobile ---
-function MobileFeedbackCard({ feedback }: { feedback: FeedbackItem }) {
-  const date = feedback.answered_at 
-    ? new Date(feedback.answered_at).toLocaleDateString('pt-BR')
-    : new Date(feedback.sent_at!).toLocaleDateString('pt-BR');
-
-  return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3">
-      {/* Cabeçalho: Nome e Data */}
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-[#27273D] text-sm">{feedback.student_name}</h3>
-        <span className="text-xs text-gray-400">{date}</span>
-      </div>
-
-      {/* Badges de Contexto */}
-      <div className="flex gap-2 mb-3">
-         <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded border ${
-            feedback.feedback_type === 'nps' 
-              ? 'bg-blue-50 text-blue-700 border-blue-100' 
-              : 'bg-purple-50 text-purple-700 border-purple-100'
-         }`}>
-            {feedback.feedback_type}
-         </span>
-         <span className="px-2 py-0.5 text-[10px] font-medium uppercase rounded border border-gray-200 text-gray-500 bg-gray-50">
-            {triggerLabels[feedback.trigger] || feedback.trigger}
-         </span>
-      </div>
-
-      {/* Score e Status */}
-      <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mb-3">
-        <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 uppercase font-bold">Nota</span>
-            <span className="text-lg font-bold text-[#27273D]">{feedback.score !== null ? feedback.score : '-'}</span>
-        </div>
-        <ScoreBadge type={feedback.feedback_type} score={feedback.score} />
-      </div>
-
-      {/* Comentário (se houver) */}
-      {feedback.comment && (
-        <div className="text-sm text-gray-600 italic bg-yellow-50/50 p-3 rounded border border-yellow-100/50">
-          "{feedback.comment}"
-        </div>
-      )}
-    </div>
-  );
-}
-
 
 export default function FeedbackDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -141,7 +66,13 @@ export default function FeedbackDashboard() {
   const [csat, setCsat] = useState<CSATSummary | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [days, setDays] = useState(30);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -168,224 +99,329 @@ export default function FeedbackDashboard() {
       setFeedbacks(feedbacksRes.data);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar métricas de feedback');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const getNpsStatus = (score: number | null) => {
+    if (score === null) return { label: '—', color: 'text-gray-400', bg: 'bg-gray-50' };
+    if (score >= 50) return { label: 'Excelente', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (score >= 0) return { label: 'Bom', color: 'text-amber-600', bg: 'bg-amber-50' };
+    return { label: 'Crítico', color: 'text-red-600', bg: 'bg-red-50' };
+  };
+
+  const getCsatStatus = (score: number | null) => {
+    if (score === null) return { label: '—', color: 'text-gray-400', bg: 'bg-gray-50' };
+    if (score >= 80) return { label: 'Excelente', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (score >= 60) return { label: 'Bom', color: 'text-amber-600', bg: 'bg-amber-50' };
+    return { label: 'Crítico', color: 'text-red-600', bg: 'bg-red-50' };
+  };
+
+  const getScoreCategory = (type: string, score: number | null) => {
+    if (score === null) return { icon: Clock, label: 'Pendente', color: 'text-gray-400', bg: 'bg-gray-50' };
+
+    if (type === 'nps') {
+      if (score >= 9) return { icon: ThumbsUp, label: 'Promotor', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+      if (score >= 7) return { icon: Minus, label: 'Passivo', color: 'text-amber-600', bg: 'bg-amber-50' };
+      return { icon: ThumbsDown, label: 'Detrator', color: 'text-red-600', bg: 'bg-red-50' };
+    } else {
+      if (score >= 4) return { icon: ThumbsUp, label: 'Satisfeito', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+      if (score === 3) return { icon: Minus, label: 'Neutro', color: 'text-amber-600', bg: 'bg-amber-50' };
+      return { icon: ThumbsDown, label: 'Insatisfeito', color: 'text-red-600', bg: 'bg-red-50' };
+    }
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+    });
+  };
+
+  const npsStatus = getNpsStatus(nps?.nps_score ?? null);
+  const csatStatus = getCsatStatus(csat?.csat_score ?? null);
+
   if (authLoading || loading) {
     return (
       <AppLayout>
-        <LoadingState label="Carregando métricas..." />
+        <div className="animate-pulse space-y-8">
+          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-64 bg-gray-100 rounded-2xl"></div>
+            <div className="h-64 bg-gray-100 rounded-2xl"></div>
+          </div>
+          <div className="h-96 bg-gray-100 rounded-2xl"></div>
+        </div>
       </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div
+          className={`flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 transition-all duration-700 ease-out ${
+            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+          }`}
+        >
           <div>
-            <h1 className="text-3xl font-bold text-[#27273D]">NPS & CSAT</h1>
-            <p className="text-gray-600 mt-1">Métricas de satisfação e lealdade dos alunos</p>
+            <p className="text-sm font-medium text-[#2A658F] mb-1">Satisfação</p>
+            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">NPS & CSAT</h1>
           </div>
-          
-          <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-            <span className="text-xs font-medium text-gray-500 px-2">Período:</span>
+
+          <div className="flex items-center gap-3">
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="text-sm border-none focus:ring-0 text-[#27273D] font-medium bg-transparent cursor-pointer"
+              className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium
+                focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 outline-none transition-all"
             >
               <option value={7}>Últimos 7 dias</option>
               <option value={30}>Últimos 30 dias</option>
               <option value={90}>Últimos 90 dias</option>
               <option value={365}>Último ano</option>
             </select>
+
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600
+                bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 
-        {/* Cards NPS e CSAT */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* NPS & CSAT Cards */}
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-700 ease-out ${
+            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+          style={{ transitionDelay: '100ms' }}
+        >
           {/* NPS Card */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex justify-between items-start mb-4">
-                <h2 className="text-lg font-bold text-[#27273D]">Net Promoter Score (NPS)</h2>
-                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] uppercase font-bold rounded">Lealdade</span>
-            </div>
-            
-            <div className="flex items-end gap-3 mb-6">
-              <div className={`text-5xl font-bold ${getNpsColor(nps?.nps_score ?? null)}`}>
-                {nps?.nps_score !== null && nps?.nps_score !== undefined ? nps?.nps_score : '-'}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[#27273D]">Net Promoter Score</h2>
+                <p className="text-sm text-gray-500">Lealdade dos alunos</p>
               </div>
-              <div className="text-sm text-gray-500 mb-1">
-                 score atual ({nps?.total_responses || 0} respostas)
+              <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${npsStatus.bg} ${npsStatus.color}`}>
+                {npsStatus.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-6 mb-6">
+              <div className={`text-5xl font-bold ${npsStatus.color}`}>
+                {nps?.nps_score !== null && nps?.nps_score !== undefined ? nps.nps_score : '—'}
+              </div>
+              <div className="text-sm text-gray-500">
+                <p>{nps?.total_responses || 0} respostas</p>
+                <p className="text-xs text-gray-400">Escala: -100 a +100</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-               {/* Barras de progresso com design refinado */}
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Promotores (9-10)</span>
-                  <span className="text-gray-800 font-bold">{nps?.promoters || 0}</span>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <ThumbsUp className="w-4 h-4 text-emerald-500" />
+                    Promotores (9-10)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{nps?.promoters || 0} ({nps?.promoters_pct || 0}%)</span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${nps?.promoters_pct || 0}%` }} />
-                </div>
-              </div>
-              
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Passivos (7-8)</span>
-                  <span className="text-gray-800 font-bold">{nps?.passives || 0}</span>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${nps ? (nps.passives / (nps.total_responses || 1)) * 100 : 0}%` }} />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${nps?.promoters_pct || 0}%` }} />
                 </div>
               </div>
-              
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Detratores (0-6)</span>
-                  <span className="text-gray-800 font-bold">{nps?.detractors || 0}</span>
+
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <Minus className="w-4 h-4 text-amber-500" />
+                    Passivos (7-8)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{nps?.passives || 0}</span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${nps?.detractors_pct || 0}%` }} />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 rounded-full"
+                    style={{ width: `${nps ? (nps.passives / (nps.total_responses || 1)) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <ThumbsDown className="w-4 h-4 text-red-500" />
+                    Detratores (0-6)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{nps?.detractors || 0} ({nps?.detractors_pct || 0}%)</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-red-500 rounded-full" style={{ width: `${nps?.detractors_pct || 0}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
           {/* CSAT Card */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-             <div className="flex justify-between items-start mb-4">
-                <h2 className="text-lg font-bold text-[#27273D]">CSAT Score</h2>
-                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] uppercase font-bold rounded">Satisfação</span>
-            </div>
-            
-            <div className="flex items-end gap-3 mb-6">
-              <div className={`text-5xl font-bold ${getCsatColor(csat?.csat_score ?? null)}`}>
-                {csat?.csat_score !== null && csat?.csat_score !== undefined ? `${csat?.csat_score}%` : '-'}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[#27273D]">Customer Satisfaction</h2>
+                <p className="text-sm text-gray-500">Satisfação com atendimento</p>
               </div>
-              <div className="text-sm text-gray-500 mb-1">
-                média {csat?.average_score?.toFixed(1) || '-'}/5 ({csat?.total_responses || 0} respostas)
+              <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${csatStatus.bg} ${csatStatus.color}`}>
+                {csatStatus.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-6 mb-6">
+              <div className={`text-5xl font-bold ${csatStatus.color}`}>
+                {csat?.csat_score !== null && csat?.csat_score !== undefined ? `${csat.csat_score}%` : '—'}
+              </div>
+              <div className="text-sm text-gray-500">
+                <p>{csat?.total_responses || 0} respostas</p>
+                <p className="text-xs text-gray-400">Média: {csat?.average_score?.toFixed(1) || '—'}/5</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Satisfeitos (4-5)</span>
-                  <span className="text-gray-800 font-bold">{csat?.satisfied || 0}</span>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <ThumbsUp className="w-4 h-4 text-emerald-500" />
+                    Satisfeitos (4-5)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{csat?.satisfied || 0}</span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${csat ? (csat.satisfied / (csat.total_responses || 1)) * 100 : 0}%` }} />
-                </div>
-              </div>
-              
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Neutros (3)</span>
-                  <span className="text-gray-800 font-bold">{csat?.neutral || 0}</span>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${csat ? (csat.neutral / (csat.total_responses || 1)) * 100 : 0}%` }} />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{ width: `${csat ? (csat.satisfied / (csat.total_responses || 1)) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
-              
-              <div className="group">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">Insatisfeitos (1-2)</span>
-                  <span className="text-gray-800 font-bold">{csat?.dissatisfied || 0}</span>
+
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <Minus className="w-4 h-4 text-amber-500" />
+                    Neutros (3)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{csat?.neutral || 0}</span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${csat ? (csat.dissatisfied / (csat.total_responses || 1)) * 100 : 0}%` }} />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 rounded-full"
+                    style={{ width: `${csat ? (csat.neutral / (csat.total_responses || 1)) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="flex items-center gap-2 text-gray-600">
+                    <ThumbsDown className="w-4 h-4 text-red-500" />
+                    Insatisfeitos (1-2)
+                  </span>
+                  <span className="font-medium text-[#27273D]">{csat?.dissatisfied || 0}</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-red-500 rounded-full"
+                    style={{ width: `${csat ? (csat.dissatisfied / (csat.total_responses || 1)) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Lista de Feedbacks Recentes (Híbrida) */}
-        <div className="bg-transparent md:bg-white md:rounded-xl md:shadow-sm overflow-hidden min-h-[400px]">
-          <div className="p-4 border-b border-gray-100 hidden md:block">
-            <h2 className="text-lg font-semibold text-[#27273D]">Feedbacks Recentes</h2>
+        {/* Feedbacks List */}
+        <div
+          className={`bg-white rounded-2xl border border-gray-100 transition-all duration-700 ease-out ${
+            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+          style={{ transitionDelay: '200ms' }}
+        >
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#2A658F]" />
+              <h2 className="text-lg font-semibold text-[#27273D]">Feedbacks Recentes</h2>
+            </div>
           </div>
-          
+
           {feedbacks.length === 0 ? (
-            <div className="p-8 bg-white md:bg-transparent rounded-xl">
-              <EmptyState
-                title="Nenhum feedback ainda"
-                description="Os feedbacks aparecerão aqui quando forem enviados."
-              />
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhum feedback ainda</h3>
+              <p className="text-gray-500">Os feedbacks aparecerão aqui quando forem enviados</p>
             </div>
           ) : (
-            <>
-              {/* VERSÃO MOBILE: Cards */}
-              <div className="md:hidden space-y-3">
-                 <h2 className="text-lg font-semibold text-[#27273D] px-1 mb-2">Feedbacks Recentes</h2>
-                 {feedbacks.map(f => <MobileFeedbackCard key={f.id} feedback={f} />)}
-              </div>
+            <div className="divide-y divide-gray-100">
+              {feedbacks.map((f) => {
+                const category = getScoreCategory(f.feedback_type, f.score);
+                const Icon = category.icon;
 
-              {/* VERSÃO DESKTOP: Tabela */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-[#CCE4F4]">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Aluno</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Tipo</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Origem</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Nota</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Comentário</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-[#27273D] uppercase tracking-wider">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {feedbacks.map((f) => (
-                      <tr key={f.id} className="hover:bg-[#E2ECF4] transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="text-sm font-medium text-[#27273D]">{f.student_name}</p>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-bold uppercase rounded-full ${
-                            f.feedback_type === 'nps' 
-                              ? 'bg-blue-50 text-blue-700' 
-                              : 'bg-purple-50 text-purple-700'
-                          }`}>
-                            {f.feedback_type}
+                return (
+                  <div key={f.id} className="p-5 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <Avatar name={f.student_name} size="md" />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-4 mb-1">
+                          <h3 className="font-medium text-[#27273D] truncate">{f.student_name}</h3>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${category.bg} ${category.color}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                            {category.label}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {triggerLabels[f.trigger] || f.trigger}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-[#27273D] w-6 text-center">{f.score !== null ? f.score : '-'}</span>
-                            <ScoreBadge type={f.feedback_type} score={f.score} />
+                        </div>
+
+                        <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            f.feedback_type === 'nps' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                          }`}>
+                            {f.feedback_type.toUpperCase()}
+                          </span>
+                          <span>{triggerLabels[f.trigger] || f.trigger}</span>
+                          <span>•</span>
+                          <span>{f.answered_at ? formatDate(f.answered_at) : formatDate(f.sent_at!)}</span>
+                        </div>
+
+                        {f.score !== null && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm text-gray-500">Nota:</span>
+                            <span className="text-lg font-semibold text-[#27273D]">{f.score}</span>
+                            {f.feedback_type === 'nps' && <span className="text-sm text-gray-400">/ 10</span>}
+                            {f.feedback_type === 'csat' && <span className="text-sm text-gray-400">/ 5</span>}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 max-w-xs">
-                          {f.comment ? (
-                             <p className="text-sm text-gray-600 truncate" title={f.comment}>"{f.comment}"</p>
-                          ) : (
-                             <span className="text-gray-300 text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {f.answered_at 
-                            ? new Date(f.answered_at).toLocaleDateString('pt-BR')
-                            : new Date(f.sent_at!).toLocaleDateString('pt-BR')
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+                        )}
+
+                        {f.comment && (
+                          <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 italic">
+                            "{f.comment}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
