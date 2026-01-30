@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import AppLayout from '@/components/AppLayout';
+import CreateTicketModal from '@/components/CreateTicketModal';
 import { Avatar } from '@/components/ui';
 import {
   Search,
@@ -12,14 +13,15 @@ import {
   AlertCircle,
   CheckCircle2,
   User,
-  Filter,
   ChevronRight,
   Inbox,
   XCircle,
   Timer,
   ArrowRight,
+  Plus,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface TicketItem {
   id: number;
@@ -67,6 +69,7 @@ export default function TicketsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -93,6 +96,11 @@ export default function TicketsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTicketCreated = () => {
+    loadTickets();
+    toast.success('Ticket criado com sucesso!');
   };
 
   const filteredTickets = tickets.filter((t) => {
@@ -149,12 +157,25 @@ export default function TicketsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div
-          className={`transition-all duration-700 ease-out ${
+          className={`flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
           }`}
         >
-          <p className="text-sm font-medium text-[#2A658F] mb-1">Atendimento</p>
-          <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Tickets</h1>
+          <div>
+            <p className="text-sm font-medium text-[#2A658F] mb-1">Atendimento</p>
+            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Tickets</h1>
+          </div>
+
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white
+              bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
+              hover:shadow-lg hover:shadow-[#2A658F]/30 hover:-translate-y-0.5
+              transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Ticket
+          </button>
         </div>
 
         {/* Stats */}
@@ -271,7 +292,15 @@ export default function TicketsPage() {
                 <Ticket className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhum ticket encontrado</h3>
-              <p className="text-gray-500">Tente ajustar os filtros ou aguarde novos tickets</p>
+              <p className="text-gray-500 mb-4">Tente ajustar os filtros ou crie um novo ticket</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#2A658F]
+                  bg-[#E2ECF4] hover:bg-[#CCE4F4] rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Criar ticket
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -355,6 +384,13 @@ export default function TicketsPage() {
           </p>
         )}
       </div>
+
+      {/* Create Ticket Modal */}
+      <CreateTicketModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleTicketCreated}
+      />
     </AppLayout>
   );
 }
