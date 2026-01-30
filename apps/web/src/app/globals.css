@@ -1,14 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  
-  /* Paleta Extraída dos seus componentes */
-  --brand-primary: #2A658F;      /* Azul principal */
-  --brand-dark: #27273D;         /* Texto escuro/títulos */
-  --brand-light: #CCE4F4;        /* Fundos claros/headers de tabela */
-  --brand-surface: #E2ECF4;      /* Hover e fundos secundários */
+  --background: #E2ECF4;
+  --foreground: #27273D;
+  --brand-primary: #2A658F;
+  --brand-dark: #27273D;
+  --brand-light: #CCE4F4;
+  --brand-surface: #E2ECF4;
 }
 
 @theme inline {
@@ -16,29 +14,40 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-
-  /* Mapeamento para usar classes como 'bg-primary' ou 'text-dark' */
   --color-primary: var(--brand-primary);
   --color-dark: var(--brand-dark);
   --color-highlight: var(--brand-light);
   --color-surface: var(--brand-surface);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    
-    /* Adaptação opcional para modo escuro (mantém legibilidade) */
-    --brand-primary: #4A95BF;    /* Um pouco mais claro para contraste */
-    --brand-dark: #E2ECF4;       /* Inverte o texto escuro para claro */
-    --brand-light: #1A1A2E;      /* Escurece fundos de tabela */
-    --brand-surface: #252540;    /* Escurece hovers */
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force input text color */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
+  color: #27273D !important;
+  -webkit-text-fill-color: #27273D !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+select option {
+  color: #27273D;
+  background: white;
 }
