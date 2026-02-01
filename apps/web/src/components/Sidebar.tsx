@@ -11,6 +11,7 @@ import {
   MessageSquare,
   BarChart3,
   BookOpen,
+  Zap,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const menuItems = [
   { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare },
   { href: '/metrics', label: 'Métricas', icon: BarChart3 },
   { href: '/courses', label: 'Cursos', icon: BookOpen },
+  { href: '/automations', label: 'Automações', icon: Zap },
 ];
 
 export default function Sidebar() {

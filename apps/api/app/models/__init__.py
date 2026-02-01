@@ -10,3 +10,4 @@ from app.models.risk_score import RiskScore, RiskLevel
 from app.models.playbook import Playbook, PlaybookAction, PlaybookExecution, ActionType
 from app.models.trigger import Trigger, TriggerExecution, TriggerConditionType, TriggerActionType
 from app.models.feedback import Feedback, FeedbackType, FeedbackTrigger
+from app.models.automation import Automation, AutomationLog

@@ -83,7 +83,7 @@ async def execute_trigger_action(trigger: Trigger, student: Student, db: Session
     try:
         if trigger.action_type == TriggerActionType.SEND_WHATSAPP:
             if student.phone:
-                from app.integrations.whatsapp import send_message
+                from app.integrations.twilio_service import send_message
                 await send_message(student.phone, message)
                 result["status"] = "sent"
             else:
