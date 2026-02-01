@@ -11,3 +11,4 @@ from app.models.playbook import Playbook, PlaybookAction, PlaybookExecution, Act
 from app.models.trigger import Trigger, TriggerExecution, TriggerConditionType, TriggerActionType
 from app.models.feedback import Feedback, FeedbackType, FeedbackTrigger
 from app.models.automation import Automation, AutomationLog
+from app.models.conversation import Conversation, ConversationMessage

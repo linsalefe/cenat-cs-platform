@@ -70,6 +70,33 @@ def create_automation(
     return automation
 
 
+@router.get("/logs/recent")
+def get_recent_logs(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    logs = (
+        db.query(AutomationLog)
+        .order_by(desc(AutomationLog.executed_at))
+        .limit(limit)
+        .all()
+    )
+    return logs
+
+
+@router.post("/run")
+async def run_automations_now(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Executa todas as automações manualmente (para testes)"""
+    from app.services.automation_service import run_all_automations
+
+    results = await run_all_automations(db)
+    return results
+
+
 @router.get("/{automation_id}")
 def get_automation(
     automation_id: int,
@@ -142,21 +169,6 @@ def get_automation_logs(
     logs = (
         db.query(AutomationLog)
         .filter(AutomationLog.automation_id == automation_id)
-        .order_by(desc(AutomationLog.executed_at))
-        .limit(limit)
-        .all()
-    )
-    return logs
-
-
-@router.get("/logs/recent")
-def get_recent_logs(
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    logs = (
-        db.query(AutomationLog)
         .order_by(desc(AutomationLog.executed_at))
         .limit(limit)
         .all()

@@ -8,6 +8,7 @@ from app.models.ticket import Ticket, TicketStatus, TicketCategory, TicketPriori
 from app.models.ticket_message import TicketMessage, MessageSender
 from app.services import ticket_service
 from app.integrations.twilio_service import send_message, format_phone
+from app.services import conversation_service
 
 router = APIRouter(prefix="/webhook", tags=["webhooks"])
 
@@ -43,6 +44,13 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
     to_number = form_data.get("To", "")
     message_sid = form_data.get("MessageSid", "")
     num_media = int(form_data.get("NumMedia", "0"))
+
+    # Salva mensagem na conversa
+    if body:
+        try:
+            conversation_service.add_inbound_message(db=db, phone=phone, content=body, message_sid=message_sid)
+        except Exception as e:
+            print(f"Erro ao salvar mensagem na conversa: {e}")
 
     # Ignora se não tem texto
     if not body:

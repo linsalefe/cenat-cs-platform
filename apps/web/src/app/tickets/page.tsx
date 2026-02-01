@@ -19,6 +19,8 @@ import {
   Timer,
   ArrowRight,
   Plus,
+  List,
+  Columns3,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -166,16 +168,33 @@ export default function TicketsPage() {
             <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Tickets</h1>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white
-              bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
-              hover:shadow-lg hover:shadow-[#2A658F]/30 hover:-translate-y-0.5
-              transition-all duration-200"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Ticket
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium bg-[#2A658F] text-white"
+              >
+                <List className="w-4 h-4" />
+                Lista
+              </button>
+              <button
+                onClick={() => router.push('/tickets/kanban')}
+                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                <Columns3 className="w-4 h-4" />
+                Kanban
+              </button>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white
+                bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
+                hover:shadow-lg hover:shadow-[#2A658F]/30 hover:-translate-y-0.5
+                transition-all duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Ticket
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

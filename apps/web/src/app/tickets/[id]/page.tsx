@@ -360,7 +360,7 @@ export default function TicketDetailPage() {
                 </div>
               </div>
               {ticket.student.phone && (
-                
+                <a
                   href={`https://wa.me/${ticket.student.phone.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noreferrer"

@@ -17,9 +17,11 @@ SLA_HOURS = {
 
 
 def generate_protocol() -> str:
-    """Gera protocolo único no formato SEC-YYYYMMDD-HHMMSS"""
+    """Gera protocolo único no formato SEC-YYYYMMDD-HHMMSS-XXXX"""
+    import uuid
     now = datetime.utcnow()
-    return f"SEC-{now.strftime('%Y%m%d-%H%M%S')}"
+    suffix = uuid.uuid4().hex[:4].upper()
+    return f"SEC-{now.strftime('%Y%m%d-%H%M%S')}-{suffix}"
 
 
 def calculate_sla_deadline(category: TicketCategory) -> datetime:

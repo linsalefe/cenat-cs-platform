@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import api from '@/lib/api';
 import {
   LayoutDashboard,
   Ticket,
   Users,
   AlertTriangle,
   MessageSquare,
+  MessageCircle,
   BarChart3,
   BookOpen,
   Zap,
@@ -25,11 +28,28 @@ const menuItems = [
   { href: '/metrics', label: 'Métricas', icon: BarChart3 },
   { href: '/courses', label: 'Cursos', icon: BookOpen },
   { href: '/automations', label: 'Automações', icon: Zap },
+  { href: '/conversations', label: 'Conversas', icon: MessageCircle },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      const fetchUnread = async () => {
+        try {
+          const res = await api.get('/conversations');
+          const total = res.data.reduce((acc: number, c: any) => acc + (c.unread_count || 0), 0);
+          setUnreadCount(total);
+        } catch {}
+      };
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const getInitials = (name: string) => {
     return name
@@ -81,7 +101,14 @@ export default function Sidebar() {
                     <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6b6b80] group-hover:text-white'}`} />
                     <span className="font-medium">{item.label}</span>
                   </div>
-                  {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
+                  <div className="flex items-center gap-2">
+                    {item.href === '/conversations' && unreadCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-red-500 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                    {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
+                  </div>
                 </Link>
               </li>
             );
