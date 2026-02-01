@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   MessageSquare,
   BarChart3,
+  BookOpen,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ const menuItems = [
   { href: '/risk', label: 'Risco', icon: AlertTriangle },
   { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare },
   { href: '/metrics', label: 'Métricas', icon: BarChart3 },
+  { href: '/courses', label: 'Cursos', icon: BookOpen },
 ];
 
 export default function Sidebar() {
