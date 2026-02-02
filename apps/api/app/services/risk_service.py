@@ -160,8 +160,16 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     if len(complaint_tickets) > 0:
         factors.append(f"{len(complaint_tickets)} reclamação(ões) financeira(s)")
     
-    # 3. Financial score (placeholder - será implementado com ASAAS)
+    # 3. Financial score (ASAAS)
     financial_score = 0.0
+    if student.financial_status == 'inadimplente':
+        financial_score = 100.0
+        factors.append(f"Inadimplente (R$ {student.overdue_value or 0:,.2f} em atraso)")
+    elif student.financial_status == 'pendente':
+        financial_score = 40.0
+        factors.append("Parcelas pendentes")
+    elif student.financial_status == 'em_dia':
+        financial_score = 0.0
     
     # 4. NPS/CSAT score
     nps_score = calculate_nps_score(db, student.id)
