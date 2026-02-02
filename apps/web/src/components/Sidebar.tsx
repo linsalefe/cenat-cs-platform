@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   MessageSquare,
   MessageCircle,
+  DollarSign,
   BarChart3,
   BookOpen,
   Zap,
@@ -29,6 +30,7 @@ const menuItems = [
   { href: '/courses', label: 'Cursos', icon: BookOpen },
   { href: '/automations', label: 'Automações', icon: Zap },
   { href: '/conversations', label: 'Conversas', icon: MessageCircle },
+  { href: '/financial', label: 'Financeiro', icon: DollarSign },
 ];
 
 export default function Sidebar() {

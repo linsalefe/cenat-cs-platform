@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Float, Integer, String
 
 from app.db.base import Base
 
@@ -15,5 +15,8 @@ class Student(Base):
     cpf = Column(String(14), unique=True, nullable=True, index=True)
     moodle_user_id = Column(Integer, unique=True, nullable=True, index=True)
     conta_azul_customer_id = Column(String(100), unique=True, nullable=True)
+    asaas_customer_id = Column(String(100), unique=True, nullable=True, index=True)
+    financial_status = Column(String(20), nullable=True)  # em_dia, pendente, inadimplente
+    overdue_value = Column(Float, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

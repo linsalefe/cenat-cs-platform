@@ -20,6 +20,7 @@ from app.api.routes.metrics import router as metrics_router
 from app.api.routes.courses import router as courses_router
 from app.api.routes.automations import router as automations_router
 from app.api.routes.conversations import router as conversations_router
+from app.api.routes.asaas import router as asaas_router
 from app.jobs.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -54,6 +55,7 @@ app.include_router(feedback_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 app.include_router(courses_router, prefix="/api")
 app.include_router(automations_router, prefix="/api")
+app.include_router(asaas_router, prefix="/api")
 app.include_router(conversations_router, prefix="/api")
 
 
