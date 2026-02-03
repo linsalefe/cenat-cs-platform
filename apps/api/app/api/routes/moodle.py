@@ -86,3 +86,14 @@ async def sync_students(current_user: User = Depends(get_current_user)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-signals")
+async def sync_signals(current_user: User = Depends(get_current_user)):
+    """Captura sinais do Moodle (progresso, notas, último acesso) para cálculo de risco"""
+    try:
+        from app.jobs.sync_moodle_signals import sync_moodle_signals
+        result = await sync_moodle_signals()
+        return {"status": "ok", "message": "Sinais capturados", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
