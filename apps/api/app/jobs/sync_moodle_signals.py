@@ -48,31 +48,12 @@ async def sync_moodle_signals():
                     if existing:
                         continue
                     
-                    # Busca completion
+                    # Busca notas e usa como proxy de progresso
+                    course_grade = None
+                    progress_percent = 0.0
                     total_activities = 0
                     completed_activities = 0
-                    progress_percent = 0.0
                     
-                    try:
-                        completion = await moodle.get_course_completion(
-                            student.moodle_user_id, course_id
-                        )
-                        statuses = completion.get("statuses", [])
-                        if statuses:
-                            total_activities = len(statuses)
-                            completed_activities = sum(
-                                1 for s in statuses if s.get("complete")
-                            )
-                            progress_percent = (
-                                (completed_activities / total_activities * 100)
-                                if total_activities > 0
-                                else 0
-                            )
-                    except Exception:
-                        pass
-                    
-                    # Busca notas
-                    course_grade = None
                     try:
                         grades = await moodle.get_user_grades(
                             student.moodle_user_id, course_id
@@ -80,12 +61,17 @@ async def sync_moodle_signals():
                         items = grades.get("usergrades", [{}])
                         if items:
                             grade_items = items[0].get("gradeitems", [])
-                            # Pega a nota do curso (último item geralmente é o total)
                             for item in grade_items:
                                 if item.get("itemtype") == "course":
                                     raw = item.get("graderaw")
+                                    grademax = item.get("grademax", 100)
                                     if raw is not None:
                                         course_grade = float(raw)
+                                        # Normaliza para 0-100
+                                        if grademax and grademax > 0:
+                                            progress_percent = min((float(raw) / float(grademax)) * 100, 100)
+                                        else:
+                                            progress_percent = min(float(raw), 100)
                     except Exception:
                         pass
                     

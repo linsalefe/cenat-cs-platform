@@ -47,7 +47,7 @@ def calculate_grade_score(grade: float | None, max_grade: float = 100) -> float:
     Nota máxima = 0 (sem risco), nota 0 = 100 (risco máximo)
     """
     if grade is None:
-        return 50.0  # Sem nota = risco médio
+        return 0.0  # Sem nota = sem risco
     
     normalized = min(grade / max_grade * 100, 100)
     return 100 - normalized
@@ -78,7 +78,7 @@ def calculate_nps_score(db: Session, student_id: int) -> float:
     ).order_by(Feedback.answered_at.desc()).first()
     
     if not feedback:
-        return 50.0  # Sem feedback = risco médio
+        return 0.0  # Sem feedback = sem risco
     
     if feedback.feedback_type == FeedbackType.NPS:
         # NPS: 0-10
@@ -140,10 +140,10 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
         if avg_grade is not None and avg_grade < 60:
             factors.append(f"Nota baixa ({avg_grade:.1f})")
     else:
-        engagement_score = 50.0  # Sem dados = risco médio
-        progress_score = 50.0
-        grade_score = 50.0
-        factors.append("Sem dados do Moodle")
+        engagement_score = 0.0  # Sem dados = sem risco
+        progress_score = 0.0
+        grade_score = 0.0
+        
     
     # 2. Busca tickets abertos
     open_tickets = db.query(Ticket).filter(
