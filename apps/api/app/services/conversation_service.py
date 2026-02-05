@@ -15,22 +15,29 @@ from app.models.student import Student
 def get_or_create_conversation(db: Session, phone: str) -> Conversation:
     """Busca conversa existente pelo telefone ou cria uma nova"""
     phone_clean = phone.replace("+", "").replace("whatsapp:", "")
+    phone_suffix = phone_clean[-9:]
 
-    conversation = (
+    # Busca conversa aberta pelo sufixo do telefone (últimos 9 dígitos)
+    conversations = (
         db.query(Conversation)
         .filter(
-            Conversation.contact_phone == phone_clean,
             Conversation.status.in_([ConversationStatus.OPEN, ConversationStatus.IN_PROGRESS]),
         )
-        .first()
+        .all()
     )
+
+    conversation = None
+    for conv in conversations:
+        if conv.contact_phone and conv.contact_phone[-9:] == phone_suffix:
+            conversation = conv
+            break
 
     if conversation:
         return conversation
 
     # Busca aluno pelo telefone
     student = db.query(Student).filter(
-        Student.phone.ilike(f"%{phone_clean[-9:]}%")
+        Student.phone.ilike(f"%{phone_suffix}%")
     ).first()
 
     conversation = Conversation(
@@ -171,3 +178,31 @@ def change_status(db: Session, conversation_id: int, new_status: ConversationSta
     db.commit()
     db.refresh(conversation)
     return conversation
+
+
+def add_outbound_message_by_phone(
+    db: Session,
+    phone: str,
+    content: str,
+    sender_type: MessageSenderType = MessageSenderType.SYSTEM,
+    message_sid: str = None,
+) -> ConversationMessage:
+    """Registra mensagem enviada pelo sistema (automações, templates, etc.)"""
+    conversation = get_or_create_conversation(db, phone)
+
+    message = ConversationMessage(
+        conversation_id=conversation.id,
+        direction=MessageDirection.OUTBOUND,
+        sender_type=sender_type,
+        content=content,
+        message_sid=message_sid,
+        status="sent",
+    )
+    db.add(message)
+
+    conversation.last_message_at = datetime.utcnow()
+    conversation.last_message_preview = content[:255] if content else ""
+
+    db.commit()
+    db.refresh(message)
+    return message

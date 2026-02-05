@@ -122,6 +122,96 @@ const templateVars = [
   { var: '{deadline}', desc: 'Data do prazo' },
 ];
 
+const whatsappTemplates = [
+  {
+    name: 'boas_vindas',
+    label: 'Boas-vindas',
+    params: [
+      { key: 0, label: 'Nome do aluno', placeholder: '{name}', default: '{name}' },
+      { key: 1, label: 'Nome do curso', placeholder: '{course}', default: '{course}' },
+    ],
+    preview: `Olá, {{1}}! Como vai? 😊
+
+É um prazer te receber nessa nova etapa da sua vida acadêmica!
+
+Sou a Luiza, e meu papel aqui no CENAT é te acompanhar durante toda a sua jornada de aprendizado.
+
+Boas-vindas à {{2}}!
+
+📌 *Informações importantes:*
+- A documentação de matrícula já pode ser enviada pelo portal do aluno.
+- Seu acesso à plataforma Moodle está ativo.
+- As orientações de login foram enviadas por e-mail.
+
+📞 *Dúvidas? Fale com a gente:*
+WhatsApp: 84 9193-4068
+secretaria@cenatcursos.com.br
+
+Abraços,
+Luiza Eder – CENAT`,
+  },
+  {
+    name: 'lembrete_acesso',
+    label: 'Lembrete de Acesso',
+    params: [
+      { key: 0, label: 'Nome do aluno', placeholder: '{name}', default: '{name}' },
+      { key: 1, label: 'Nome do curso', placeholder: '{course}', default: '{course}' },
+    ],
+    preview: `Olá, {{1}}! Tudo bem? 😊
+
+Notamos que faz um tempinho que você não acessa a plataforma do seu curso {{2}}.
+
+Sabemos que a rotina pode ser corrida, mas estamos aqui pra te ajudar a manter o ritmo!
+
+📚 Acesse sua área de estudos e continue de onde parou.
+
+Precisa de ajuda? Estou à disposição!
+
+Abraços,
+Luiza Eder – CENAT`,
+  },
+  {
+    name: 'lembrete_pagamento',
+    label: 'Lembrete de Pagamento',
+    params: [
+      { key: 0, label: 'Nome do aluno', placeholder: '{name}', default: '{name}' },
+      { key: 1, label: 'Nome do curso', placeholder: '{course}', default: '{course}' },
+    ],
+    preview: `Olá, {{1}}! 😊
+
+Passando pra lembrar que identificamos uma pendência financeira no seu curso {{2}}.
+
+Sabemos que imprevistos acontecem! Se precisar de ajuda pra regularizar, entre em contato com a gente:
+
+📞 WhatsApp: 84 9193-4068
+📧 secretaria@cenatcursos.com.br
+
+Estamos aqui pra te ajudar!
+
+Abraços,
+Equipe Financeira – CENAT`,
+  },
+  {
+    name: 'pesquisa_nps',
+    label: 'Pesquisa NPS',
+    params: [
+      { key: 0, label: 'Nome do aluno', placeholder: '{name}', default: '{name}' },
+    ],
+    preview: `Olá, {{1}}! 😊
+
+Sua opinião é muito importante pra gente!
+
+De 0 a 10, o quanto você recomendaria o CENAT para um colega?
+
+Responda com um número de 0 a 10 aqui mesmo nessa conversa.
+
+Agradecemos seu tempo!
+
+Abraços,
+Equipe CENAT`,
+  },
+];
+
 export default function NewAutomationPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -379,8 +469,159 @@ export default function NewAutomationPage() {
             })}
           </div>
 
-          {/* Template editor */}
-          {selectedAction?.hasTemplate && (
+          {/* WhatsApp config */}
+          {actionType === 'send_whatsapp' && (
+            <div className="space-y-4">
+              {/* Modo de envio */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Modo de envio</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setActionConfig((prev) => ({ ...prev, wa_mode: 'template', template: '' }))}
+                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${
+                      (actionConfig.wa_mode || 'text') === 'template'
+                        ? 'bg-green-50 text-green-600 border-green-300 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    �� Template Meta (aprovado)
+                  </button>
+                  <button
+                    onClick={() => setActionConfig((prev) => ({ ...prev, wa_mode: 'text', wa_template_name: '', wa_template_params: [] }))}
+                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${
+                      (actionConfig.wa_mode || 'text') === 'text'
+                        ? 'bg-green-50 text-green-600 border-green-300 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    💬 Texto livre (janela 24h)
+                  </button>
+                </div>
+              </div>
+
+              {/* Template Meta */}
+              {actionConfig.wa_mode === 'template' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Template aprovado</label>
+                    <select
+                      value={actionConfig.wa_template_name || ''}
+                      onChange={(e) => {
+                        const tmpl = whatsappTemplates.find((t) => t.name === e.target.value);
+                        setActionConfig((prev) => ({
+                          ...prev,
+                          wa_template_name: e.target.value,
+                          wa_template_params: tmpl ? tmpl.params.map((p) => p.default) : [],
+                        }));
+                      }}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm
+                        focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                        transition-all outline-none"
+                    >
+                      <option value="">Selecione um template...</option>
+                      {whatsappTemplates.map((t) => (
+                        <option key={t.name} value={t.name}>{t.label} ({t.name})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {actionConfig.wa_template_name && (() => {
+                    const tmpl = whatsappTemplates.find((t) => t.name === actionConfig.wa_template_name);
+                    if (!tmpl) return null;
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-500">Parâmetros do template:</p>
+                        {tmpl.params.map((param, idx) => (
+                          <div key={idx}>
+                            <label className="text-xs text-gray-500 mb-1 block">
+                              {'{{' + (idx + 1) + '}} — ' + param.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={(actionConfig.wa_template_params || [])[idx] || ''}
+                              onChange={(e) => {
+                                const params = [...(actionConfig.wa_template_params || [])];
+                                params[idx] = e.target.value;
+                                setActionConfig((prev) => ({ ...prev, wa_template_params: params }));
+                              }}
+                              placeholder={param.placeholder}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
+                                focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                                transition-all outline-none"
+                            />
+                          </div>
+                        ))}
+                        <p className="text-xs text-gray-400 mt-1">
+                          Use variáveis como {'{name}'}, {'{course}'}, {'{days}'} para preencher automaticamente.
+                        </p>
+
+                        {/* Preview */}
+                        <div className="mt-4 p-4 bg-[#e5ddd5] rounded-xl">
+                          <p className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Prévia da mensagem</p>
+                          <div className="bg-white rounded-lg p-3 shadow-sm max-w-sm">
+                            <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
+                              {(() => {
+                                let preview = tmpl.preview || '';
+                                const params = actionConfig.wa_template_params || [];
+                                params.forEach((val: string, i: number) => {
+                                  const placeholder = '{{' + (i + 1) + '}}';
+                                  preview = preview.replaceAll(placeholder, val || placeholder);
+                                });
+                                return preview;
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Texto livre */}
+              {(actionConfig.wa_mode || 'text') === 'text' && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs">
+                    ⚠️ Texto livre só funciona se o aluno tiver mandado mensagem nas últimas 24h.
+                    Para iniciar conversa, use um template aprovado.
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                      Template da mensagem
+                    </label>
+                    <textarea
+                      value={actionConfig.template || ''}
+                      onChange={(e) => setActionConfig((prev) => ({ ...prev, template: e.target.value }))}
+                      placeholder="Olá {name}, tudo bem? ..."
+                      rows={5}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl
+                        focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                        transition-all outline-none resize-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-2">Variáveis disponíveis (clique para inserir):</p>
+                    <div className="flex flex-wrap gap-2">
+                      {templateVars.map((v) => (
+                        <button
+                          key={v.var}
+                          onClick={() => insertVariable(v.var)}
+                          className="px-3 py-1.5 text-xs font-mono bg-gray-50 text-gray-700 border border-gray-200
+                            rounded-lg hover:bg-[#E2ECF4] hover:text-[#2A658F] hover:border-[#2A658F]/30 transition-colors"
+                          title={v.desc}
+                        >
+                          {v.var}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Email template editor */}
+          {actionType === 'send_email' && (
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1.5 block">
@@ -396,7 +637,6 @@ export default function NewAutomationPage() {
                     transition-all outline-none resize-none text-sm"
                 />
               </div>
-
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-2">Variáveis disponíveis (clique para inserir):</p>
                 <div className="flex flex-wrap gap-2">

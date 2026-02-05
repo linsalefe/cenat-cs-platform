@@ -59,7 +59,7 @@ def get_messages(
 
 
 @router.post("/{conversation_id}/messages")
-async def send_message(
+async def send_conversation_message(
     conversation_id: int,
     data: SendMessageRequest,
     db: Session = Depends(get_db),
@@ -67,14 +67,14 @@ async def send_message(
 ):
     """Envia mensagem para o contato via WhatsApp"""
     from app.models.conversation import Conversation
-    from app.integrations.whatsapp_meta import send_message as twilio_send
+    from app.integrations.whatsapp_meta import send_message as wa_send
 
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    # Envia via Twilio
-    result = await twilio_send(conversation.contact_phone, data.content)
+    # Envia via Meta Cloud API
+    result = await wa_send(conversation.contact_phone, data.content)
 
     # Salva no banco
     message = conversation_service.add_outbound_message(
@@ -83,10 +83,10 @@ async def send_message(
         content=data.content,
         sender_user_id=current_user.id,
         sender_type=MessageSenderType.AGENT,
-        message_sid=result.get("sid"),
+        message_sid=result.get("message_id"),
     )
 
-    return {"message": message, "twilio": result}
+    return {"message": message, "whatsapp": result}
 
 
 @router.patch("/{conversation_id}/assign")

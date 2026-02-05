@@ -143,7 +143,7 @@ async def execute_action(automation: Automation, student: Student, db: Session) 
     message = _replace_variables(template, student, db)
 
     if action_type == "send_whatsapp":
-        return await _action_send_whatsapp(student, message)
+        return await _action_send_whatsapp(student, message, config)
 
     elif action_type == "send_email":
         return {"status": "skipped", "reason": "email não implementado"}
@@ -188,22 +188,49 @@ def _replace_variables(template: str, student: Student, db: Session) -> str:
     return message
 
 
-async def _action_send_whatsapp(student: Student, message: str) -> dict:
-    """Envia WhatsApp via Twilio"""
+async def _action_send_whatsapp(student: Student, message: str, config: dict = None) -> dict:
+    """Envia WhatsApp via Meta Cloud API (texto livre ou template)"""
     if not student.phone:
         return {"status": "skipped", "reason": "aluno sem telefone"}
 
-    if not message:
-        return {"status": "skipped", "reason": "mensagem vazia"}
+    config = config or {}
+    wa_mode = config.get("wa_mode", "text")
 
-    from app.integrations.whatsapp_meta import send_message
+    from app.integrations.whatsapp_meta import send_message, send_template
 
-    result = await send_message(student.phone, message)
+    if wa_mode == "template":
+        template_name = config.get("wa_template_name", "")
+        if not template_name:
+            return {"status": "skipped", "reason": "template não configurado"}
+
+        # Monta os parâmetros do template
+        params = []
+        wa_params = config.get("wa_template_params", [])
+        for p in wa_params:
+            value = p
+            value = value.replace("{name}", student.name or "")
+            value = value.replace("{email}", student.email or "")
+            value = value.replace("{phone}", student.phone or "")
+            value = value.replace("{course}", "")
+            value = value.replace("{days}", "")
+            params.append({"type": "text", "text": value})
+
+        components = []
+        if params:
+            components = [{"type": "body", "parameters": params}]
+
+        result = await send_template(student.phone, template_name, "pt_BR", components)
+    else:
+        if not message:
+            return {"status": "skipped", "reason": "mensagem vazia"}
+        result = await send_message(student.phone, message)
+
     return {
         "status": "success" if result.get("status") != "error" else "failed",
-        "twilio_status": result.get("status"),
-        "message_sid": result.get("sid"),
+        "whatsapp_status": result.get("status"),
+        "message_id": result.get("message_id"),
         "phone": student.phone,
+        "mode": wa_mode,
     }
 
 
