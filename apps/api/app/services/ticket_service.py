@@ -139,7 +139,7 @@ def _send_csat_whatsapp_async(db: Session, ticket: Ticket, feedback):
     
     async def send():
         try:
-            from app.integrations.whatsapp import send_message
+            from app.integrations.whatsapp_meta import send_message
             
             message = f"""Olá {student.name}! 👋
 

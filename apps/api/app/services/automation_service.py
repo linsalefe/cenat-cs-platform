@@ -196,7 +196,7 @@ async def _action_send_whatsapp(student: Student, message: str) -> dict:
     if not message:
         return {"status": "skipped", "reason": "mensagem vazia"}
 
-    from app.integrations.twilio_service import send_message
+    from app.integrations.whatsapp_meta import send_message
 
     result = await send_message(student.phone, message)
     return {

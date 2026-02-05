@@ -190,7 +190,7 @@ async def send_nps_whatsapp(
     )
     
     # Envia WhatsApp
-    from app.integrations.whatsapp import send_message
+    from app.integrations.whatsapp_meta import send_message
     
     message = f"""Olá {student.name}! 👋
 

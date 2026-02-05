@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   AlertCircle,
   Filter,
+  MessageCircle, // Adicionado aqui
 } from 'lucide-react';
 
 interface Student {
@@ -366,6 +367,16 @@ export default function StudentsPage() {
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <Phone className="w-4 h-4 text-gray-400" />
                               <span>{student.phone}</span>
+                              <a
+                                href={`https://wa.me/55${student.phone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-1 p-1 text-green-500 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Abrir WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
                             </div>
                           )}
                         </div>

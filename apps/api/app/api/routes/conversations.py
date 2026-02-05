@@ -67,7 +67,7 @@ async def send_message(
 ):
     """Envia mensagem para o contato via WhatsApp"""
     from app.models.conversation import Conversation
-    from app.integrations.twilio_service import send_message as twilio_send
+    from app.integrations.whatsapp_meta import send_message as twilio_send
 
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conversation:

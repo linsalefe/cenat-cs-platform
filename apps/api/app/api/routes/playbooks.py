@@ -147,7 +147,7 @@ async def execute_playbook(
             if action.action_type == ActionType.WHATSAPP:
                 # Envia WhatsApp
                 if student.phone:
-                    from app.integrations.whatsapp import send_message
+                    from app.integrations.whatsapp_meta import send_message
                     message = action.template or "Olá! Como podemos ajudar?"
                     message = message.replace("{nome}", student.name)
                     await send_message(student.phone, message)
