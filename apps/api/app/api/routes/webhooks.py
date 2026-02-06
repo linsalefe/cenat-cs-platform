@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, BackgroundTasks
 from fastapi.responses import Response, PlainTextResponse
 
@@ -146,6 +147,7 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     ).order_by(Ticket.created_at.desc()).first()
 
                     if open_ticket:
+                        # Já tem ticket aberto — só adiciona mensagem, sem protocolo
                         ticket_service.add_message(
                             db=db,
                             ticket=open_ticket,
@@ -155,17 +157,38 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                         if open_ticket.status == TicketStatus.WAITING_STUDENT:
                             ticket_service.change_status(db, open_ticket, TicketStatus.OPEN)
                     else:
-                        ticket = ticket_service.create_ticket(
-                            db=db,
-                            student_id=student.id,
-                            category=TicketCategory.OTHER,
-                            priority=TicketPriority.MEDIUM,
-                            subject=f"Contato via WhatsApp ({channel.name})",
-                            message=body,
-                        )
-                        background_tasks.add_task(
-                            send_protocol_confirmation, phone, ticket.protocol, channel_slug
-                        )
+                        # Verifica se teve ticket resolvido nas últimas 24h
+                        cutoff = datetime.utcnow() - timedelta(hours=24)
+                        recent_resolved = db.query(Ticket).filter(
+                            Ticket.student_id == student.id,
+                            Ticket.status == TicketStatus.RESOLVED,
+                            Ticket.updated_at >= cutoff,
+                        ).order_by(Ticket.updated_at.desc()).first()
+
+                        if recent_resolved:
+                            # Reabre o ticket resolvido recentemente
+                            ticket_service.change_status(db, recent_resolved, TicketStatus.OPEN)
+                            ticket_service.add_message(
+                                db=db,
+                                ticket=recent_resolved,
+                                content=body,
+                                sender_type=MessageSender.STUDENT,
+                            )
+                            print(f"🔄 Ticket {recent_resolved.protocol} reaberto")
+                        else:
+                            # Cria ticket novo — mais de 24h ou primeiro contato
+                            ticket = ticket_service.create_ticket(
+                                db=db,
+                                student_id=student.id,
+                                category=TicketCategory.OTHER,
+                                priority=TicketPriority.MEDIUM,
+                                subject=f"Contato via WhatsApp ({channel.name})",
+                                message=body,
+                            )
+                            # Envia protocolo só pra tickets novos
+                            background_tasks.add_task(
+                                send_protocol_confirmation, phone, ticket.protocol, channel_slug
+                            )
 
                 except Exception as e:
                     db.rollback()
