@@ -9,7 +9,7 @@ import copy
 
 from app.core.deps import get_db
 from app.models.student import Student
-from app.models.automation import Automation
+from app.models.automation import Automation, AutomationLog
 from app.services.automation_service import execute_action
 from app.integrations.whatsapp_meta import normalize_br_phone
 
@@ -80,6 +80,18 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
             result = await execute_action(automation, student, db)
 
             print(f"✅ Resultado: {result}")
+
+            # Registra log da execução
+            log = AutomationLog(
+                automation_id=automation.id,
+                student_id=student.id,
+                student_name=student.name,
+                action_type=automation.action_type,
+                status=result.get("status", "success"),
+                details=result,
+            )
+            db.add(log)
+            db.commit()
 
             results.append({
                 "automation": automation.name,
