@@ -74,6 +74,7 @@ export default function ConversationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [newMessage, setNewMessage] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<string>('all');
 
   useEffect(() => {
     setMounted(true);
@@ -91,7 +92,7 @@ export default function ConversationsPage() {
       const interval = setInterval(loadConversations, 10000);
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, channelFilter]);
 
   useEffect(() => {
     scrollToBottom();
@@ -99,7 +100,9 @@ export default function ConversationsPage() {
 
   const loadConversations = async () => {
     try {
-      const res = await api.get('/conversations');
+      const params: any = {};
+      if (channelFilter !== 'all') params.channel = channelFilter;
+      const res = await api.get('/conversations', { params });
       setConversations(res.data);
     } catch (error) {
       console.error('Erro ao carregar conversas:', error);
@@ -284,6 +287,27 @@ export default function ConversationsPage() {
                 showMobileChat ? 'hidden md:flex' : 'flex'
               }`}
             >
+              {/* Channel Tabs */}
+              <div className="flex border-b border-gray-100">
+                {[
+                  { key: 'all', label: 'Todos' },
+                  { key: 'cs', label: '💬 CS' },
+                  { key: 'financeiro', label: '💰 Financeiro' },
+                ].map((ch) => (
+                  <button
+                    key={ch.key}
+                    onClick={() => { setChannelFilter(ch.key); setSelectedConversation(null); }}
+                    className={`flex-1 px-3 py-3 text-xs font-semibold transition-all border-b-2 ${
+                      channelFilter === ch.key
+                        ? 'text-[#2A658F] border-[#2A658F] bg-[#E2ECF4]/30'
+                        : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {ch.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Search & Filters */}
               <div className="p-4 border-b border-gray-100 space-y-3">
                 <div className="relative">

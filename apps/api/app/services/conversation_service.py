@@ -12,16 +12,17 @@ from app.models.conversation import (
 from app.models.student import Student
 
 
-def get_or_create_conversation(db: Session, phone: str) -> Conversation:
-    """Busca conversa existente pelo telefone ou cria uma nova"""
+def get_or_create_conversation(db: Session, phone: str, channel: str = "cs") -> Conversation:
+    """Busca conversa existente pelo telefone e canal ou cria uma nova"""
     phone_clean = phone.replace("+", "").replace("whatsapp:", "")
     phone_suffix = phone_clean[-9:]
 
-    # Busca conversa aberta pelo sufixo do telefone (últimos 9 dígitos)
+    # Busca conversa aberta pelo sufixo do telefone e canal
     conversations = (
         db.query(Conversation)
         .filter(
             Conversation.status.in_([ConversationStatus.OPEN, ConversationStatus.IN_PROGRESS]),
+            Conversation.channel == channel,
         )
         .all()
     )
@@ -44,6 +45,7 @@ def get_or_create_conversation(db: Session, phone: str) -> Conversation:
         contact_phone=phone_clean,
         contact_name=student.name if student else f"WhatsApp {phone_clean}",
         student_id=student.id if student else None,
+        channel=channel,
         status=ConversationStatus.OPEN,
     )
     db.add(conversation)
@@ -51,9 +53,9 @@ def get_or_create_conversation(db: Session, phone: str) -> Conversation:
     return conversation
 
 
-def add_inbound_message(db: Session, phone: str, content: str, message_sid: str = None) -> ConversationMessage:
+def add_inbound_message(db: Session, phone: str, content: str, message_sid: str = None, channel: str = "cs") -> ConversationMessage:
     """Registra mensagem recebida do contato"""
-    conversation = get_or_create_conversation(db, phone)
+    conversation = get_or_create_conversation(db, phone, channel=channel)
 
     message = ConversationMessage(
         conversation_id=conversation.id,
@@ -117,10 +119,13 @@ def list_conversations(
     status: str = None,
     assigned_to_id: int = None,
     unread_only: bool = False,
+    channel: str = None,
 ) -> list:
     """Lista conversas com filtros"""
     query = db.query(Conversation).order_by(desc(Conversation.last_message_at))
 
+    if channel:
+        query = query.filter(Conversation.channel == channel)
     if status:
         query = query.filter(Conversation.status == status)
     if assigned_to_id:
@@ -186,9 +191,10 @@ def add_outbound_message_by_phone(
     content: str,
     sender_type: MessageSenderType = MessageSenderType.SYSTEM,
     message_sid: str = None,
+    channel: str = "cs",
 ) -> ConversationMessage:
     """Registra mensagem enviada pelo sistema (automações, templates, etc.)"""
-    conversation = get_or_create_conversation(db, phone)
+    conversation = get_or_create_conversation(db, phone, channel=channel)
 
     message = ConversationMessage(
         conversation_id=conversation.id,

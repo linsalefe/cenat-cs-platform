@@ -25,13 +25,14 @@ class StatusRequest(BaseModel):
 @router.get("")
 def list_conversations(
     status: Optional[str] = None,
+    channel: Optional[str] = None,
     assigned_to_id: Optional[int] = None,
     unread_only: bool = False,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Lista todas as conversas"""
-    return conversation_service.list_conversations(db, status, assigned_to_id, unread_only)
+    return conversation_service.list_conversations(db, status, assigned_to_id, unread_only, channel=channel)
 
 
 @router.get("/{conversation_id}")
@@ -73,8 +74,9 @@ async def send_conversation_message(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    # Envia via Meta Cloud API
-    result = await wa_send(conversation.contact_phone, data.content)
+    # Envia via Meta Cloud API pelo canal correto
+    channel_slug = conversation.channel or "cs"
+    result = await wa_send(conversation.contact_phone, data.content, channel_slug=channel_slug)
 
     # Salva no banco
     message = conversation_service.add_outbound_message(

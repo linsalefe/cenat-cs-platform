@@ -32,6 +32,7 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     contact_phone = Column(String(20), nullable=False, index=True)
     contact_name = Column(String(255), nullable=True)
+    channel = Column(String(50), nullable=True, default="cs", index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True, index=True)
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     status = Column(Enum(ConversationStatus), default=ConversationStatus.OPEN, nullable=False)

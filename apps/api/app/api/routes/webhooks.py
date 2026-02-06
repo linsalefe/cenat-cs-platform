@@ -116,7 +116,7 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     # Salva mensagem na conversa
                     try:
                         conversation_service.add_inbound_message(
-                            db=db, phone=phone, content=body, message_sid=message_id
+                            db=db, phone=phone, content=body, message_sid=message_id, channel=channel_slug
                         )
                     except Exception as e:
                         print(f"Erro ao salvar mensagem na conversa: {e}")
