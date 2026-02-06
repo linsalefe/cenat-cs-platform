@@ -72,3 +72,7 @@ def db_ping():
         return {"db": "ok"}
     except Exception as e:
         return {"db": "error", "detail": str(e)}
+
+# Importado separadamente pois é rota pública
+from app.api.routes.onboarding import router as onboarding_router
+app.include_router(onboarding_router, prefix="/api")

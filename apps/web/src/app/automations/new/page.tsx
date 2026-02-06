@@ -80,6 +80,12 @@ const triggerTypes = [
     description: 'Dispara quando o aluno fica inativo por X dias',
     fields: [{ key: 'days', label: 'Dias inativo', type: 'number', placeholder: '20' }],
   },
+  {
+    key: 'form_submitted',
+    label: 'Formulário de cadastro',
+    description: 'Dispara quando o aluno é cadastrado pelo formulário de onboarding',
+    fields: [],
+  },
 ];
 
 const actionTypes = [

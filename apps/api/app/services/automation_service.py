@@ -143,7 +143,7 @@ async def execute_action(automation: Automation, student: Student, db: Session) 
     message = _replace_variables(template, student, db)
 
     if action_type == "send_whatsapp":
-        return await _action_send_whatsapp(student, message, config)
+        return await _action_send_whatsapp(student, message, config, db)
 
     elif action_type == "send_email":
         return {"status": "skipped", "reason": "email não implementado"}
@@ -188,7 +188,7 @@ def _replace_variables(template: str, student: Student, db: Session) -> str:
     return message
 
 
-async def _action_send_whatsapp(student: Student, message: str, config: dict = None) -> dict:
+async def _action_send_whatsapp(student: Student, message: str, config: dict = None, db: Session = None) -> dict:
     """Envia WhatsApp via Meta Cloud API (texto livre ou template)"""
     if not student.phone:
         return {"status": "skipped", "reason": "aluno sem telefone"}
@@ -211,8 +211,8 @@ async def _action_send_whatsapp(student: Student, message: str, config: dict = N
             value = value.replace("{name}", student.name or "")
             value = value.replace("{email}", student.email or "")
             value = value.replace("{phone}", student.phone or "")
-            value = value.replace("{course}", "")
-            value = value.replace("{days}", "")
+            value = value.replace("{course}", config.get("_course_override", ""))
+            value = value.replace("{days}", str(config.get("_days_override", "")))
             params.append({"type": "text", "text": value})
 
         components = []
