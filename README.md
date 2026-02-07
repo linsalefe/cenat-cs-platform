@@ -2,9 +2,8 @@
 
 ## Visão Geral
 Plataforma de Customer Success para instituições de ensino. Integra dados acadêmicos (Moodle), financeiros (ASAAS) e comunicação (WhatsApp Meta Cloud API) para monitorar, engajar e reter alunos de forma proativa.
-
 ```
-[Moodle]  ──▶  Alunos, Cursos, Progresso, Notas, Último Acesso
+[Moodle]  ──▶  Alunos, Cursos, Progresso, Notas, Último Acesso, Documentos
 [ASAAS]   ──▶  Cobranças, Status Financeiro, CPF, Telefone
 [WhatsApp Meta Cloud API]  ◀──▶  Comunicação bidirecional com alunos (multicanal)
                     │
@@ -54,14 +53,13 @@ Plataforma de Customer Success para instituições de ensino. Integra dados acad
 ### Integrações
 | Serviço | Uso |
 |---|---|
-| **Moodle** | Alunos, cursos, progresso, notas, último acesso |
+| **Moodle** | Alunos, cursos, progresso, notas, último acesso, documentos de matrícula |
 | **ASAAS** | Cobranças, status financeiro, CPF |
 | **WhatsApp Meta Cloud API** | Envio/recebimento de mensagens (multicanal) |
 
 ---
 
 ## Estrutura do Projeto
-
 ```
 cenat-cs-platform/
 ├── apps/
@@ -71,9 +69,9 @@ cenat-cs-platform/
 │   │   │   │   ├── routes/
 │   │   │   │   │   ├── auth.py           # Login, registro, /me
 │   │   │   │   │   ├── tickets.py        # CRUD tickets + status
-│   │   │   │   │   ├── students.py       # CRUD alunos
+│   │   │   │   │   ├── students.py       # CRUD alunos + filtros avançados
 │   │   │   │   │   ├── courses.py        # Cursos do Moodle
-│   │   │   │   │   ├── risk.py           # Score de risco
+│   │   │   │   │   ├── risk.py           # Score de risco + tendências
 │   │   │   │   │   ├── feedback.py       # NPS/CSAT
 │   │   │   │   │   ├── metrics.py        # Dashboard métricas
 │   │   │   │   │   ├── moodle.py         # Sync Moodle + sinais
@@ -93,14 +91,14 @@ cenat-cs-platform/
 │   │   │   │   ├── session.py            # SessionLocal, engine
 │   │   │   │   └── migrations/           # Alembic migrations
 │   │   │   ├── integrations/
-│   │   │   │   ├── moodle.py             # Client Moodle API
+│   │   │   │   ├── moodle.py             # Client Moodle API (+ firstaccess, customfields)
 │   │   │   │   └── whatsapp_meta.py      # Client Meta Cloud API (multicanal)
 │   │   │   ├── jobs/
-│   │   │   │   ├── sync_students.py      # Sync alunos do Moodle
+│   │   │   │   ├── sync_students.py      # Sync alunos do Moodle (+ docs, login, curso)
 │   │   │   │   └── sync_moodle_signals.py # Captura sinais acadêmicos
 │   │   │   ├── models/
 │   │   │   │   ├── user.py               # Usuários do sistema
-│   │   │   │   ├── student.py            # Alunos
+│   │   │   │   ├── student.py            # Alunos (+ first_access, docs, curso)
 │   │   │   │   ├── course.py             # Cursos
 │   │   │   │   ├── enrollment.py         # Matrículas
 │   │   │   │   ├── ticket.py             # Tickets de atendimento
@@ -113,7 +111,7 @@ cenat-cs-platform/
 │   │   │   │   ├── trigger.py            # Triggers
 │   │   │   │   └── conversation.py       # Conversas WhatsApp (com canal)
 │   │   │   └── services/
-│   │   │       ├── risk_service.py       # Cálculo de risco
+│   │   │       ├── risk_service.py       # Cálculo de risco + tendências
 │   │   │       ├── ticket_service.py     # Lógica de tickets
 │   │   │       ├── asaas_service.py      # Client ASAAS API
 │   │   │       ├── automation_service.py # Motor de automações
@@ -130,11 +128,13 @@ cenat-cs-platform/
 │           │   ├── layout.tsx
 │           │   ├── login/page.tsx
 │           │   ├── dashboard/page.tsx
-│           │   ├── students/page.tsx
+│           │   ├── students/page.tsx      # Gestão de alunos + filtros avançados
 │           │   ├── tickets/
 │           │   │   ├── page.tsx          # Lista
 │           │   │   └── kanban/page.tsx   # Kanban drag-and-drop
-│           │   ├── risk/[id]/page.tsx
+│           │   ├── risk/
+│           │   │   ├── page.tsx          # Dashboard de risco + tendências
+│           │   │   └── [id]/page.tsx     # Detalhe do aluno (componentes, presença, histórico)
 │           │   ├── automations/
 │           │   │   ├── page.tsx
 │           │   │   └── [id]/page.tsx
@@ -163,10 +163,28 @@ cenat-cs-platform/
 - Resumo rápido das pendências
 
 ### 2. Gestão de Alunos
-- 1.131 alunos sincronizados do Moodle
+- **1.140 alunos** sincronizados do Moodle (24 cursos de pós-graduação)
 - Dados enriquecidos com CPF e telefone do ASAAS
-- Busca por nome, email, status Moodle
-- Filtros: vinculados/não vinculados ao Moodle
+- **Filtros avançados server-side**:
+  - **Curso**: 24 cursos com contagem de alunos
+  - **Login**: Nunca logou (104 alunos) / Já logou
+  - **Documentos**: Completos (959) / Parciais / Nenhum enviado (181)
+  - **Financeiro**: Em dia / Pendente / Inadimplente
+- Busca por nome ou email
+- Cards de stats clicáveis (total, nunca logaram, sem docs, inadimplentes)
+- Filter pills removíveis com botão "Limpar"
+- Paginação server-side
+- Ações rápidas: WhatsApp, email, ver detalhes
+
+#### Documentos do Moodle
+5 campos customizados de perfil capturados automaticamente:
+| Campo | Shortname | Tipo |
+|---|---|---|
+| CPF | `cpf` | file |
+| RG | `rg` | file |
+| Histórico Escolar | `historico_escolar` | file |
+| Diploma | `diploma` | file |
+| Comprovante de Residência | `comprovante_de_residencia` | file |
 
 ### 3. Tickets de Atendimento
 - **Lista**: tabela com busca, filtros por status/prioridade/categoria
@@ -179,19 +197,34 @@ cenat-cs-platform/
 - **Tickets reabrem automaticamente** se o aluno responde dentro de 24h após resolução
 - **Ticket novo com protocolo** só é criado se não houver ticket aberto ou se o último foi resolvido há mais de 24h
 
-### 4. Score de Risco
+### 4. Score de Risco (Análise Preditiva)
 Cálculo ponderado com 6 indicadores:
 
 | Indicador | Peso | Fonte | Lógica |
 |---|---|---|---|
 | Engajamento | 25% | Moodle | Dias sem acesso (0-30 dias → 0-100) |
-| Progresso | 25% | Moodle | Nota do curso normalizada (invertida) |
+| Presença | 20% | Sistema | Faltas consecutivas e taxa de ausência |
 | Notas | 15% | Moodle | Nota mais baixa (invertida) |
 | Financeiro | 15% | ASAAS | em_dia=0, pendente=40, inadimplente=100 |
 | Tickets | 10% | Sistema | Tickets abertos + reclamações |
 | NPS/CSAT | 10% | Sistema | Promotor=0, Neutro=40, Detrator=100 |
 
 **Níveis:** Crítico (≥75), Alto (≥50), Médio (≥25), Baixo (<25)
+
+**Funcionalidades do dashboard de risco:**
+- Cards de nível (Crítico, Alto, Médio, Baixo) com contagem
+- **Cards de tendência**: Piorando (7), Melhorando, Risco de abandono (156), Abandonos (5)
+- Filtro por tendência (worsening/improving)
+- Lista com badges: nível, tendência, delta de score, faltas consecutivas
+- Badge de abandono para alunos com 8+ faltas consecutivas
+
+**Detalhe do aluno (risk/[id]):**
+- Score circular com nível e tendência
+- **Tendências por indicador**: presença, financeiro, engajamento
+- **Card de presença**: taxa de faltas, faltas consecutivas, total
+- **Componentes do score**: barras visuais para cada indicador
+- Fatores de risco com destaque para críticos
+- **Histórico semanal**: evolução do score nas últimas 12 semanas
 
 ### 5. Integração Financeira (ASAAS)
 - 1.038 alunos vinculados por email
@@ -272,7 +305,6 @@ Cálculo ponderado com 6 indicadores:
 ---
 
 ## Variáveis de Ambiente (`.env`)
-
 ```env
 # Banco de Dados
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5434/cenat_cs
@@ -291,22 +323,18 @@ ASAAS_API_KEY=sua-chave-asaas
 ASAAS_BASE_URL=https://api.asaas.com/v3
 
 # WhatsApp Meta Cloud API — Canais
-# CS / Atendimento
 WA_CS_TOKEN=seu-token-permanente
 WA_CS_PHONE_NUMBER_ID=1034537213068679
 WA_CS_WABA_ID=4231468683793541
 
-# Financeiro (mesmo token do app)
 WA_FINANCEIRO_TOKEN=seu-token-permanente
 WA_FINANCEIRO_PHONE_NUMBER_ID=1013906571803502
 WA_FINANCEIRO_WABA_ID=1610291956664244
 
-# Pedagógico (preencher depois)
 WA_PEDAGOGICO_TOKEN=
 WA_PEDAGOGICO_PHONE_NUMBER_ID=
 WA_PEDAGOGICO_WABA_ID=
 
-# Atendimento (preencher depois)
 WA_ATENDIMENTO_TOKEN=
 WA_ATENDIMENTO_PHONE_NUMBER_ID=
 WA_ATENDIMENTO_WABA_ID=
@@ -404,7 +432,6 @@ curl -X POST "https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/register" \
   -H "Content-Type: application/json" \
   -d '{"messaging_product":"whatsapp","pin":"123456"}'
 ```
-Deve retornar `{"success":true}`
 
 #### 3. Ativar com template hello_world
 ```bash
@@ -413,105 +440,20 @@ curl -X POST "https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages" \
   -H "Content-Type: application/json" \
   -d '{"messaging_product":"whatsapp","to":"{SEU_NUMERO_TESTE}","type":"template","template":{"name":"hello_world","language":{"code":"en_US"}}}'
 ```
-Deve retornar `message_status: accepted` e a mensagem chegar no celular.
 
 #### 4. Inscrever WABA no webhook
 ```bash
-# Descubra o WABA ID do novo número na página de configuração do app
 curl -X POST "https://graph.facebook.com/v22.0/{WABA_ID}/subscribed_apps" \
   -H "Authorization: Bearer {TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"override_callback_uri":"https://SEU-DOMINIO/api/webhook/whatsapp","verify_token":"cenat_webhook_2024"}'
 ```
-Deve retornar `{"success":true}`
 
-> ⚠️ **Se o WABA ID for diferente do CS**, é obrigatório fazer este passo! Cada WABA precisa ser inscrito separadamente.
-
-#### 5. Verificar inscrição
-```bash
-curl "https://graph.facebook.com/v22.0/{WABA_ID}/subscribed_apps?access_token={TOKEN}"
-```
-Deve mostrar seu app na lista.
-
-#### 6. Configurar no sistema
-1. Adiciona no `.env`:
-```env
-WA_{SLUG}_TOKEN=seu-token
-WA_{SLUG}_PHONE_NUMBER_ID=phone-number-id
-WA_{SLUG}_WABA_ID=waba-id
-```
-
-2. Adiciona no `app/core/whatsapp_channels.py`:
-```python
-WhatsAppChannel(
-    slug="novo_canal",
-    name="Nome do Canal",
-    phone_number_id=os.getenv("WA_NOVOCANAL_PHONE_NUMBER_ID", ""),
-    access_token=os.getenv("WA_NOVOCANAL_TOKEN", ""),
-)
-```
-
-3. Adiciona aba no frontend em `conversations/page.tsx`:
-```typescript
-{ key: 'novo_canal', label: '📋 Novo Canal' },
-```
-
-4. Reinicia o backend.
-
-#### 7. Testar
-```bash
-# Teste de envio
-python3 -c "
-import asyncio
-from app.integrations.whatsapp_meta import send_message
-async def test():
-    result = await send_message('55XXXXXXXXXXX', 'Teste!', channel_slug='novo_canal')
-    print(result)
-asyncio.run(test())
-"
-
-# Teste de recebimento: mande msg do celular pro novo número e veja no terminal do backend
-```
-
-### Checklist de Problemas Comuns
-
-| Problema | Causa | Solução |
-|---|---|---|
-| `Canal 'X' não configurado` | Variáveis de ambiente erradas ou não carregadas | Verifique `.env` e reinicie o backend do diretório correto |
-| `Account not registered` | Número não foi registrado via API | Execute o passo 2 (register) |
-| Mensagens não chegam no webhook | WABA não inscrito ou ngrok caiu | Execute o passo 4 e verifique o ngrok |
-| `⚠️ Canal não encontrado para phone_number_id` | `phone_number_id` errado no `.env` | Confira o ID no painel da Meta |
-| CORS error no frontend | Backend deu erro 500 (CORS não é aplicado em erros) | Verifique o log do backend |
-| Webhook 404 | URL errada — o prefix é `/webhook` (singular) | Use `/api/webhook/whatsapp` |
-
----
-
-## Configuração do Webhook (Dev vs Produção)
-
-### Desenvolvimento (ngrok)
-```bash
-# Inicie o ngrok
-ngrok http 8000
-
-# Configure no Meta (TODA VEZ que reiniciar o ngrok):
-# URL: https://XXXX.ngrok-free.app/api/webhook/whatsapp
-# Verify Token: cenat_webhook_2024
-
-# IMPORTANTE: Também inscreva cada WABA separadamente:
-curl -X POST "https://graph.facebook.com/v22.0/{WABA_ID}/subscribed_apps" \
-  -H "Authorization: Bearer {TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"override_callback_uri":"https://XXXX.ngrok-free.app/api/webhook/whatsapp","verify_token":"cenat_webhook_2024"}'
-```
-
-> ⚠️ **ngrok muda a URL toda vez que reinicia!** Precisa reconfigurar o webhook na Meta E reinscrever cada WABA.
-
-### Produção (URL fixa)
-```
-URL: https://api.seudominio.com/api/webhook/whatsapp
-Verify Token: cenat_webhook_2024
-```
-Configurado uma vez, funciona pra sempre.
+#### 5. Configurar no sistema
+1. Adiciona no `.env`
+2. Adiciona no `app/core/whatsapp_channels.py`
+3. Adiciona aba no frontend em `conversations/page.tsx`
+4. Reinicia o backend
 
 ---
 
@@ -526,8 +468,11 @@ Configurado uma vez, funciona pra sempre.
 ### Alunos
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/students` | Lista alunos |
+| GET | `/api/students` | Lista alunos (filtros: search, login_status, docs_status, financial_status, course_id) |
+| GET | `/api/students/stats` | Estatísticas: total, nunca logaram, sem docs, inadimplentes |
+| GET | `/api/students/courses` | Lista cursos distintos com contagem |
 | GET | `/api/students/{id}` | Detalhe do aluno |
+| POST | `/api/students/{id}/sync-moodle` | Sync individual com Moodle |
 
 ### Tickets
 | Método | Rota | Descrição |
@@ -536,10 +481,19 @@ Configurado uma vez, funciona pra sempre.
 | POST | `/api/tickets` | Criar ticket |
 | PATCH | `/api/tickets/{id}/status?status=X` | Mudar status |
 
+### Risco
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/risk/summary` | Resumo: níveis, tendências, abandono |
+| GET | `/api/risk/students/at-risk` | Lista alunos em risco (filtros: level, trend) |
+| GET | `/api/risk/students/{id}` | Score detalhado com componentes e tendências |
+| GET | `/api/risk/students/{id}/history` | Histórico semanal do score |
+| POST | `/api/risk/students/{id}/calculate` | Recalcular score |
+
 ### Moodle
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/moodle/sync-students` | Sync alunos |
+| POST | `/api/moodle/sync-students` | Sync alunos (+ firstaccess, docs, curso) |
 | POST | `/api/moodle/sync-signals` | Captura sinais acadêmicos |
 
 ### ASAAS
@@ -561,7 +515,7 @@ Configurado uma vez, funciona pra sempre.
 |---|---|---|
 | GET | `/api/conversations` | Lista conversas (filtro: `?channel=cs`) |
 | GET | `/api/conversations/{id}/messages` | Mensagens da conversa |
-| POST | `/api/conversations/{id}/messages` | Enviar mensagem (usa canal da conversa) |
+| POST | `/api/conversations/{id}/messages` | Enviar mensagem |
 
 ### Onboarding (público, sem auth)
 | Método | Rota | Descrição |
@@ -573,7 +527,7 @@ Configurado uma vez, funciona pra sempre.
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/webhook/whatsapp` | Verificação Meta |
-| POST | `/api/webhook/whatsapp` | Recebe mensagens WhatsApp (todos os canais) |
+| POST | `/api/webhook/whatsapp` | Recebe mensagens WhatsApp |
 
 ---
 
@@ -590,34 +544,21 @@ Configurado uma vez, funciona pra sempre.
 
 ---
 
-## Equipe
-- **Coordenador Pedagógico:** Thiago
-- **CS/Secretaria:** Luiza
-- **Operacional Pedagógico:** Camila
+## Dados Atuais
 
----
-
-## Reinicialização do Sistema
-
-Após reiniciar o computador:
-```bash
-# 1. PostgreSQL
-docker start cenat-postgres
-
-# 2. Backend (SEMPRE do diretório correto para carregar o .env)
-cd ~/Documents/cenat-cs-platform/apps/api
-source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 3. Frontend (outro terminal)
-cd ~/Documents/cenat-cs-platform/apps/web
-npm run dev
-
-# 4. ngrok (outro terminal — APENAS em desenvolvimento)
-ngrok http 8000
-# Depois: atualize o webhook na Meta com a nova URL
-# E reinscreva cada WABA (veja seção "Configuração do Webhook")
-```
+| Métrica | Valor |
+|---|---|
+| Alunos sincronizados | 1.140 |
+| Cursos ativos | 24 |
+| Nunca fizeram login | 104 |
+| Sem documentos | 181 |
+| Docs completos | 959 |
+| Vinculados ASAAS | 1.038 |
+| Inadimplentes | 211 |
+| Valor em atraso | R$ 203.657,69 |
+| Risco de abandono | 156 |
+| Abandonos confirmados | 5 |
+| Sinais Moodle | 1.270 |
 
 ---
 
@@ -629,7 +570,38 @@ ALTER TABLE students ADD COLUMN asaas_customer_id VARCHAR(100);
 ALTER TABLE students ADD COLUMN financial_status VARCHAR(20);
 ALTER TABLE students ADD COLUMN overdue_value FLOAT DEFAULT 0;
 ALTER TABLE students ADD COLUMN conta_azul_customer_id VARCHAR(100);
+ALTER TABLE students ADD COLUMN moodle_first_access TIMESTAMP NULL;
+ALTER TABLE students ADD COLUMN documents_count INTEGER DEFAULT 0;
+ALTER TABLE students ADD COLUMN documents_total INTEGER DEFAULT 5;
+ALTER TABLE students ADD COLUMN primary_course_id INTEGER NULL;
+ALTER TABLE students ADD COLUMN primary_course_name VARCHAR(255) NULL;
+ALTER TABLE students ADD COLUMN attendance_total INTEGER DEFAULT 0;
+ALTER TABLE students ADD COLUMN attendance_absences INTEGER DEFAULT 0;
+ALTER TABLE students ADD COLUMN attendance_consecutive_absences INTEGER DEFAULT 0;
+ALTER TABLE students ADD COLUMN abandonment_status VARCHAR(20);
+ALTER TABLE students ADD COLUMN risk_trend VARCHAR(20) DEFAULT 'stable';
 ALTER TABLE conversations ADD COLUMN channel VARCHAR(50) DEFAULT 'cs';
+```
+
+---
+
+## Reinicialização do Sistema
+```bash
+# 1. PostgreSQL
+docker start cenat-postgres
+
+# 2. Backend
+cd ~/Documents/cenat-cs-platform/apps/api
+source venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 3. Frontend (outro terminal)
+cd ~/Documents/cenat-cs-platform/apps/web
+npm run dev
+
+# 4. ngrok (outro terminal — APENAS em desenvolvimento)
+ngrok http 8000
+# Depois: atualize o webhook na Meta com a nova URL
 ```
 
 ---
