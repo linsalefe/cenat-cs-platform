@@ -16,6 +16,7 @@ import {
   BarChart3,
   BookOpen,
   Zap,
+  Send,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const menuItems = [
   { href: '/metrics', label: 'Métricas', icon: BarChart3 },
   { href: '/courses', label: 'Cursos', icon: BookOpen },
   { href: '/automations', label: 'Automações', icon: Zap },
+  { href: '/broadcasts', label: 'Disparos', icon: Send },
   { href: '/conversations', label: 'Conversas', icon: MessageCircle },
   { href: '/financial', label: 'Financeiro', icon: DollarSign },
 ];

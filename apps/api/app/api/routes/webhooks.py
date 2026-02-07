@@ -97,6 +97,26 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     body = "[Localização]"
                 elif msg_type == "sticker":
                     body = "[Figurinha]"
+                elif msg_type == "interactive":
+                    interactive = message.get("interactive", {})
+                    btn_reply = interactive.get("button_reply", {})
+                    if btn_reply:
+                        button_id = btn_reply.get("id", "")
+                        button_text = btn_reply.get("title", "")
+                        body = f"[Botão: {button_text}]"
+
+                        # Processa clique na régua
+                        try:
+                            from app.services.journey_service import handle_button_click
+                            temp_db = next(get_db())
+                            result = handle_button_click(temp_db, normalize_br_phone(from_number), button_id)
+                            if result:
+                                print(f"🔘 Botão '{button_text}' processado: {result['action']}")
+                            temp_db.close()
+                        except Exception as e:
+                            print(f"❌ Erro ao processar botão da régua: {e}")
+                    else:
+                        body = "[Interação]"
                 elif msg_type == "reaction":
                     continue
                 else:

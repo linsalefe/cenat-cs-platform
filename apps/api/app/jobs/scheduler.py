@@ -87,13 +87,39 @@ def start_scheduler():
         replace_existing=True,
     )
     
+    # Processa steps das réguas a cada 5 minutos
+    scheduler.add_job(
+        process_journey_steps,
+        trigger="interval",
+        minutes=5,
+        id="process_journey_steps",
+        name="Processamento de steps das réguas",
+        replace_existing=True,
+    )
+
     scheduler.start()
     print("⏰ Scheduler iniciado:")
     print("   - Sync Moodle: 5h diariamente")
     print("   - Recálculo de riscos: 6h diariamente")
     print("   - Execução de triggers: 7h diariamente")
+    print("   - Réguas de jornada: a cada 5 minutos")
 
 
 def shutdown_scheduler():
     """Para o scheduler"""
     scheduler.shutdown()
+
+
+def process_journey_steps():
+    """Job que processa steps pendentes das réguas"""
+    from app.services.journey_service import process_pending_steps
+    
+    db = SessionLocal()
+    try:
+        processed = process_pending_steps(db)
+        if processed > 0:
+            print(f"📋 Réguas: {processed} steps processados")
+    except Exception as e:
+        print(f"❌ Erro no job de réguas: {e}")
+    finally:
+        db.close()
