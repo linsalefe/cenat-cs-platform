@@ -8,6 +8,7 @@ from app.models.moodle_signal import MoodleSignal
 from app.models.ticket import Ticket, TicketStatus, TicketCategory
 from app.models.risk_score import RiskScore, RiskLevel
 from app.models.feedback import Feedback, FeedbackType
+from app.services.trend_service import analyze_student_trend
 
 
 # ============================================================
@@ -332,6 +333,17 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     risk_score.factors = json.dumps(factors, ensure_ascii=False)
     risk_score.calculated_at = datetime.utcnow()
     
+    db.flush()
+
+    # Analisa tendência
+    trend = analyze_student_trend(db, student, risk_score)
+    if trend['overall'] == 'worsening':
+        factors.append(f"Tendência de piora (Δ{trend['delta']:+.1f})")
+    elif trend['overall'] == 'improving':
+        factors.append(f"Tendência de melhora (Δ{trend['delta']:+.1f})")
+    
+    risk_score.factors = json.dumps(factors, ensure_ascii=False)
+
     db.commit()
     db.refresh(risk_score)
     

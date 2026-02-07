@@ -36,6 +36,11 @@ class RiskScore(Base):
     factors = Column(String, nullable=True)  # JSON com fatores de risco
     
     # Controle
+    trend = Column(String(20), default='stable')  # improving, stable, worsening
+    trend_delta = Column(Float, default=0)  # variação do score vs período anterior
+    attendance_trend = Column(String(20), nullable=True)
+    financial_trend = Column(String(20), nullable=True)
+    engagement_trend = Column(String(20), nullable=True)
     calculated_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
