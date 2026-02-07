@@ -16,11 +16,12 @@ from app.models.feedback import Feedback, FeedbackType
 # proporcionalmente entre os que têm dados.
 # ============================================================
 BASE_WEIGHTS = {
-    "engagement": 0.30,   # dias sem acesso
-    "academic":   0.25,   # notas
-    "financial":  0.25,   # inadimplência (webhook ASAAS)
-    "ticket":     0.10,   # reclamações
-    "nps":        0.10,   # NPS/CSAT
+    "engagement":  0.20,   # dias sem acesso
+    "attendance":  0.20,   # faltas em aulas ao vivo
+    "academic":    0.20,   # notas
+    "financial":   0.20,   # inadimplência (webhook ASAAS)
+    "ticket":      0.10,   # reclamações
+    "nps":         0.10,   # NPS/CSAT
 }
 
 
@@ -115,6 +116,42 @@ def calculate_nps_score(db: Session, student_id: int) -> tuple[float, bool]:
             return 100.0, True
 
 
+def calculate_attendance_score(consecutive_absences: int, total_absences: int, total_sessions: int) -> float:
+    """
+    Risco baseado em faltas.
+    8+ faltas consecutivas = risco máximo.
+    Considera também % de faltas total.
+    """
+    if total_sessions == 0:
+        return 0.0
+
+    # Componente 1: faltas consecutivas recentes (peso maior)
+    if consecutive_absences >= 8:
+        consec_score = 100.0
+    elif consecutive_absences >= 5:
+        consec_score = 70.0
+    elif consecutive_absences >= 3:
+        consec_score = 40.0
+    elif consecutive_absences >= 1:
+        consec_score = 15.0
+    else:
+        consec_score = 0.0
+
+    # Componente 2: % de faltas total
+    absence_rate = (total_absences / total_sessions) * 100
+    if absence_rate >= 50:
+        rate_score = 80.0
+    elif absence_rate >= 30:
+        rate_score = 50.0
+    elif absence_rate >= 15:
+        rate_score = 25.0
+    else:
+        rate_score = 0.0
+
+    # 70% consecutivas + 30% taxa total
+    return min(consec_score * 0.7 + rate_score * 0.3, 100)
+
+
 def determine_risk_level(score: float) -> RiskLevel:
     if score >= 75:
         return RiskLevel.CRITICAL
@@ -198,7 +235,34 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     else:
         scores["financial"] = (0.0, False)
     
-    # ── 4. TICKETS ──
+    # ── 4. PRESENÇA (aulas ao vivo) ──
+    has_attendance = (student.attendance_total or 0) > 0
+
+    if has_attendance:
+        att_score = calculate_attendance_score(
+            student.attendance_consecutive_absences or 0,
+            student.attendance_absences or 0,
+            student.attendance_total or 0,
+        )
+        scores["attendance"] = (att_score, True)
+
+        consec = student.attendance_consecutive_absences or 0
+        total_abs = student.attendance_absences or 0
+        total_sess = student.attendance_total or 0
+
+        if consec >= 8:
+            factors.append(f"{consec} faltas consecutivas recentes")
+        elif consec >= 3:
+            factors.append(f"{consec} faltas consecutivas recentes")
+
+        if total_sess > 0:
+            rate = (total_abs / total_sess) * 100
+            if rate >= 30:
+                factors.append(f"Taxa de faltas: {rate:.0f}%")
+    else:
+        scores["attendance"] = (0.0, False)
+
+    # ── 5. TICKETS ──
     open_tickets = db.query(Ticket).filter(
         Ticket.student_id == student.id,
         Ticket.status.in_([TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING_STUDENT])
@@ -215,14 +279,14 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     if len(complaint_tickets) > 0:
         factors.append(f"{len(complaint_tickets)} reclamação(ões) financeira(s)")
     
-    # ── 5. NPS/CSAT ──
+    # ── 6. NPS/CSAT ──
     nps_val, nps_has_data = calculate_nps_score(db, student.id)
     scores["nps"] = (nps_val, nps_has_data)
     
     if nps_has_data and nps_val >= 70:
         factors.append("Feedback negativo")
     
-    # ── 6. SCORE FINAL — PESOS DINÂMICOS ──
+    # ── 7. SCORE FINAL — PESOS DINÂMICOS ──
     # Só usa indicadores com dados reais
     active_weights = {}
     for key, (score, has_data) in scores.items():
@@ -244,7 +308,7 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     
     level = determine_risk_level(final_score)
     
-    # ── 7. PERSISTE ──
+    # ── 8. PERSISTE ──
     risk_score = db.query(RiskScore).filter(
         RiskScore.student_id == student.id
     ).first()
@@ -260,7 +324,7 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     risk_score.score = round(final_score, 2)
     risk_score.level = level
     risk_score.engagement_score = round(scores["engagement"][0], 2)
-    risk_score.progress_score = 0.0  # Coluna mantida, dado não confiável
+    risk_score.progress_score = round(scores.get("attendance", (0,))[0], 2)  # Reutiliza coluna pra attendance
     risk_score.grade_score = round(scores["academic"][0], 2)
     risk_score.financial_score = round(scores["financial"][0], 2)
     risk_score.ticket_score = round(scores["ticket"][0], 2)

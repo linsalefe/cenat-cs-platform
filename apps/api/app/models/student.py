@@ -18,5 +18,9 @@ class Student(Base):
     asaas_customer_id = Column(String(100), unique=True, nullable=True, index=True)
     financial_status = Column(String(20), nullable=True)  # em_dia, pendente, inadimplente
     overdue_value = Column(Float, default=0)
+    attendance_total = Column(Integer, default=0)
+    attendance_absences = Column(Integer, default=0)
+    attendance_consecutive_absences = Column(Integer, default=0)
+    abandonment_status = Column(String(20), nullable=True)  # active, at_risk, abandoned
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
