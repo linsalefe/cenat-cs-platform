@@ -14,6 +14,11 @@ class Student(Base):
     phone = Column(String(20), nullable=True, index=True)
     cpf = Column(String(14), unique=True, nullable=True, index=True)
     moodle_user_id = Column(Integer, unique=True, nullable=True, index=True)
+    moodle_first_access = Column(DateTime, nullable=True)
+    documents_count = Column(Integer, default=0)
+    documents_total = Column(Integer, default=5)
+    primary_course_id = Column(Integer, nullable=True)
+    primary_course_name = Column(String(255), nullable=True)
     conta_azul_customer_id = Column(String(100), unique=True, nullable=True)
     asaas_customer_id = Column(String(100), unique=True, nullable=True, index=True)
     financial_status = Column(String(20), nullable=True)  # em_dia, pendente, inadimplente

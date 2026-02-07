@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -7,15 +9,12 @@ from app.integrations import moodle
 
 
 def format_phone(phone: str) -> str:
-    """Formata telefone removendo caracteres especiais"""
     if not phone:
         return ""
-    # Remove tudo que não é número
     numbers = "".join(c for c in phone if c.isdigit())
-    # Se não tem código do país, assume Brasil
-    if len(numbers) == 11:  # DDD + 9 dígitos
+    if len(numbers) == 11:
         numbers = "55" + numbers
-    elif len(numbers) == 10:  # DDD + 8 dígitos (fixo)
+    elif len(numbers) == 10:
         numbers = "55" + numbers
     return numbers
 
@@ -27,7 +26,6 @@ async def sync_students_from_moodle_async():
     db = SessionLocal()
     
     try:
-        # Busca todos os alunos matriculados no Moodle
         moodle_students = await moodle.get_all_enrolled_students()
         print(f"📚 Encontrados {len(moodle_students)} alunos no Moodle")
         
@@ -40,28 +38,50 @@ async def sync_students_from_moodle_async():
             name = m_student["fullname"]
             phone = format_phone(m_student.get("phone", ""))
             
-            # Busca aluno existente por moodle_user_id ou email
+            # firstaccess
+            first_access_ts = m_student.get("firstaccess", 0)
+            first_access_dt = None
+            if first_access_ts and first_access_ts > 0:
+                try:
+                    first_access_dt = datetime.fromtimestamp(first_access_ts)
+                except:
+                    pass
+            
+            # Documentos
+            docs_count = m_student.get("documents_count", 0)
+            docs_total = m_student.get("documents_total", 5)
+            
+            # Curso principal
+            primary_course_id = m_student.get("primary_course_id")
+            primary_course_name = m_student.get("primary_course_name")
+            
+            # Busca aluno existente
             student = db.query(Student).filter(
                 (Student.moodle_user_id == moodle_id) | (Student.email == email)
             ).first()
             
             if student:
-                # Atualiza dados
                 student.moodle_user_id = moodle_id
                 student.name = name
-                if phone and not student.phone:
+                if phone:
                     student.phone = phone
-                elif phone and student.phone != phone:
-                    # Só atualiza se o telefone do Moodle estiver preenchido
-                    student.phone = phone
+                student.moodle_first_access = first_access_dt
+                student.documents_count = docs_count
+                student.documents_total = docs_total
+                student.primary_course_id = primary_course_id
+                student.primary_course_name = primary_course_name
                 updated += 1
             else:
-                # Cria novo aluno
                 student = Student(
                     name=name,
                     email=email,
                     phone=phone,
                     moodle_user_id=moodle_id,
+                    moodle_first_access=first_access_dt,
+                    documents_count=docs_count,
+                    documents_total=docs_total,
+                    primary_course_id=primary_course_id,
+                    primary_course_name=primary_course_name,
                 )
                 db.add(student)
                 created += 1

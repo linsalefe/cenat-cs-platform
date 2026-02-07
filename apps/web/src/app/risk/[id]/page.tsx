@@ -3,88 +3,121 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import AppLayout from '@/components/AppLayout';
+import { Avatar } from '@/components/ui';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  AlertTriangle,
+  TrendingUp,
+  UserX,
+  RefreshCw,
+  Mail,
+  Phone,
+  Ticket,
+  Calendar,
+  BookOpen,
+  DollarSign,
+  MessageSquare,
+  Activity,
+} from 'lucide-react';
 import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface RiskDetail {
   student_id: number;
   student_name: string;
+  student_email: string;
+  student_phone: string | null;
   score: number;
   level: string;
+  trend: string;
+  trend_delta: number;
+  trends: {
+    attendance: string;
+    financial: string;
+    engagement: string;
+  };
   components: {
     engagement: number;
-    progress: number;
+    attendance: number;
     grade: number;
     financial: number;
     ticket: number;
+    nps: number;
   };
+  attendance_info: {
+    total: number;
+    absences: number;
+    consecutive_absences: number;
+    rate: number;
+  };
+  abandonment_status: string | null;
   factors: string[];
   calculated_at: string;
 }
 
-interface MoodleSignal {
-  id: number;
-  course_id: number;
-  progress_percent: number;
-  course_grade: number | null;
-  days_since_access: number;
-  captured_at: string;
+interface HistoryEntry {
+  period_start: string;
+  period_end: string;
+  score: number;
+  components: {
+    engagement: number;
+    attendance: number;
+    academic: number;
+    financial: number;
+    ticket: number;
+    nps: number;
+  };
 }
 
-interface Ticket {
-  id: number;
-  protocol: string;
-  subject: string;
-  status: string;
-  category: string;
-  created_at: string;
-}
+const levelConfig: Record<string, { label: string; color: string; bg: string; bar: string }> = {
+  critical: { label: 'Crítico', color: 'text-red-700', bg: 'bg-red-50', bar: 'bg-red-500' },
+  high: { label: 'Alto', color: 'text-orange-700', bg: 'bg-orange-50', bar: 'bg-orange-500' },
+  medium: { label: 'Médio', color: 'text-amber-700', bg: 'bg-amber-50', bar: 'bg-amber-500' },
+  low: { label: 'Baixo', color: 'text-emerald-700', bg: 'bg-emerald-50', bar: 'bg-emerald-500' },
+};
 
-interface Student {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-}
+const trendConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  worsening: { label: 'Piorando', color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight },
+  stable: { label: 'Estável', color: 'text-gray-500', bg: 'bg-gray-50', icon: Minus },
+  improving: { label: 'Melhorando', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: ArrowDownRight },
+};
+
+const componentConfig: Record<string, { label: string; icon: any; description: string }> = {
+  engagement: { label: 'Engajamento', icon: Activity, description: 'Dias sem acessar o Moodle' },
+  attendance: { label: 'Presença', icon: Calendar, description: 'Faltas em aulas ao vivo' },
+  grade: { label: 'Notas', icon: BookOpen, description: 'Média de notas nos cursos' },
+  financial: { label: 'Financeiro', icon: DollarSign, description: 'Status de pagamento (ASAAS)' },
+  ticket: { label: 'Tickets', icon: Ticket, description: 'Reclamações abertas' },
+  nps: { label: 'NPS/CSAT', icon: MessageSquare, description: 'Feedback de satisfação' },
+};
 
 export default function StudentRiskDetail() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const studentId = params.id;
 
-  const [student, setStudent] = useState<Student | null>(null);
   const [risk, setRisk] = useState<RiskDetail | null>(null);
-  const [moodleSignals, setMoodleSignals] = useState<MoodleSignal[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    if (user && studentId) {
-      loadData();
-    }
-  }, [user, studentId]);
+  useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
+  useEffect(() => { if (user && studentId) loadData(); }, [user, studentId]);
 
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [studentRes, riskRes, signalsRes, ticketsRes] = await Promise.all([
-        api.get(`/students/${studentId}`),
-        api.get(`/risk/students/${studentId}`).catch(() => null),
-        api.get(`/students/${studentId}/moodle-signals`),
-        api.get(`/tickets?student_id=${studentId}`),
+      const [riskRes, historyRes] = await Promise.all([
+        api.get(`/risk/students/${studentId}`),
+        api.get(`/risk/students/${studentId}/history?weeks=12`).catch(() => ({ data: { history: [] } })),
       ]);
-      setStudent(studentRes.data);
-      setRisk(riskRes?.data || null);
-      setMoodleSignals(signalsRes.data.signals || []);
-      setTickets(ticketsRes.data || []);
+      setRisk(riskRes.data);
+      setHistory(historyRes.data.history || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -92,242 +125,268 @@ export default function StudentRiskDetail() {
     }
   };
 
-  const handleSyncMoodle = async () => {
-    try {
-      setSyncing(true);
-      await api.post(`/students/${studentId}/sync-moodle`);
-      await loadData();
-    } catch (error) {
-      console.error('Erro ao sincronizar:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleRecalculateRisk = async () => {
+  const handleRecalculate = async () => {
     try {
       setRecalculating(true);
       await api.post(`/risk/students/${studentId}/calculate`);
       await loadData();
+      toast.success('Risco recalculado!');
     } catch (error) {
-      console.error('Erro ao recalcular:', error);
+      toast.error('Erro ao recalcular');
     } finally {
       setRecalculating(false);
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'critical': return 'bg-red-600';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getLevelLabel = (level: string) => {
-    switch (level) {
-      case 'critical': return 'Crítico';
-      case 'high': return 'Alto';
-      case 'medium': return 'Médio';
-      case 'low': return 'Baixo';
-      default: return level;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      open: 'Aberto',
-      in_progress: 'Em Andamento',
-      waiting_student: 'Aguardando Aluno',
-      resolved: 'Resolvido',
-      closed: 'Fechado',
-    };
-    return labels[status] || status;
-  };
-
-  if (loading || loadingData) {
+  if (authLoading || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Carregando...</p>
-      </div>
+      <AppLayout>
+        <div className="animate-pulse space-y-8">
+          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-64 bg-gray-100 rounded-2xl"></div>
+        </div>
+      </AppLayout>
     );
   }
 
-  if (!student) {
+  if (!risk) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Aluno não encontrado</p>
-      </div>
+      <AppLayout>
+        <div className="text-center py-20">
+          <p className="text-gray-500">Score não encontrado. Recalcule o risco.</p>
+        </div>
+      </AppLayout>
     );
   }
+
+  const config = levelConfig[risk.level] || levelConfig.medium;
+  const trend = trendConfig[risk.trend] || trendConfig.stable;
+  const TrendIcon = trend.icon;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
+    <AppLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/risk')}
-              className="text-blue-600 hover:text-blue-800 text-sm mb-1"
+              className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all"
             >
-              ← Voltar ao Dashboard
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-2xl font-bold text-gray-800">{student.name}</h1>
-            <p className="text-sm text-gray-500">{student.email}</p>
+            <div className="flex items-center gap-4">
+              <Avatar name={risk.student_name} size="lg" />
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-2xl font-semibold text-[#27273D]">{risk.student_name}</h1>
+                  {risk.abandonment_status === 'abandoned' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-800 text-white">
+                      <UserX className="w-3 h-3" /> Abandono
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-gray-500">
+                  <span>{risk.student_email}</span>
+                  {risk.student_phone && <span>· {risk.student_phone}</span>}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-3">
+
+          <div className="flex items-center gap-2">
+            <a href={`mailto:${risk.student_email}`} className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all">
+              <Mail className="w-5 h-5" />
+            </a>
+            {risk.student_phone && (
+              <a href={`tel:${risk.student_phone}`} className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all">
+                <Phone className="w-5 h-5" />
+              </a>
+            )}
             <button
-              onClick={handleSyncMoodle}
-              disabled={syncing}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              {syncing ? 'Sincronizando...' : 'Sync Moodle'}
-            </button>
-            <button
-              onClick={handleRecalculateRisk}
+              onClick={handleRecalculate}
               disabled={recalculating}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-[#2A658F] text-white text-sm font-medium rounded-xl
+                hover:bg-[#1E4F73] transition-all disabled:opacity-50"
             >
-              {recalculating ? 'Calculando...' : 'Recalcular Risco'}
+              <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
+              {recalculating ? 'Calculando...' : 'Recalcular'}
             </button>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Score de Risco */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Score de Risco</h2>
-          
-          {risk ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Score Principal */}
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <div className={`w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold ${getLevelColor(risk.level)}`}>
-                    {risk.score}
-                  </div>
-                  <span className={`mt-2 inline-block px-3 py-1 rounded-full text-white text-sm ${getLevelColor(risk.level)}`}>
-                    {getLevelLabel(risk.level)}
+        {/* Score + Trend Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Score principal */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="text-sm font-medium text-gray-500 mb-4">Score de Risco</h2>
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" stroke="#f3f4f6" strokeWidth="8" fill="none" />
+                  <circle
+                    cx="50" cy="50" r="40"
+                    stroke={config.bar.replace('bg-', 'rgb(') === config.bar ? '#ef4444' : undefined}
+                    className={config.bar.replace('bg-', 'stroke-')}
+                    strokeWidth="8" fill="none"
+                    strokeDasharray={`${risk.score * 2.51} 251`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-[#27273D]">{risk.score.toFixed(0)}</span>
+                </div>
+              </div>
+              <div>
+                <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.color}`}>
+                  {config.label}
+                </span>
+                <div className="flex items-center gap-2 mt-3">
+                  <TrendIcon className={`w-4 h-4 ${trend.color}`} />
+                  <span className={`text-sm font-medium ${trend.color}`}>
+                    {trend.label}
+                    {risk.trend_delta !== 0 && ` (${risk.trend_delta > 0 ? '+' : ''}${risk.trend_delta.toFixed(1)})`}
                   </span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500 mb-2">Fatores de Risco:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {risk.factors.map((factor, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
-                        {factor}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Componentes */}
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500">Componentes do Score:</p>
-                {Object.entries(risk.components).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="w-24 text-sm text-gray-600 capitalize">{key}</span>
-                    <div className="flex-1 bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full ${value > 50 ? 'bg-red-500' : value > 25 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                        style={{ width: `${value}%` }}
-                      />
-                    </div>
-                    <span className="w-12 text-sm text-gray-600 text-right">{value}</span>
-                  </div>
-                ))}
+                <p className="text-xs text-gray-400 mt-2">
+                  Calculado em {new Date(risk.calculated_at).toLocaleDateString('pt-BR')}
+                </p>
               </div>
             </div>
-          ) : (
-            <p className="text-gray-500">Score ainda não calculado. Clique em "Recalcular Risco".</p>
-          )}
-        </div>
-
-        {/* Dados do Moodle */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Dados do Moodle</h2>
-          
-          {moodleSignals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Curso</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progresso</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nota</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dias sem Acesso</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {moodleSignals.map((signal) => (
-                    <tr key={signal.id}>
-                      <td className="px-4 py-3 text-sm">Curso #{signal.course_id}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full bg-blue-500"
-                              style={{ width: `${signal.progress_percent}%` }}
-                            />
-                          </div>
-                          <span className="text-sm">{signal.progress_percent?.toFixed(0)}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {signal.course_grade !== null ? signal.course_grade.toFixed(1) : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-sm ${signal.days_since_access > 7 ? 'text-red-600 font-medium' : ''}`}>
-                          {signal.days_since_access} dias
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500">Nenhum dado do Moodle. Clique em "Sync Moodle".</p>
-          )}
-        </div>
-
-        {/* Tickets */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Tickets</h2>
-            <span className="text-sm text-gray-500">{tickets.length} ticket(s)</span>
           </div>
-          
-          {tickets.length > 0 ? (
-            <div className="space-y-3">
-              {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  onClick={() => router.push(`/tickets/${ticket.id}`)}
-                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-800">{ticket.subject}</p>
-                      <p className="text-sm text-gray-500">{ticket.protocol}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                      {getStatusLabel(ticket.status)}
+
+          {/* Tendências por indicador */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="text-sm font-medium text-gray-500 mb-4">Tendências</h2>
+            <div className="space-y-4">
+              {[
+                { key: 'attendance', label: 'Presença', value: risk.trends.attendance },
+                { key: 'financial', label: 'Financeiro', value: risk.trends.financial },
+                { key: 'engagement', label: 'Engajamento', value: risk.trends.engagement },
+              ].map((item) => {
+                const t = trendConfig[item.value] || trendConfig.stable;
+                const TIcon = t.icon;
+                return (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">{item.label}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${t.bg} ${t.color}`}>
+                      <TIcon className="w-3 h-3" />
+                      {t.label}
                     </span>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Presença */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="text-sm font-medium text-gray-500 mb-4">Presença</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.rate}%</p>
+                <p className="text-xs text-gray-500">Taxa de faltas</p>
+              </div>
+              <div>
+                <p className={`text-2xl font-semibold ${risk.attendance_info.consecutive_absences >= 8 ? 'text-red-600' : risk.attendance_info.consecutive_absences >= 3 ? 'text-amber-600' : 'text-[#27273D]'}`}>
+                  {risk.attendance_info.consecutive_absences}
+                </p>
+                <p className="text-xs text-gray-500">Faltas consecutivas</p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.absences}</p>
+                <p className="text-xs text-gray-500">Total de faltas</p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.total}</p>
+                <p className="text-xs text-gray-500">Total de sessões</p>
+              </div>
+            </div>
+            {risk.attendance_info.consecutive_absences >= 8 && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                <p className="text-xs text-red-700 font-medium flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {risk.attendance_info.consecutive_absences}+ faltas seguidas — critério de abandono
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Componentes do Score */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-sm font-medium text-gray-500 mb-6">Componentes do Score</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(risk.components).map(([key, value]) => {
+              const comp = componentConfig[key];
+              if (!comp) return null;
+              const Icon = comp.icon;
+              const barColor = value > 60 ? 'bg-red-500' : value > 30 ? 'bg-amber-500' : 'bg-emerald-500';
+
+              return (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700">{comp.label}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#27273D]">{value.toFixed(0)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${value}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400">{comp.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Fatores */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-sm font-medium text-gray-500 mb-4">Fatores de Risco</h2>
+          <div className="flex flex-wrap gap-2">
+            {risk.factors.map((factor, idx) => {
+              const isWarning = factor.includes('Inadimplente') || factor.includes('faltas consecutivas') || factor.includes('piora') || factor.includes('Sem acessar');
+              return (
+                <span
+                  key={idx}
+                  className={`px-3 py-1.5 text-sm rounded-lg ${
+                    isWarning ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-50 text-gray-600 border border-gray-100'
+                  }`}
+                >
+                  {factor}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Histórico (se houver) */}
+        {history.length > 1 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="text-sm font-medium text-gray-500 mb-4">Histórico Semanal</h2>
+            <div className="space-y-3">
+              {history.map((h, idx) => (
+                <div key={idx} className="flex items-center gap-4">
+                  <span className="text-xs text-gray-400 w-24 shrink-0">
+                    {new Date(h.period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                  </span>
+                  <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        h.score >= 75 ? 'bg-red-500' : h.score >= 50 ? 'bg-orange-500' : h.score >= 25 ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${h.score}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 w-10 text-right">{h.score.toFixed(0)}</span>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-500">Nenhum ticket registrado.</p>
-          )}
-        </div>
-      </main>
-    </div>
+          </div>
+        )}
+      </div>
+    </AppLayout>
   );
 }
