@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
@@ -59,33 +59,56 @@ async def sync_customers(
 
 @router.post("/sync-financial")
 async def sync_financial(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Atualiza status financeiro de todos os alunos vinculados ao ASAAS"""
-    students = db.query(Student).filter(Student.asaas_customer_id != None).all()
+    """Inicia sync financeiro em background"""
+    background_tasks.add_task(run_financial_sync)
+    return {"status": "processing", "message": "Sincronização iniciada em background. Aguarde alguns minutos e atualize a página."}
 
-    updated = 0
-    errors = 0
 
-    for student in students:
+async def run_financial_sync():
+    """Executa sync financeiro em background"""
+    from app.db.session import SessionLocal
+    print("💰 Iniciando sync financeiro...")
+
+    try:
+        result = await asaas_service.sync_all_financial()
+        customer_data = result["customer_data"]
+
+        db = SessionLocal()
         try:
-            payments = await asaas_service.get_customer_payments(student.asaas_customer_id)
-            result = asaas_service.calculate_financial_status(payments)
-            student.financial_status = result["status"]
-            student.overdue_value = result["overdue_value"]
-            updated += 1
-        except Exception as e:
-            print(f"Erro ao processar {student.name}: {e}")
-            errors += 1
+            students = db.query(Student).filter(Student.asaas_customer_id != None).all()
+            inadimplentes = 0
+            pendentes = 0
+            em_dia = 0
 
-    db.commit()
+            for student in students:
+                cid = student.asaas_customer_id
+                data = customer_data.get(cid)
 
-    return {
-        "status": "ok",
-        "updated": updated,
-        "errors": errors,
-    }
+                if data and data["overdue_count"] > 0:
+                    student.financial_status = "inadimplente"
+                    student.overdue_value = data["overdue_value"]
+                    inadimplentes += 1
+                elif data and data["pending_count"] > 0:
+                    student.financial_status = "pendente"
+                    student.overdue_value = 0
+                    pendentes += 1
+                else:
+                    student.financial_status = "em_dia"
+                    student.overdue_value = 0
+                    em_dia += 1
+
+            db.commit()
+            print(f"✅ Sync financeiro concluído: {inadimplentes} inadimplentes, {pendentes} pendentes, {em_dia} em dia")
+            print(f"   💸 Total vencido: R$ {result['total_overdue_value']:.2f} ({result['total_overdue']} cobranças)")
+            print(f"   ⏳ Total pendente: R$ {result['total_pending_value']:.2f} ({result['total_pending']} cobranças)")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"❌ Erro no sync financeiro: {e}")
 
 
 @router.get("/student/{student_id}/payments")

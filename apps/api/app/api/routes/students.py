@@ -93,6 +93,7 @@ def list_students(
                 "primary_course_id": s.primary_course_id,
                 "primary_course_name": s.primary_course_name,
                 "financial_status": s.financial_status,
+                "overdue_value": float(s.overdue_value) if s.overdue_value else 0,
                 "abandonment_status": s.abandonment_status,
                 "risk_trend": s.risk_trend,
             }

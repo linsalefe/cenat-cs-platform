@@ -107,12 +107,12 @@ export default function FinancialPage() {
     try {
       setLoading(true);
       const res = await api.get('/students?limit=5000');
-      // CORREÇÃO AQUI: Verifica se é array direto ou se está dentro de .data
+      // Garante que é array
       const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
       setStudents(data);
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
-      setStudents([]); // Garante que seja sempre um array em caso de erro
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -166,14 +166,20 @@ export default function FinancialPage() {
     setFinancialSummary(null);
   };
 
-  // Safe checks para evitar erro caso students ainda não seja array
+  // Safe checks
   const safeStudents = Array.isArray(students) ? students : [];
 
-  const linkedStudents = safeStudents.filter((s) => s.asaas_customer_id);
+  // --- CORREÇÃO SOLICITADA ---
+  // Troca filtro por financial_status já que asaas_customer_id não vem na API de listagem
+  const linkedStudents = safeStudents.filter((s) => s.financial_status);
+  
   const emDia = linkedStudents.filter((s) => s.financial_status === 'em_dia').length;
   const pendente = linkedStudents.filter((s) => s.financial_status === 'pendente').length;
   const inadimplente = linkedStudents.filter((s) => s.financial_status === 'inadimplente').length;
-  const semVinculo = safeStudents.filter((s) => !s.asaas_customer_id).length;
+  
+  // --- CORREÇÃO SOLICITADA ---
+  const semVinculo = safeStudents.filter((s) => !s.financial_status).length;
+  
   const totalOverdue = linkedStudents.reduce((acc, s) => acc + (s.overdue_value || 0), 0);
 
   const filteredStudents = safeStudents.filter((s) => {
@@ -185,7 +191,10 @@ export default function FinancialPage() {
     if (filter === 'em_dia') return matchesSearch && s.financial_status === 'em_dia';
     if (filter === 'pendente') return matchesSearch && s.financial_status === 'pendente';
     if (filter === 'inadimplente') return matchesSearch && s.financial_status === 'inadimplente';
-    if (filter === 'sem_vinculo') return matchesSearch && !s.asaas_customer_id;
+    
+    // Atualizado filtro da tabela para manter consistência com o card de estatística
+    if (filter === 'sem_vinculo') return matchesSearch && !s.financial_status;
+    
     return matchesSearch;
   });
 
@@ -470,7 +479,8 @@ export default function FinancialPage() {
                           )}
                         </td>
                         <td className="px-6 py-3.5 text-right">
-                          {student.asaas_customer_id && (
+                          {/* Atualizado para checar status financeiro também, garantindo que o botão apareça */}
+                          {(student.asaas_customer_id || student.financial_status) && (
                             <button
                               onClick={() => handleViewPayments(student)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#2A658F]
