@@ -469,3 +469,86 @@ def export_executive_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+@router.get("/inadimplencia")
+def inadimplencia_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Relatório de inadimplência por curso"""
+
+    # Totais gerais
+    total_students = db.query(Student).filter(Student.financial_status.isnot(None)).count()
+    total_inadimplente = db.query(Student).filter(Student.financial_status == "inadimplente").count()
+    total_pendente = db.query(Student).filter(Student.financial_status == "pendente").count()
+    total_overdue = db.query(func.sum(Student.overdue_value)).filter(Student.overdue_value > 0).scalar() or 0
+
+    # Por curso
+    courses = db.query(
+        Student.primary_course_name,
+        func.count(Student.id).label("total"),
+        func.sum(case((Student.financial_status == "em_dia", 1), else_=0)).label("em_dia"),
+        func.sum(case((Student.financial_status == "pendente", 1), else_=0)).label("pendentes"),
+        func.sum(case((Student.financial_status == "inadimplente", 1), else_=0)).label("inadimplentes"),
+        func.sum(case((Student.overdue_value > 0, Student.overdue_value), else_=0)).label("total_overdue"),
+        func.max(Student.overdue_value).label("max_overdue"),
+    ).filter(
+        Student.primary_course_name.isnot(None),
+        Student.financial_status.isnot(None),
+    ).group_by(
+        Student.primary_course_name
+    ).order_by(
+        func.sum(case((Student.financial_status == "inadimplente", 1), else_=0)).desc()
+    ).all()
+
+    courses_data = []
+    for c in courses:
+        total_fin = int(c[2] or 0) + int(c[3] or 0) + int(c[4] or 0)
+        inadimpl_rate = round(int(c[4] or 0) / total_fin * 100, 1) if total_fin else 0
+        courses_data.append({
+            "course": c[0],
+            "total": c[1],
+            "em_dia": int(c[2] or 0),
+            "pendentes": int(c[3] or 0),
+            "inadimplentes": int(c[4] or 0),
+            "total_overdue": round(float(c[5] or 0), 2),
+            "max_overdue": round(float(c[6] or 0), 2),
+            "inadimplencia_rate": inadimpl_rate,
+        })
+
+    # Top 10 alunos com maior dívida
+    top_debtors = db.query(
+        Student.name,
+        Student.email,
+        Student.phone,
+        Student.primary_course_name,
+        Student.overdue_value,
+        Student.financial_status,
+    ).filter(
+        Student.overdue_value > 0
+    ).order_by(
+        Student.overdue_value.desc()
+    ).limit(10).all()
+
+    debtors_data = [
+        {
+            "name": d[0],
+            "email": d[1],
+            "phone": d[2],
+            "course": d[3],
+            "overdue_value": round(float(d[4]), 2),
+            "status": d[5],
+        }
+        for d in top_debtors
+    ]
+
+    return {
+        "summary": {
+            "total_students": total_students,
+            "total_inadimplente": total_inadimplente,
+            "total_pendente": total_pendente,
+            "total_overdue": round(float(total_overdue), 2),
+            "inadimplencia_rate": round(total_inadimplente / total_students * 100, 1) if total_students else 0,
+        },
+        "courses": courses_data,
+        "top_debtors": debtors_data,
+    }

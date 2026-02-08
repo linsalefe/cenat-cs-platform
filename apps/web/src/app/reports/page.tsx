@@ -410,6 +410,22 @@ export default function ReportsPage() {
             </table>
           </div>
         </div>
+
+        {/* Links para relatórios */}
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 ease-out ${
+          mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`} style={{ transitionDelay: '500ms' }}>
+          <button
+            onClick={() => router.push('/reports/inadimplencia')}
+            className="bg-white rounded-2xl border border-gray-100 p-5 text-left hover:shadow-md hover:border-red-200 transition-all group"
+          >
+            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <DollarSign className="w-5 h-5 text-red-600" />
+            </div>
+            <h3 className="font-semibold text-[#27273D] mb-1">Inadimplência por Curso</h3>
+            <p className="text-sm text-gray-500">Valor em atraso, taxa por curso e top devedores</p>
+          </button>
+        </div>
       </div>
     </AppLayout>
   );
