@@ -552,3 +552,120 @@ def inadimplencia_report(
         "courses": courses_data,
         "top_debtors": debtors_data,
     }
+@router.get("/courses")
+def courses_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Relatório de desempenho por curso"""
+    from app.models.moodle_signal import MoodleSignal
+
+    # Dados gerais por curso (students)
+    courses_base = db.query(
+        Student.primary_course_name,
+        Student.primary_course_id,
+        func.count(Student.id).label("total"),
+        func.sum(case((Student.financial_status == "em_dia", 1), else_=0)).label("em_dia"),
+        func.sum(case((Student.financial_status == "pendente", 1), else_=0)).label("pendentes"),
+        func.sum(case((Student.financial_status == "inadimplente", 1), else_=0)).label("inadimplentes"),
+        func.sum(case((Student.moodle_first_access.isnot(None), 1), else_=0)).label("acessaram"),
+        func.sum(case((and_(Student.moodle_user_id.isnot(None), Student.moodle_first_access.is_(None)), 1), else_=0)).label("nunca_acessaram"),
+        func.sum(case((and_(Student.documents_count >= Student.documents_total, Student.documents_total > 0), 1), else_=0)).label("docs_ok"),
+    ).filter(
+        Student.primary_course_name.isnot(None)
+    ).group_by(
+        Student.primary_course_name, Student.primary_course_id
+    ).order_by(
+        func.count(Student.id).desc()
+    ).all()
+
+    # Dados Moodle por curso (signals)
+    from sqlalchemy import cast, Numeric
+    moodle_stats = db.query(
+        MoodleSignal.course_id,
+        func.round(cast(func.avg(MoodleSignal.progress_percent), Numeric), 1).label("avg_progress"),
+        func.round(cast(func.avg(MoodleSignal.days_since_access), Numeric), 0).label("avg_days_since"),
+        func.round(cast(func.avg(MoodleSignal.course_grade), Numeric), 1).label("avg_grade"),
+        func.count(func.distinct(MoodleSignal.student_id)).label("students_with_data"),
+    ).group_by(MoodleSignal.course_id).all()
+
+    moodle_map = {}
+    for m in moodle_stats:
+        moodle_map[m[0]] = {
+            "avg_progress": float(m[1] or 0),
+            "avg_days_since": int(m[2] or 0),
+            "avg_grade": float(m[3] or 0),
+            "students_with_data": m[4],
+        }
+
+    # Risk por curso
+    from app.models.risk_score import RiskScore
+    risk_stats = db.query(
+        Student.primary_course_id,
+        RiskScore.level,
+        func.count(RiskScore.id),
+    ).join(
+        RiskScore, RiskScore.student_id == Student.id
+    ).filter(
+        Student.primary_course_id.isnot(None)
+    ).group_by(
+        Student.primary_course_id, RiskScore.level
+    ).all()
+
+    risk_map = {}
+    for r in risk_stats:
+        cid = r[0]
+        if cid not in risk_map:
+            risk_map[cid] = {"low": 0, "medium": 0, "high": 0}
+        level_str = str(r[1]).replace("RiskLevel.", "").lower()
+        risk_map[cid][level_str] = r[2]
+
+    # Monta resultado
+    courses_data = []
+    total_students = 0
+    total_progress = 0
+    courses_with_progress = 0
+
+    for c in courses_base:
+        course_id = c[1]
+        moodle = moodle_map.get(course_id, {})
+        risk = risk_map.get(course_id, {"low": 0, "medium": 0, "high": 0})
+        total_fin = int(c[3] or 0) + int(c[4] or 0) + int(c[5] or 0)
+        health_rate = round(int(c[3] or 0) / total_fin * 100, 1) if total_fin else 0
+
+        avg_progress = moodle.get("avg_progress", 0)
+        if avg_progress > 0:
+            total_progress += avg_progress
+            courses_with_progress += 1
+
+        total_students += c[2]
+
+        courses_data.append({
+            "course": c[0],
+            "course_id": course_id,
+            "total": c[2],
+            "financial": {
+                "em_dia": int(c[3] or 0),
+                "pendentes": int(c[4] or 0),
+                "inadimplentes": int(c[5] or 0),
+                "health_rate": health_rate,
+            },
+            "moodle": {
+                "acessaram": int(c[6] or 0),
+                "nunca_acessaram": int(c[7] or 0),
+                "avg_progress": avg_progress,
+                "avg_days_since": moodle.get("avg_days_since", 0),
+                "avg_grade": moodle.get("avg_grade", 0),
+            },
+            "docs_ok": int(c[8] or 0),
+            "risk": risk,
+        })
+
+    return {
+        "summary": {
+            "total_courses": len(courses_data),
+            "total_students": total_students,
+            "avg_progress": round(total_progress / courses_with_progress, 1) if courses_with_progress else 0,
+        },
+        "courses": courses_data,
+    }

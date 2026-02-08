@@ -143,6 +143,36 @@ export default function ReportsPage() {
           </div>
         </div>
 
+        {/* Links para relatórios detalhados (MOVIDO PARA O TOPO) */}
+        <div className={`flex gap-3 transition-all duration-700 ease-out ${
+          mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`} style={{ transitionDelay: '50ms' }}>
+          <button
+            onClick={() => router.push('/reports/inadimplencia')}
+            className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 text-left hover:shadow-md hover:border-red-200 transition-all group"
+          >
+            <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+              <DollarSign className="w-4 h-4 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-[#27273D]">Inadimplência por Curso</h3>
+              <p className="text-xs text-gray-500">Taxa, valores e top devedores</p>
+            </div>
+          </button>
+          <button
+            onClick={() => router.push('/reports/courses')}
+            className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 text-left hover:shadow-md hover:border-purple-200 transition-all group"
+          >
+            <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+              <GraduationCap className="w-4 h-4 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-[#27273D]">Desempenho por Curso</h3>
+              <p className="text-xs text-gray-500">Progresso, notas e risco</p>
+            </div>
+          </button>
+        </div>
+
         {/* KPI Cards */}
         <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
@@ -409,22 +439,6 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Links para relatórios */}
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 ease-out ${
-          mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-        }`} style={{ transitionDelay: '500ms' }}>
-          <button
-            onClick={() => router.push('/reports/inadimplencia')}
-            className="bg-white rounded-2xl border border-gray-100 p-5 text-left hover:shadow-md hover:border-red-200 transition-all group"
-          >
-            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <DollarSign className="w-5 h-5 text-red-600" />
-            </div>
-            <h3 className="font-semibold text-[#27273D] mb-1">Inadimplência por Curso</h3>
-            <p className="text-sm text-gray-500">Valor em atraso, taxa por curso e top devedores</p>
-          </button>
         </div>
       </div>
     </AppLayout>
