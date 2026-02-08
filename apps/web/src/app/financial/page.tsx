@@ -17,15 +17,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Filter,
-  Mail,
-  Phone,
-  CreditCard,
-  TrendingDown,
-  Users,
   Eye,
   X,
   Loader2,
   FileText,
+  TrendingDown,
+  Users,
 } from 'lucide-react';
 
 interface Student {
@@ -110,9 +107,12 @@ export default function FinancialPage() {
     try {
       setLoading(true);
       const res = await api.get('/students?limit=5000');
-      setStudents(res.data);
+      // CORREÇÃO AQUI: Verifica se é array direto ou se está dentro de .data
+      const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setStudents(data);
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
+      setStudents([]); // Garante que seja sempre um array em caso de erro
     } finally {
       setLoading(false);
     }
@@ -166,14 +166,17 @@ export default function FinancialPage() {
     setFinancialSummary(null);
   };
 
-  const linkedStudents = students.filter((s) => s.asaas_customer_id);
+  // Safe checks para evitar erro caso students ainda não seja array
+  const safeStudents = Array.isArray(students) ? students : [];
+
+  const linkedStudents = safeStudents.filter((s) => s.asaas_customer_id);
   const emDia = linkedStudents.filter((s) => s.financial_status === 'em_dia').length;
   const pendente = linkedStudents.filter((s) => s.financial_status === 'pendente').length;
   const inadimplente = linkedStudents.filter((s) => s.financial_status === 'inadimplente').length;
-  const semVinculo = students.filter((s) => !s.asaas_customer_id).length;
+  const semVinculo = safeStudents.filter((s) => !s.asaas_customer_id).length;
   const totalOverdue = linkedStudents.reduce((acc, s) => acc + (s.overdue_value || 0), 0);
 
-  const filteredStudents = students.filter((s) => {
+  const filteredStudents = safeStudents.filter((s) => {
     const matchesSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.email.toLowerCase().includes(search.toLowerCase()) ||

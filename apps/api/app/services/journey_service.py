@@ -4,7 +4,7 @@ from sqlalchemy import and_
 
 from app.models.journey import JourneyRule, JourneyStep, StudentJourney
 from app.models.student import Student
-from app.core.whatsapp_channels import get_channel_config
+from app.core.whatsapp_channels import get_channel
 from app.integrations.whatsapp_meta import send_template
 import logging
 
@@ -141,7 +141,7 @@ def _execute_next_step(db: Session, sj: StudentJourney):
     params = _resolve_params(step.template_params or [], student)
 
     # Envia via Meta API
-    channel_config = get_channel_config(rule.channel)
+    channel_config = get_channel(rule.channel)
     try:
         # Envia template com botões se houver
         result = send_template(
@@ -149,8 +149,8 @@ def _execute_next_step(db: Session, sj: StudentJourney):
             template_name=step.template_name,
             language=step.template_language,
             params=params,
-            phone_number_id=channel_config["phone_number_id"],
-            token=channel_config["token"],
+            phone_number_id=channel_config.phone_number_id,
+            token=channel_config.token,
         )
 
         sj.current_step = next_step_order
