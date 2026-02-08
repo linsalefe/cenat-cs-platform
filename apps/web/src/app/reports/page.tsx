@@ -101,14 +101,40 @@ export default function ReportsPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => toast.info('Exportação PDF em breve')}
+              onClick={async () => {
+                try {
+                  const res = await api.get('/reports/executive/export-pdf', { responseType: 'blob' });
+                  const url = window.URL.createObjectURL(new Blob([res.data]));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `relatorio_executivo_${new Date().toISOString().slice(0,10)}.pdf`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('PDF exportado!');
+                } catch {
+                  toast.error('Erro ao exportar PDF');
+                }
+              }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#2A658F] bg-[#E2ECF4] rounded-xl hover:bg-[#CCE4F4] transition-colors"
             >
               <Download className="w-4 h-4" />
               PDF
             </button>
             <button
-              onClick={() => toast.info('Exportação Excel em breve')}
+              onClick={async () => {
+                try {
+                  const res = await api.get('/reports/executive/export-excel', { responseType: 'blob' });
+                  const url = window.URL.createObjectURL(new Blob([res.data]));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `relatorio_executivo_${new Date().toISOString().slice(0,10)}.xlsx`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  toast.success('Excel exportado!');
+                } catch {
+                  toast.error('Erro ao exportar Excel');
+                }
+              }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors"
             >
               <Download className="w-4 h-4" />

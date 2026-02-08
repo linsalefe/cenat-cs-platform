@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, and_
 from typing import Optional
+from io import BytesIO
+from datetime import datetime
 
 from app.core.deps import get_current_user, get_db
 from app.models.student import Student
@@ -154,3 +157,315 @@ def executive_dashboard(
         },
         "courses": courses_data,
     }
+@router.get("/executive/export-excel")
+def export_executive_excel(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Exporta dashboard executivo em Excel"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    # Busca mesmos dados do dashboard
+    data = executive_dashboard(db=db, current_user=current_user)
+
+    wb = Workbook()
+
+    # === CORES ===
+    header_fill = PatternFill(start_color="2A658F", end_color="2A658F", fill_type="solid")
+    header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
+    title_font = Font(name="Calibri", bold=True, size=14, color="27273D")
+    subtitle_font = Font(name="Calibri", bold=True, size=12, color="2A658F")
+    number_font = Font(name="Calibri", size=11)
+    thin_border = Border(
+        left=Side(style="thin", color="E0E0E0"),
+        right=Side(style="thin", color="E0E0E0"),
+        top=Side(style="thin", color="E0E0E0"),
+        bottom=Side(style="thin", color="E0E0E0"),
+    )
+
+    green_fill = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFF8E1", end_color="FFF8E1", fill_type="solid")
+    red_fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
+
+    # === ABA 1: RESUMO ===
+    ws = wb.active
+    ws.title = "Resumo Executivo"
+    ws.sheet_properties.tabColor = "2A658F"
+
+    ws.merge_cells("A1:D1")
+    ws["A1"] = "CENAT — Relatório Executivo"
+    ws["A1"].font = title_font
+    ws["A2"] = f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws["A2"].font = Font(name="Calibri", size=10, color="888888")
+
+    row = 4
+    ws.merge_cells(f"A{row}:D{row}")
+    ws[f"A{row}"] = "Visão Geral"
+    ws[f"A{row}"].font = subtitle_font
+    row += 1
+
+    summary_items = [
+        ("Total de Alunos", data["summary"]["total_students"]),
+        ("Com Telefone", data["summary"]["with_phone"]),
+        ("Com Moodle", data["summary"]["with_moodle"]),
+        ("Cobertura Telefone", f"{data['summary']['phone_coverage']}%"),
+    ]
+    for label, value in summary_items:
+        ws[f"A{row}"] = label
+        ws[f"B{row}"] = value
+        ws[f"A{row}"].font = number_font
+        ws[f"B{row}"].font = Font(name="Calibri", bold=True, size=11)
+        row += 1
+
+    row += 1
+    ws.merge_cells(f"A{row}:D{row}")
+    ws[f"A{row}"] = "Financeiro"
+    ws[f"A{row}"].font = subtitle_font
+    row += 1
+
+    fin_items = [
+        ("Em Dia", data["financial"]["em_dia"], green_fill),
+        ("Pendente", data["financial"]["pendente"], yellow_fill),
+        ("Inadimplente", data["financial"]["inadimplente"], red_fill),
+        ("Valor em Atraso", f"R$ {data['financial']['overdue_total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), red_fill),
+        ("Saúde Financeira", f"{data['financial']['health_rate']}%", green_fill),
+    ]
+    for label, value, fill in fin_items:
+        ws[f"A{row}"] = label
+        ws[f"B{row}"] = value
+        ws[f"A{row}"].font = number_font
+        ws[f"B{row}"].font = Font(name="Calibri", bold=True, size=11)
+        ws[f"B{row}"].fill = fill
+        row += 1
+
+    row += 1
+    ws.merge_cells(f"A{row}:D{row}")
+    ws[f"A{row}"] = "Risco"
+    ws[f"A{row}"].font = subtitle_font
+    row += 1
+
+    for level, label, fill in [("RiskLevel.LOW", "Baixo", green_fill), ("RiskLevel.MEDIUM", "Médio", yellow_fill), ("RiskLevel.HIGH", "Alto", red_fill)]:
+        ws[f"A{row}"] = label
+        ws[f"B{row}"] = data["risk"].get(level, 0)
+        ws[f"B{row}"].fill = fill
+        ws[f"B{row}"].font = Font(name="Calibri", bold=True, size=11)
+        row += 1
+
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 20
+
+    # === ABA 2: CURSOS ===
+    ws2 = wb.create_sheet("Desempenho por Curso")
+    ws2.sheet_properties.tabColor = "4CAF50"
+
+    headers = ["Curso", "Alunos", "Em Dia", "Pendentes", "Inadimplentes", "% Saúde", "Média Atraso (R$)"]
+    for col, h in enumerate(headers, 1):
+        cell = ws2.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+
+    for i, course in enumerate(data["courses"], 2):
+        total_fin = course["em_dia"] + course["pendentes"] + course["inadimplentes"]
+        health = round((course["em_dia"] / total_fin * 100), 1) if total_fin else 0
+
+        ws2.cell(row=i, column=1, value=course["course"]).border = thin_border
+        ws2.cell(row=i, column=2, value=course["total"]).border = thin_border
+        ws2.cell(row=i, column=3, value=course["em_dia"]).border = thin_border
+        ws2.cell(row=i, column=4, value=course["pendentes"]).border = thin_border
+        ws2.cell(row=i, column=5, value=course["inadimplentes"]).border = thin_border
+        ws2.cell(row=i, column=6, value=health).border = thin_border
+        ws2.cell(row=i, column=7, value=course["avg_overdue"]).border = thin_border
+
+        # Colorir inadimplentes
+        if course["inadimplentes"] > 10:
+            ws2.cell(row=i, column=5).fill = red_fill
+        
+        ws2.cell(row=i, column=2).alignment = Alignment(horizontal="center")
+        ws2.cell(row=i, column=3).alignment = Alignment(horizontal="center")
+        ws2.cell(row=i, column=4).alignment = Alignment(horizontal="center")
+        ws2.cell(row=i, column=5).alignment = Alignment(horizontal="center")
+        ws2.cell(row=i, column=6).alignment = Alignment(horizontal="center")
+        ws2.cell(row=i, column=7).number_format = '#,##0.00'
+
+    ws2.column_dimensions["A"].width = 60
+    ws2.column_dimensions["B"].width = 10
+    ws2.column_dimensions["C"].width = 10
+    ws2.column_dimensions["D"].width = 12
+    ws2.column_dimensions["E"].width = 15
+    ws2.column_dimensions["F"].width = 12
+    ws2.column_dimensions["G"].width = 18
+
+    # Salva
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"relatorio_executivo_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+@router.get("/executive/export-pdf")
+def export_executive_pdf(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Exporta dashboard executivo em PDF"""
+    from fpdf import FPDF
+
+    data = executive_dashboard(db=db, current_user=current_user)
+
+    class PDF(FPDF):
+        def header(self):
+            self.set_font("Helvetica", "B", 18)
+            self.set_text_color(39, 39, 61)
+            self.cell(0, 12, "CENAT - Relatorio Executivo", ln=True)
+            self.set_font("Helvetica", "", 9)
+            self.set_text_color(120, 120, 120)
+            self.cell(0, 6, f"Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True)
+            self.ln(4)
+            self.set_draw_color(42, 101, 143)
+            self.set_line_width(0.5)
+            self.line(10, self.get_y(), 200, self.get_y())
+            self.ln(6)
+
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("Helvetica", "", 8)
+            self.set_text_color(150, 150, 150)
+            self.cell(0, 10, f"Pagina {self.page_no()}/{{nb}}", align="C")
+
+        def section_title(self, title):
+            self.set_font("Helvetica", "B", 13)
+            self.set_text_color(42, 101, 143)
+            self.cell(0, 10, title, ln=True)
+            self.ln(2)
+
+        def kpi_row(self, label, value, color=None):
+            self.set_font("Helvetica", "", 10)
+            self.set_text_color(80, 80, 80)
+            self.cell(70, 7, label)
+            self.set_font("Helvetica", "B", 10)
+            if color == "green":
+                self.set_text_color(16, 124, 65)
+            elif color == "red":
+                self.set_text_color(200, 40, 40)
+            elif color == "amber":
+                self.set_text_color(180, 130, 0)
+            else:
+                self.set_text_color(39, 39, 61)
+            self.cell(0, 7, str(value), ln=True)
+
+    pdf = PDF()
+    pdf.alias_nb_pages()
+    pdf.add_page()
+
+    # === VISAO GERAL ===
+    pdf.section_title("Visao Geral")
+    pdf.kpi_row("Total de Alunos", f"{data['summary']['total_students']:,}".replace(",", "."))
+    pdf.kpi_row("Com Telefone", f"{data['summary']['with_phone']:,} ({data['summary']['phone_coverage']}%)".replace(",", "."))
+    pdf.kpi_row("Com Moodle", f"{data['summary']['with_moodle']:,}".replace(",", "."))
+    pdf.kpi_row("Acessaram Moodle", f"{data['moodle']['accessed']:,}".replace(",", "."))
+    pdf.kpi_row("Nunca Acessaram", str(data["moodle"]["never_accessed"]), "red")
+    pdf.ln(4)
+
+    # === FINANCEIRO ===
+    pdf.section_title("Situacao Financeira")
+    pdf.kpi_row("Em Dia", str(data["financial"]["em_dia"]), "green")
+    pdf.kpi_row("Pendente", str(data["financial"]["pendente"]), "amber")
+    pdf.kpi_row("Inadimplente", str(data["financial"]["inadimplente"]), "red")
+    overdue_fmt = f"R$ {data['financial']['overdue_total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    pdf.kpi_row("Valor em Atraso", overdue_fmt, "red")
+    pdf.kpi_row("Saude Financeira", f"{data['financial']['health_rate']}%", "green")
+    pdf.ln(4)
+
+    # === RISCO ===
+    pdf.section_title("Distribuicao de Risco")
+    pdf.kpi_row("Baixo", str(data["risk"].get("RiskLevel.LOW", 0)), "green")
+    pdf.kpi_row("Medio", str(data["risk"].get("RiskLevel.MEDIUM", 0)), "amber")
+    pdf.kpi_row("Alto", str(data["risk"].get("RiskLevel.HIGH", 0)), "red")
+    pdf.ln(4)
+
+    # === DOCUMENTACAO ===
+    pdf.section_title("Documentacao")
+    pdf.kpi_row("Completa", str(data["documents"]["complete"]), "green")
+    pdf.kpi_row("Incompleta", str(data["documents"]["incomplete"]), "amber")
+    pdf.kpi_row("Sem Documentos", str(data["documents"]["none"]), "red")
+    pdf.ln(4)
+
+    # === OPERACOES ===
+    pdf.section_title("Operacoes")
+    pdf.kpi_row("Disparos Realizados", str(data["broadcasts"]["total"]))
+    pdf.kpi_row("Mensagens Enviadas", str(data["broadcasts"]["messages_sent"]))
+    pdf.kpi_row("Reguas Ativas", str(data["journeys"]["active"]))
+    pdf.kpi_row("Alunos em Jornada", str(data["journeys"]["students_active"]))
+
+    # === PAGINA 2: TABELA DE CURSOS ===
+    pdf.add_page("L")
+    pdf.section_title(f"Desempenho por Curso ({len(data['courses'])} cursos)")
+
+    # Header tabela
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.set_fill_color(42, 101, 143)
+    pdf.set_text_color(255, 255, 255)
+    col_widths = [95, 20, 20, 25, 30, 25, 30, 30]
+    headers = ["Curso", "Alunos", "Em Dia", "Pendentes", "Inadimpl.", "% Saude", "Media Atraso"]
+    for i, h in enumerate(headers):
+        pdf.cell(col_widths[i], 8, h, border=1, fill=True, align="C")
+    pdf.ln()
+
+    # Rows
+    pdf.set_font("Helvetica", "", 7)
+    for j, course in enumerate(data["courses"]):
+        if pdf.get_y() > 180:
+            pdf.add_page("L")
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_fill_color(42, 101, 143)
+            pdf.set_text_color(255, 255, 255)
+            for i, h in enumerate(headers):
+                pdf.cell(col_widths[i], 8, h, border=1, fill=True, align="C")
+            pdf.ln()
+            pdf.set_font("Helvetica", "", 7)
+
+        total_fin = course["em_dia"] + course["pendentes"] + course["inadimplentes"]
+        health = round((course["em_dia"] / total_fin * 100), 1) if total_fin else 0
+        avg_fmt = f"R$ {course['avg_overdue']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        if j % 2 == 0:
+            pdf.set_fill_color(245, 247, 250)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+
+        pdf.set_text_color(50, 50, 50)
+        name = course["course"][:55] + "..." if len(course["course"]) > 55 else course["course"]
+        pdf.cell(col_widths[0], 7, name, border=1, fill=True)
+        pdf.cell(col_widths[1], 7, str(course["total"]), border=1, fill=True, align="C")
+
+        pdf.set_text_color(16, 124, 65)
+        pdf.cell(col_widths[2], 7, str(course["em_dia"]), border=1, fill=True, align="C")
+
+        pdf.set_text_color(180, 130, 0)
+        pdf.cell(col_widths[3], 7, str(course["pendentes"]), border=1, fill=True, align="C")
+
+        pdf.set_text_color(200, 40, 40)
+        pdf.cell(col_widths[4], 7, str(course["inadimplentes"]), border=1, fill=True, align="C")
+
+        pdf.set_text_color(50, 50, 50)
+        pdf.cell(col_widths[5], 7, f"{health}%", border=1, fill=True, align="C")
+        pdf.cell(col_widths[6], 7, avg_fmt, border=1, fill=True, align="R")
+        pdf.ln()
+
+    buffer = BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+
+    filename = f"relatorio_executivo_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
