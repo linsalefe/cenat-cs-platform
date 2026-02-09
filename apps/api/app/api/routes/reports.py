@@ -7,6 +7,7 @@ from io import BytesIO
 from datetime import datetime
 
 from app.core.deps import get_current_user, get_db
+from app.core.permissions import require_permission
 from app.models.student import Student
 from app.models.broadcast import Broadcast, BroadcastLog
 from app.models.journey import JourneyRule, StudentJourney
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 @router.get("/executive")
 def executive_dashboard(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("reports", "read")),
 ):
     """Dashboard executivo — visão geral para diretoria"""
 
@@ -160,7 +161,7 @@ def executive_dashboard(
 @router.get("/executive/export-excel")
 def export_executive_excel(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("reports", "read")),
 ):
     """Exporta dashboard executivo em Excel"""
     from openpyxl import Workbook
@@ -312,7 +313,7 @@ def export_executive_excel(
 @router.get("/executive/export-pdf")
 def export_executive_pdf(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("reports", "read")),
 ):
     """Exporta dashboard executivo em PDF"""
     from fpdf import FPDF
@@ -472,7 +473,7 @@ def export_executive_pdf(
 @router.get("/inadimplencia")
 def inadimplencia_report(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("reports", "read")),
 ):
     """Relatório de inadimplência por curso"""
 
@@ -555,7 +556,7 @@ def inadimplencia_report(
 @router.get("/courses")
 def courses_report(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("reports", "read")),
 ):
     """Relatório de desempenho por curso"""
     from app.models.moodle_signal import MoodleSignal

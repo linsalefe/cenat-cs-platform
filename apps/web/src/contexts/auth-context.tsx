@@ -8,7 +8,7 @@ interface User {
   id: number;
   email: string;
   name: string;
-  role: 'admin' | 'secretaria' | 'tutor';
+  role: 'admin' | 'gestor' | 'atendente' | 'visualizador';
   is_active: boolean;
 }
 

@@ -1,3 +1,4 @@
+from app.core.permissions import require_permission
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -66,7 +67,7 @@ class StepUpdate(BaseModel):
 def list_journeys(
     is_active: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     q = db.query(JourneyRule).order_by(desc(JourneyRule.created_at))
 
@@ -111,7 +112,7 @@ def list_journeys(
 def create_journey(
     data: JourneyCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     if len(data.steps) > 10:
         raise HTTPException(status_code=400, detail="Máximo de 10 steps por régua")
@@ -167,7 +168,7 @@ def create_journey(
 def get_journey(
     journey_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     rule = db.query(JourneyRule).filter(JourneyRule.id == journey_id).first()
     if not rule:
@@ -243,7 +244,7 @@ def get_journey(
 def toggle_journey(
     journey_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     rule = db.query(JourneyRule).filter(JourneyRule.id == journey_id).first()
     if not rule:
@@ -270,7 +271,7 @@ def toggle_journey(
 def delete_journey(
     journey_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     rule = db.query(JourneyRule).filter(JourneyRule.id == journey_id).first()
     if not rule:
@@ -304,7 +305,7 @@ def add_step(
     journey_id: int,
     data: StepCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     rule = db.query(JourneyRule).filter(JourneyRule.id == journey_id).first()
     if not rule:
@@ -345,7 +346,7 @@ def remove_step(
     journey_id: int,
     step_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("automations", "read")),
 ):
     step = db.query(JourneyStep).filter(
         JourneyStep.id == step_id,

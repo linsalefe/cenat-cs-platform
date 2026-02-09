@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { usePermissions } from '@/hooks/usePermissions';
 import api from '@/lib/api';
 import {
   LayoutDashboard,
@@ -19,26 +20,29 @@ import {
   Send,
   LogOut,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/tickets', label: 'Tickets', icon: Ticket },
-  { href: '/students', label: 'Alunos', icon: Users },
-  { href: '/risk', label: 'Risco', icon: AlertTriangle },
-  { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare },
-  { href: '/metrics', label: 'Métricas', icon: BarChart3 },
-  { href: '/courses', label: 'Cursos', icon: BookOpen },
-  { href: '/automations', label: 'Automações', icon: Zap },
-  { href: '/reports', label: 'Relatórios', icon: BarChart3 },
-  { href: '/broadcasts', label: 'Disparos', icon: Send },
-  { href: '/conversations', label: 'Conversas', icon: MessageCircle },
-  { href: '/financial', label: 'Financeiro', icon: DollarSign },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard' },
+  { href: '/tickets', label: 'Tickets', icon: Ticket, module: 'tickets' },
+  { href: '/students', label: 'Alunos', icon: Users, module: 'students' },
+  { href: '/risk', label: 'Risco', icon: AlertTriangle, module: 'students' },
+  { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare, module: 'students' },
+  { href: '/metrics', label: 'Métricas', icon: BarChart3, module: 'reports' },
+  { href: '/courses', label: 'Cursos', icon: BookOpen, module: 'students' },
+  { href: '/automations', label: 'Automações', icon: Zap, module: 'automations' },
+  { href: '/reports', label: 'Relatórios', icon: BarChart3, module: 'reports' },
+  { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
+  { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations' },
+  { href: '/financial', label: 'Financeiro', icon: DollarSign, module: 'financial' },
+  { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { can, role } = usePermissions();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -65,6 +69,15 @@ export default function Sidebar() {
       .slice(0, 2);
   };
 
+  const ROLE_LABELS: Record<string, string> = {
+    admin: 'Administrador',
+    gestor: 'Gestor',
+    atendente: 'Atendente',
+    visualizador: 'Visualizador',
+  };
+
+  const visibleItems = menuItems.filter((item) => can(item.module));
+
   return (
     <aside className="w-64 bg-gradient-to-b from-[#27273D] to-[#1a1a2e] min-h-screen flex flex-col">
       {/* Logo */}
@@ -86,7 +99,7 @@ export default function Sidebar() {
           Menu
         </p>
         <ul className="space-y-1">
-          {menuItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== '/' && pathname.startsWith(item.href));
@@ -129,7 +142,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-[#6b6b80] text-xs truncate">{user?.email}</p>
+            <p className="text-[#6b6b80] text-xs truncate">{ROLE_LABELS[role] || role}</p>
           </div>
         </div>
         <button

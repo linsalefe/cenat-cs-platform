@@ -1,6 +1,8 @@
+from app.core.permissions import require_permission
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_user
+from app.core.permissions import require_permission
 from app.models.user import User
 from app.models.student import Student
 
@@ -12,7 +14,7 @@ router = APIRouter(prefix="/asaas", tags=["asaas"])
 @router.post("/sync-customers")
 async def sync_customers(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("financial", "read")),
 ):
     """Cruza clientes do ASAAS com alunos por email, atualiza CPF, telefone e asaas_customer_id"""
     offset = 0
@@ -61,7 +63,7 @@ async def sync_customers(
 async def sync_financial(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("financial", "read")),
 ):
     """Inicia sync financeiro em background"""
     background_tasks.add_task(run_financial_sync)
@@ -115,7 +117,7 @@ async def run_financial_sync():
 async def get_student_payments(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("financial", "read")),
 ):
     """Retorna cobranças de um aluno específico"""
     student = db.query(Student).filter(Student.id == student_id).first()

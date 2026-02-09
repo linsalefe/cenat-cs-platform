@@ -1,3 +1,4 @@
+from app.core.permissions import require_permission
 from datetime import datetime, date
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 
 from app.core.deps import get_db, get_current_user
+from app.core.permissions import require_permission
 from app.models.user import User
 from app.models.student import Student
 from app.models.moodle_signal import MoodleSignal
@@ -27,7 +29,7 @@ def list_students(
     abandonment: Optional[str] = Query(None),  # active, at_risk, abandoned
     course_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     """Lista alunos com filtros"""
     q = db.query(Student)
@@ -109,7 +111,7 @@ def list_students(
 @router.get("/courses")
 def list_courses(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     """Lista cursos distintos dos alunos"""
     courses = (
@@ -128,7 +130,7 @@ def list_courses(
 @router.get("/stats")
 def get_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     """Retorna estatísticas gerais dos alunos"""
     total = db.query(Student).count()
@@ -163,7 +165,7 @@ def get_stats(
 def get_student(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
@@ -175,7 +177,7 @@ def get_student(
 async def sync_student_moodle(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
@@ -271,7 +273,7 @@ async def sync_student_moodle(
 def get_student_moodle_signals(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
@@ -301,7 +303,7 @@ def get_student_moodle_signals(
 async def sync_all_students_moodle(
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("students", "read")),
 ):
     students = db.query(Student).filter(
         Student.moodle_user_id.isnot(None)

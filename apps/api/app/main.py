@@ -25,6 +25,7 @@ from app.api.routes.broadcasts import router as broadcasts_router
 from app.api.routes.journeys import router as journeys_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.asaas import router as asaas_router
+from app.api.routes.users import router as users_router
 from app.jobs.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -66,6 +67,7 @@ app.include_router(conversations_router, prefix="/api")
 app.include_router(broadcasts_router, prefix="/api")
 app.include_router(journeys_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
 
 
 @app.get("/health")

@@ -1,3 +1,4 @@
+from app.core.permissions import require_permission
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -92,7 +93,7 @@ def preview_students(
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Preview dos alunos que serão impactados pelo disparo"""
     filters = {
@@ -135,7 +136,7 @@ def preview_students(
 def create_broadcast(
     data: BroadcastCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Cria um novo disparo em modo rascunho"""
     # Conta quantos alunos serão impactados
@@ -178,7 +179,7 @@ def list_broadcasts(
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Lista todos os disparos"""
     q = db.query(Broadcast).order_by(desc(Broadcast.created_at))
@@ -220,7 +221,7 @@ def list_broadcasts(
 def get_broadcast(
     broadcast_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Detalhe de um disparo com logs"""
     broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
@@ -276,7 +277,7 @@ def get_broadcast(
 def delete_broadcast(
     broadcast_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Deleta um disparo (apenas rascunhos)"""
     broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
@@ -302,7 +303,7 @@ async def send_broadcast(
     broadcast_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
     """Inicia o envio do disparo em background"""
     from fastapi import BackgroundTasks as BT
