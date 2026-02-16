@@ -96,7 +96,7 @@ export default function Dashboard() {
       <AppLayout>
         <div className="animate-pulse space-y-8">
           <div className="h-8 bg-gray-100 rounded-lg w-64"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-36 bg-gray-100 rounded-2xl"></div>
             ))}
@@ -141,7 +141,7 @@ export default function Dashboard() {
 
         {/* KPI Cards */}
         <div
-          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-700 ease-out ${
+          className={`grid grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '100ms' }}
@@ -380,7 +380,7 @@ export default function Dashboard() {
 
         {/* Bottom Cards */}
         <div
-          className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-700 ease-out ${
+          className={`grid grid-cols-1 sm:grid-cols-3 gap-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '400ms' }}
