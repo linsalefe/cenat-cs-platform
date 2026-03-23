@@ -15,6 +15,7 @@ import {
   MessageCircle,
   DollarSign,
   BarChart3,
+  UserPlus,
   BookOpen,
   Zap,
   Send,
@@ -35,6 +36,7 @@ const menuItems = [
   { href: '/reports', label: 'Relatórios', icon: BarChart3, module: 'reports' },
   { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
   { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations' },
+  { href: '/onboarding', label: 'Onboarding', icon: UserPlus, module: 'students' },
   { href: '/financial', label: 'Financeiro', icon: DollarSign, module: 'financial' },
   { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
 ];
