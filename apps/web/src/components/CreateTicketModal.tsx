@@ -72,7 +72,7 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
     try {
       setLoadingStudents(true);
       const res = await api.get('/students?limit=5000');
-      setStudents(res.data);
+      setStudents(res.data.data || []);
     } catch (err) {
       console.error('Erro ao carregar alunos:', err);
     } finally {
