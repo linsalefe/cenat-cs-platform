@@ -15,7 +15,7 @@ export default function OnboardingPage() {
   const [studentName, setStudentName] = useState('');
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/onboarding/courses`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/onboarding/courses`)
       .then((r) => r.json())
       .then((data) => setCourses(data))
       .catch(() => {});
@@ -37,7 +37,7 @@ export default function OnboardingPage() {
 
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/onboarding`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone: phone.replace(/\D/g, ''), course }),
