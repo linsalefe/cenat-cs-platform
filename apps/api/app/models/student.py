@@ -27,6 +27,7 @@ class Student(Base):
     attendance_absences = Column(Integer, default=0)
     attendance_consecutive_absences = Column(Integer, default=0)
     abandonment_status = Column(String(20), nullable=True)  # active, at_risk, abandoned
+    onboarding_status = Column(String(50), default="novo")
     risk_trend = Column(String(20), default='stable')  # improving, stable, worsening
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
