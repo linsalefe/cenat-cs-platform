@@ -496,7 +496,7 @@ export default function ConversationsPage() {
                                 >
                                   {isOutbound && msg.sender_type === 'agent' && (
                                     <p className="text-[10px] font-semibold text-[#2A658F] mb-0.5">
-                                      {msg.sender_type === 'bot' ? '🤖 Bot' : 'Atendente'}
+                                      {(msg.sender_type as string) === 'bot' ? '🤖 Bot' : 'Atendente'}
                                     </p>
                                   )}
                                   <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{msg.content}</p>
