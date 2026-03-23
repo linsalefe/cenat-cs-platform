@@ -185,7 +185,8 @@ async def send_welcome(
         components=[{
             "type": "body",
             "parameters": [
-                {"type": "text", "text": student.name.split()[0] if student.name else ""}
+                {"type": "text", "text": student.name.split()[0] if student.name else ""},
+                {"type": "text", "text": student.primary_course_name or "sua pós-graduação no CENAT"},
             ]
         }],
         channel_slug="cs",
