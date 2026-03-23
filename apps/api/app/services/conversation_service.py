@@ -55,6 +55,14 @@ def get_or_create_conversation(db: Session, phone: str, channel: str = "cs") -> 
 
 def add_inbound_message(db: Session, phone: str, content: str, message_sid: str = None, channel: str = "cs") -> ConversationMessage:
     """Registra mensagem recebida do contato"""
+    # Deduplicação: se já existe mensagem com esse message_sid, ignora
+    if message_sid:
+        existing = db.query(ConversationMessage).filter(
+            ConversationMessage.message_sid == message_sid
+        ).first()
+        if existing:
+            return existing
+
     conversation = get_or_create_conversation(db, phone, channel=channel)
 
     message = ConversationMessage(
