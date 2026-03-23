@@ -151,7 +151,7 @@ export default function TicketDetailPage() {
   const handleAssignToMe = async () => {
     setUpdating(true);
     try {
-      await api.patch(`/tickets/${ticketId}/assign`);
+      await api.patch(`/tickets/${ticketId}/assign?user_id=${user?.id}`);
       await loadTicket();
     } catch (error) {
       console.error('Erro ao atribuir ticket:', error);
