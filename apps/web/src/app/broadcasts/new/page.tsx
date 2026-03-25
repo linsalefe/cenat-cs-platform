@@ -81,6 +81,17 @@ const templates = [
     params: ['{{primeiro_nome}}'],
     paramsLabel: ['Nome do aluno'],
   },
+
+  {
+    name: 'custom',
+    label: 'Outros Assuntos',
+    description: 'Enviar outro template aprovado pela Meta',
+    icon: Send,
+    color: 'bg-gray-50 text-gray-700 border-gray-200',
+    iconColor: 'text-gray-600',
+    params: [],
+    paramsLabel: [],
+  },
 ];
 
 type SendMode = 'all' | 'course' | 'individual';
@@ -93,6 +104,9 @@ export default function NewBroadcastPage() {
 
   // Template
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+
+  const [customTemplateName, setCustomTemplateName] = useState('');
+  const [customParams, setCustomParams] = useState<string[]>([]);
 
   // Send mode
   const [sendMode, setSendMode] = useState<SendMode>('all');
@@ -186,8 +200,16 @@ export default function NewBroadcastPage() {
   const handleSend = async () => {
     if (!selectedTemplate) { toast.error('Selecione um modelo de mensagem'); return; }
 
-    const template = templates.find(t => t.name === selectedTemplate);
-    if (!template) return;
+    let templateDef = templates.find(t => t.name === selectedTemplate);
+    if (!templateDef) return;
+
+    const finalTemplateName = selectedTemplate === 'custom' ? customTemplateName : templateDef.name;
+    const finalParams = selectedTemplate === 'custom' ? customParams : templateDef.params;
+
+    if (selectedTemplate === 'custom' && !customTemplateName.trim()) {
+      toast.error('Informe o nome do template');
+      return;
+    }
 
     if (sendMode === 'individual' && selectedStudents.length === 0) {
       toast.error('Selecione pelo menos um aluno');
@@ -202,9 +224,11 @@ export default function NewBroadcastPage() {
       ? courses.find(c => c.id === selectedCourseId)?.name || ''
       : sendMode === 'all' ? 'Todos' : 'Individual';
 
+    const displayLabel = selectedTemplate === 'custom' ? customTemplateName : templateDef.label;
+
     const confirmMsg = sendMode === 'individual'
-      ? `Enviar "${template.label}" para ${selectedStudents.length} aluno(s)?`
-      : `Enviar "${template.label}" para ${totalStudents} alunos${sendMode === 'course' ? ` do curso "${courseName}"` : ''}?`;
+      ? `Enviar "${displayLabel}" para ${selectedStudents.length} aluno(s)?`
+      : `Enviar "${displayLabel}" para ${totalStudents} alunos${sendMode === 'course' ? ` do curso "${courseName}"` : ''}?`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -219,10 +243,10 @@ export default function NewBroadcastPage() {
       }
 
       const broadcastName = sendMode === 'individual'
-        ? `${template.label} — ${selectedStudents.map(s => s.name.split(' ')[0]).join(', ')}`
+        ? `${displayLabel} — ${selectedStudents.map(s => s.name.split(' ')[0]).join(', ')}`
         : sendMode === 'course'
-        ? `${template.label} — ${courseName}`
-        : `${template.label} — Todos`;
+        ? `${displayLabel} — ${courseName}`
+        : `${displayLabel} — Todos`;
 
       // Cria o disparo
       const res = await api.post('/broadcasts', {
@@ -230,9 +254,9 @@ export default function NewBroadcastPage() {
         description: null,
         channel: 'cs',
         filters,
-        template_name: template.name,
+        template_name: finalTemplateName,
         template_language: 'pt_BR',
-        template_params: template.params,
+        template_params: finalParams,
       });
 
       // Inicia envio automaticamente
@@ -304,6 +328,46 @@ export default function NewBroadcastPage() {
               );
             })}
           </div>
+
+          {selectedTemplate === 'custom' && (
+            <div className="mt-4 space-y-3 p-4 bg-gray-50 rounded-xl">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome do template (exato da Meta) *</label>
+                <input
+                  type="text"
+                  value={customTemplateName}
+                  onChange={(e) => setCustomTemplateName(e.target.value)}
+                  placeholder="Ex: lembrete_documentos"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none text-sm"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Parâmetros</label>
+                  <button onClick={() => setCustomParams([...customParams, '{{primeiro_nome}}'])} className="text-xs text-[#2A658F] hover:underline">+ Adicionar</button>
+                </div>
+                {customParams.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Nenhum parâmetro (template sem variáveis)</p>
+                ) : (
+                  <div className="space-y-2">
+                    {customParams.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-10">{`{{${i + 1}}}`}</span>
+                        <input
+                          type="text"
+                          value={p}
+                          onChange={(e) => { const u = [...customParams]; u[i] = e.target.value; setCustomParams(u); }}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-[#2A658F] outline-none"
+                        />
+                        <button onClick={() => setCustomParams(customParams.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-sm">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-2">Variáveis: {`{{primeiro_nome}}`} {`{{curso}}`} {`{{email}}`} {`{{nome}}`}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* PASSO 2 — Para quem enviar */}
@@ -479,7 +543,9 @@ export default function NewBroadcastPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-white/60 text-xs mb-1">Mensagem</p>
-                  <p className="font-medium">{selectedTemplateDef?.label}</p>
+                  <p className="font-medium">
+                    {selectedTemplate === 'custom' ? customTemplateName : selectedTemplateDef?.label}
+                  </p>
                 </div>
                 <div>
                   <p className="text-white/60 text-xs mb-1">Destinatários</p>
