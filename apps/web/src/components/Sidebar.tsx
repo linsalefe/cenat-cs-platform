@@ -17,28 +17,69 @@ import {
   BarChart3,
   UserPlus,
   BookOpen,
-  Zap,
   Send,
   LogOut,
   ChevronRight,
   Shield,
+  FileText,
 } from 'lucide-react';
 
-const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard' },
-  { href: '/tickets', label: 'Tickets', icon: Ticket, module: 'tickets' },
-  { href: '/students', label: 'Alunos', icon: Users, module: 'students' },
-  { href: '/risk', label: 'Risco', icon: AlertTriangle, module: 'students' },
-  { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare, module: 'students' },
-  { href: '/metrics', label: 'Métricas', icon: BarChart3, module: 'reports' },
-  { href: '/courses', label: 'Cursos', icon: BookOpen, module: 'students' },
-  { href: '/automations', label: 'Automações', icon: Zap, module: 'automations' },
-  { href: '/reports', label: 'Relatórios', icon: BarChart3, module: 'reports' },
-  { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
-  { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations' },
-  { href: '/onboarding', label: 'Onboarding', icon: UserPlus, module: 'students' },
-  { href: '/financial', label: 'Financeiro', icon: DollarSign, module: 'financial' },
-  { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: any;
+  module: string;
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
+}
+
+const menuSections: MenuSection[] = [
+  {
+    title: 'Atendimento',
+    items: [
+      { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations' },
+      { href: '/tickets', label: 'Tickets', icon: Ticket, module: 'tickets' },
+      { href: '/onboarding', label: 'Onboarding', icon: UserPlus, module: 'students' },
+    ],
+  },
+  {
+    title: 'Alunos',
+    items: [
+      { href: '/students', label: 'Alunos', icon: Users, module: 'students' },
+      { href: '/risk', label: 'Risco', icon: AlertTriangle, module: 'students' },
+      { href: '/feedback', label: 'NPS/CSAT', icon: MessageSquare, module: 'students' },
+      { href: '/courses', label: 'Cursos', icon: BookOpen, module: 'students' },
+    ],
+  },
+  {
+    title: 'Financeiro',
+    items: [
+      { href: '/financial', label: 'Financeiro', icon: DollarSign, module: 'financial' },
+    ],
+  },
+  {
+    title: 'Comunicação',
+    items: [
+      { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
+    ],
+  },
+  {
+    title: 'Gestão',
+    items: [
+      { href: '/', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard' },
+      { href: '/metrics', label: 'Métricas', icon: BarChart3, module: 'reports' },
+      { href: '/reports', label: 'Relatórios', icon: FileText, module: 'reports' },
+    ],
+  },
+  {
+    title: 'Configuração',
+    items: [
+      { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -78,7 +119,12 @@ export default function Sidebar() {
     visualizador: 'Visualizador',
   };
 
-  const visibleItems = menuItems.filter((item) => can(item.module));
+  const visibleSections = menuSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => can(item.module)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside className="w-64 bg-gradient-to-b from-[#27273D] to-[#1a1a2e] min-h-screen flex flex-col">
@@ -96,44 +142,48 @@ export default function Sidebar() {
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 px-3 py-4">
-        <p className="px-4 text-xs font-medium text-[#6b6b80] uppercase tracking-wider mb-3">
-          Menu
-        </p>
-        <ul className="space-y-1">
-          {visibleItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/' && pathname.startsWith(item.href));
-            const Icon = item.icon;
+      <nav className="flex-1 px-3 py-2 overflow-y-auto">
+        {visibleSections.map((section) => (
+          <div key={section.title} className="mb-4">
+            <p className="px-4 text-[10px] font-semibold text-[#6b6b80] uppercase tracking-widest mb-2">
+              {section.title}
+            </p>
+            <ul className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== '/' && pathname.startsWith(item.href));
+                const Icon = item.icon;
 
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#2A658F] text-white shadow-lg shadow-[#2A658F]/20'
-                      : 'text-[#a0a0b8] hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#6b6b80] group-hover:text-white'}`} />
-                    <span className="font-medium">{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {item.href === '/conversations' && unreadCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
-                    {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`group flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 ${
+                        isActive
+                          ? 'bg-[#2A658F] text-white shadow-lg shadow-[#2A658F]/20'
+                          : 'text-[#a0a0b8] hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-[#6b6b80] group-hover:text-white'}`} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {item.href === '/conversations' && unreadCount > 0 && (
+                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse">
+                            {unreadCount}
+                          </span>
+                        )}
+                        {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       {/* User */}
