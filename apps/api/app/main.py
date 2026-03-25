@@ -27,6 +27,7 @@ from app.api.routes.reports import router as reports_router
 from app.api.routes.asaas import router as asaas_router
 from app.api.routes.users import router as users_router
 from app.jobs.scheduler import start_scheduler, shutdown_scheduler
+from app.api.routes.whatsapp_templates import router as whatsapp_templates_router
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(asaas_router, prefix="/api")
 app.include_router(conversations_router, prefix="/api")
 app.include_router(broadcasts_router, prefix="/api")
 app.include_router(journeys_router, prefix="/api")
+app.include_router(whatsapp_templates_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 
