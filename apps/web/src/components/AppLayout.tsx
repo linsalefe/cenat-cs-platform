@@ -66,14 +66,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
       )}
 
       {/* Sidebar - desktop: fixo, mobile: drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <Sidebar />
       </div>
 
       {/* Main content */}
-      <main className="flex-1 p-4 pt-[72px] lg:p-8 lg:pt-8 overflow-auto min-w-0">
+      <main className="flex-1 p-4 pt-[72px] lg:p-8 lg:pt-8 lg:ml-64 overflow-auto min-w-0">
         {children}
       </main>
     </div>
