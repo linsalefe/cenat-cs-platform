@@ -1,5 +1,5 @@
 from app.core.permissions import require_permission
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_user
 from app.core.permissions import require_permission
