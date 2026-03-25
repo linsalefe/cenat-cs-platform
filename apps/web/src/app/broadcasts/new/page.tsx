@@ -326,6 +326,18 @@ export default function NewBroadcastPage() {
                 </select>
               </div>
               <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Canal</label>
+                <select
+                  value={selectedChannel}
+                  onChange={(e) => setSelectedChannel(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] outline-none"
+                >
+                  {channels.map((ch) => (
+                    <option key={ch.slug} value={ch.slug}>{ch.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Mensagem</label>
                 <textarea
                   value={newBody}

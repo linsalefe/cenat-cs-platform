@@ -61,12 +61,13 @@ class TemplateCreate(BaseModel):
     body: str
     header_text: Optional[str] = None
     footer_text: Optional[str] = None
+    channel: str = "cs"
 
 
 @router.post("/templates")
 async def create_template(data: TemplateCreate, current_user=Depends(get_current_user)):
     """Cria novo template na Meta e envia para aprovação"""
-    channel = get_channel("cs")
+    channel = get_channel(data.channel)
     if not channel or not channel.is_configured:
         raise HTTPException(400, "Canal WhatsApp não configurado")
 
