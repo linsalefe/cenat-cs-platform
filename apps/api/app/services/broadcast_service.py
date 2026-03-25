@@ -18,7 +18,7 @@ def build_template_components(template_params: list, student: Student) -> list:
         "{{primeiro_nome}}": (student.name or "").split()[0] if student.name else "",
         "{{email}}": student.email or "",
         "{{telefone}}": student.phone or "",
-        "{{curso}}": student.primary_course_name or "",
+        "{{curso}}": student.primary_course_name or "sua pós-graduação no CENAT",
         "{{status_financeiro}}": student.financial_status or "",
     }
 
