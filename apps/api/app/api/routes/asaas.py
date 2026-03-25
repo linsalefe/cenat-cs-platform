@@ -73,39 +73,101 @@ async def sync_customers(
 
 @router.get("/summary")
 async def financial_summary(
+    period: str = Query("month", description="today, 7d, 30d, month"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("financial", "read")),
 ):
-    """Resumo financeiro agregado — valores e contagens por status"""
+    """Resumo financeiro agregado com filtro de período"""
     from sqlalchemy import func, case
+    from datetime import datetime, timedelta
+    import pytz
 
-    # Dados dos alunos
+    tz = pytz.timezone("America/Sao_Paulo")
+    now = datetime.now(tz)
+
+    # Define intervalo de datas
+    if period == "today":
+        start_date = now.strftime("%Y-%m-%d")
+        end_date = start_date
+    elif period == "7d":
+        start_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+    elif period == "30d":
+        start_date = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")
+    else:  # month
+        start_date = now.strftime("%Y-%m-01")
+        end_date = now.strftime("%Y-%m-%d")
+
+    # Dados dos alunos (sem filtro de data — é snapshot)
     result = db.query(
         func.count(case((Student.financial_status == 'em_dia', 1))).label('em_dia_count'),
         func.count(case((Student.financial_status == 'pendente', 1))).label('pendente_count'),
         func.count(case((Student.financial_status == 'inadimplente', 1))).label('inadimplente_count'),
         func.count(case((Student.financial_status.is_(None), 1))).label('sem_vinculo_count'),
         func.coalesce(func.sum(case((Student.financial_status == 'inadimplente', Student.overdue_value), else_=0)), 0).label('total_overdue'),
-        func.coalesce(func.sum(case((Student.financial_status == 'pendente', Student.overdue_value), else_=0)), 0).label('total_pending_value'),
     ).first()
 
-    # Busca totais da API ASAAS
+    # Busca cobranças da API ASAAS com filtro de data
     try:
-        received = await asaas_service.get_all_payments_by_status("RECEIVED")
-        pending = await asaas_service.get_all_payments_by_status("PENDING")
-        overdue = await asaas_service.get_all_payments_by_status("OVERDUE")
-        confirmed = await asaas_service.get_all_payments_by_status("CONFIRMED")
+        import httpx, os
+        api_key = os.getenv("ASAAS_API_KEY", "")
+        base_url = os.getenv("ASAAS_BASE_URL", "https://api.asaas.com/v3")
+        headers = {"access_token": api_key}
 
-        received_value = sum(p.get("value", 0) for p in received)
-        pending_value = sum(p.get("value", 0) for p in pending)
-        overdue_value = sum(p.get("value", 0) for p in overdue)
-        confirmed_value = sum(p.get("value", 0) for p in confirmed)
+        async with httpx.AsyncClient(timeout=30) as client:
+            payments_data = {"received": [], "confirmed": [], "pending": [], "overdue": []}
+
+            for status in ["RECEIVED", "CONFIRMED", "PENDING", "OVERDUE"]:
+                offset = 0
+                all_payments = []
+                while True:
+                    params = {
+                        "status": status,
+                        "limit": 100,
+                        "offset": offset,
+                    }
+                    if status in ["RECEIVED", "CONFIRMED"]:
+                        params["paymentDate[ge]"] = start_date
+                        params["paymentDate[le]"] = end_date
+                    elif status == "PENDING":
+                        params["dueDate[ge]"] = start_date
+                        params["dueDate[le]"] = end_date
+                    elif status == "OVERDUE":
+                        # Vencidas: todas até hoje
+                        params["dueDate[le]"] = end_date
+
+                    r = await client.get(f"{base_url}/payments", headers=headers, params=params)
+                    data = r.json()
+                    items = data.get("data", [])
+                    all_payments.extend(items)
+
+                    if not data.get("hasMore", False):
+                        break
+                    offset += 100
+
+                key = status.lower()
+                payments_data[key] = all_payments
+
+        received_value = sum(p.get("value", 0) for p in payments_data["received"])
+        confirmed_value = sum(p.get("value", 0) for p in payments_data["confirmed"])
+        pending_value = sum(p.get("value", 0) for p in payments_data["pending"])
+        overdue_value = sum(p.get("value", 0) for p in payments_data["overdue"])
+
+        received_count = len(payments_data["received"])
+        confirmed_count = len(payments_data["confirmed"])
+        pending_count = len(payments_data["pending"])
+        overdue_count = len(payments_data["overdue"])
+
     except Exception as e:
         print(f"⚠️ Erro ao buscar totais ASAAS: {e}")
-        received_value = pending_value = overdue_value = confirmed_value = 0
-        received = pending = overdue = confirmed = []
+        received_value = confirmed_value = pending_value = overdue_value = 0
+        received_count = confirmed_count = pending_count = overdue_count = 0
 
     return {
+        "period": period,
+        "start_date": start_date,
+        "end_date": end_date,
         "students": {
             "em_dia": result.em_dia_count,
             "pendente": result.pendente_count,
@@ -114,10 +176,10 @@ async def financial_summary(
             "total_overdue": float(result.total_overdue),
         },
         "payments": {
-            "received": {"count": len(received), "value": received_value},
-            "confirmed": {"count": len(confirmed), "value": confirmed_value},
-            "pending": {"count": len(pending), "value": pending_value},
-            "overdue": {"count": len(overdue), "value": overdue_value},
+            "received": {"count": received_count, "value": received_value},
+            "confirmed": {"count": confirmed_count, "value": confirmed_value},
+            "pending": {"count": pending_count, "value": pending_value},
+            "overdue": {"count": overdue_count, "value": overdue_value},
         },
     }
 
