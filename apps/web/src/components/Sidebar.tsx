@@ -127,7 +127,7 @@ export default function Sidebar() {
     .filter((section) => section.items.length > 0);
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-[#27273D] to-[#1a1a2e] min-h-screen flex flex-col">
+    <aside className="w-64 bg-gradient-to-b from-[#27273D] to-[#1a1a2e] h-screen flex flex-col">
       {/* Logo */}
       <div className="p-6">
         <div className="flex items-center gap-3">
