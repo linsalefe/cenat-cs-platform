@@ -75,7 +75,11 @@ def list_conversations(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Lista todas as conversas"""
+    """Lista todas as conversas — filtrado por canal do usuário"""
+    # Admin e Gestor veem tudo, Atendente/Visualizador só veem seu canal
+    if not channel and current_user.role in ("atendente", "visualizador"):
+        channel = getattr(current_user, "channel", None)
+
     conversations = conversation_service.list_conversations(db, status, assigned_to_id, unread_only, channel=channel)
     return [serialize_conversation(c) for c in conversations]
 
