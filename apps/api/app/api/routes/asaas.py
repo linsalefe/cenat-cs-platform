@@ -22,6 +22,7 @@ async def sync_customers(
     matched = 0
     not_found = 0
     total_asaas = 0
+    errors = 0
 
     while True:
         data = await asaas_service.get_all_customers(limit=limit, offset=offset)
@@ -36,12 +37,25 @@ async def sync_customers(
 
             student = db.query(Student).filter(Student.email == email).first()
             if student:
-                student.asaas_customer_id = customer["id"]
-                student.cpf = customer.get("cpfCnpj")
-                phone = customer.get("mobilePhone") or customer.get("phone")
-                if phone and not student.phone:
-                    student.phone = phone
-                matched += 1
+                try:
+                    student.asaas_customer_id = customer["id"]
+                    phone = customer.get("mobilePhone") or customer.get("phone")
+                    if phone and not student.phone:
+                        student.phone = phone
+                    # CPF: só atualiza se não causar conflito
+                    cpf = customer.get("cpfCnpj")
+                    if cpf:
+                        existing = db.query(Student).filter(
+                            Student.cpf == cpf, Student.id != student.id
+                        ).first()
+                        if not existing:
+                            student.cpf = cpf
+                    db.commit()
+                    matched += 1
+                except Exception as e:
+                    db.rollback()
+                    errors += 1
+                    print(f"⚠️ Erro ao atualizar {email}: {e}")
             else:
                 not_found += 1
 
@@ -49,13 +63,12 @@ async def sync_customers(
             break
         offset += limit
 
-    db.commit()
-
     return {
         "status": "ok",
         "total_asaas": total_asaas,
         "matched": matched,
         "not_found": not_found,
+        "errors": errors,
     }
 
 
