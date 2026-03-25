@@ -18,6 +18,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: UserRole = UserRole.ATENDENTE
+    channel: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -25,6 +26,7 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     password: Optional[str] = None
+    channel: Optional[str] = None
 
 
 @router.get("")
@@ -63,6 +65,7 @@ def create_user(
         email=data.email,
         hashed_password=pwd_context.hash(data.password),
         role=data.role,
+        channel=data.channel,
         is_active=True,
     )
     db.add(user)
@@ -75,6 +78,7 @@ def create_user(
         "email": user.email,
         "role": user.role.value,
         "is_active": user.is_active,
+        
     }
 
 
@@ -103,6 +107,8 @@ def update_user(
         user.is_active = data.is_active
     if data.password:
         user.hashed_password = pwd_context.hash(data.password)
+    if data.channel is not None:
+        user.channel = data.channel
 
     db.commit()
 
