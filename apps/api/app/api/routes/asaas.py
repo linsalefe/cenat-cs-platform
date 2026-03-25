@@ -71,6 +71,55 @@ async def sync_customers(
         "errors": errors,
     }
 
+@router.get("/summary")
+async def financial_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("financial", "read")),
+):
+    """Resumo financeiro agregado — valores e contagens por status"""
+    from sqlalchemy import func, case
+
+    # Dados dos alunos
+    result = db.query(
+        func.count(case((Student.financial_status == 'em_dia', 1))).label('em_dia_count'),
+        func.count(case((Student.financial_status == 'pendente', 1))).label('pendente_count'),
+        func.count(case((Student.financial_status == 'inadimplente', 1))).label('inadimplente_count'),
+        func.count(case((Student.financial_status.is_(None), 1))).label('sem_vinculo_count'),
+        func.coalesce(func.sum(case((Student.financial_status == 'inadimplente', Student.overdue_value), else_=0)), 0).label('total_overdue'),
+        func.coalesce(func.sum(case((Student.financial_status == 'pendente', Student.overdue_value), else_=0)), 0).label('total_pending_value'),
+    ).first()
+
+    # Busca totais da API ASAAS
+    try:
+        received = await asaas_service.get_all_payments_by_status("RECEIVED")
+        pending = await asaas_service.get_all_payments_by_status("PENDING")
+        overdue = await asaas_service.get_all_payments_by_status("OVERDUE")
+        confirmed = await asaas_service.get_all_payments_by_status("CONFIRMED")
+
+        received_value = sum(p.get("value", 0) for p in received)
+        pending_value = sum(p.get("value", 0) for p in pending)
+        overdue_value = sum(p.get("value", 0) for p in overdue)
+        confirmed_value = sum(p.get("value", 0) for p in confirmed)
+    except Exception as e:
+        print(f"⚠️ Erro ao buscar totais ASAAS: {e}")
+        received_value = pending_value = overdue_value = confirmed_value = 0
+        received = pending = overdue = confirmed = []
+
+    return {
+        "students": {
+            "em_dia": result.em_dia_count,
+            "pendente": result.pendente_count,
+            "inadimplente": result.inadimplente_count,
+            "sem_vinculo": result.sem_vinculo_count,
+            "total_overdue": float(result.total_overdue),
+        },
+        "payments": {
+            "received": {"count": len(received), "value": received_value},
+            "confirmed": {"count": len(confirmed), "value": confirmed_value},
+            "pending": {"count": len(pending), "value": pending_value},
+            "overdue": {"count": len(overdue), "value": overdue_value},
+        },
+    }
 
 @router.post("/sync-financial")
 async def sync_financial(
