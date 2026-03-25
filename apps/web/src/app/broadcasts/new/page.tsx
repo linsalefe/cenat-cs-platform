@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import AppLayout from '@/components/AppLayout';
@@ -12,15 +12,26 @@ import {
   Loader2,
   CheckCircle2,
   Search,
-  MessageCircle,
   GraduationCap,
-  CreditCard,
-  BarChart3,
   X,
-  ChevronDown,
+  Clock,
+  XCircle,
+  Plus,
+  MessageCircle,
+  Eye,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+
+interface MetaTemplate {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  body: string;
+  param_count: number;
+}
 
 interface StudentPreview {
   id: number;
@@ -29,9 +40,6 @@ interface StudentPreview {
   phone: string;
   primary_course_name: string | null;
   financial_status: string | null;
-  documents_count: number;
-  documents_total: number;
-  moodle_first_access: string | null;
 }
 
 interface CourseOption {
@@ -40,61 +48,18 @@ interface CourseOption {
   count: number;
 }
 
-const templates = [
-  {
-    name: 'boas_vindas',
-    label: 'Boas-vindas',
-    description: 'Mensagem de boas-vindas para novos alunos',
-    icon: MessageCircle,
-    color: 'bg-teal-50 text-teal-700 border-teal-200',
-    iconColor: 'text-teal-600',
-    params: ['{{primeiro_nome}}', '{{curso}}'],
-    paramsLabel: ['Nome do aluno', 'Curso'],
-  },
-  {
-    name: 'lembrete_acesso',
-    label: 'Lembrete de Acesso',
-    description: 'Lembrete para alunos que não acessaram o Moodle',
-    icon: GraduationCap,
-    color: 'bg-purple-50 text-purple-700 border-purple-200',
-    iconColor: 'text-purple-600',
-    params: ['{{primeiro_nome}}'],
-    paramsLabel: ['Nome do aluno'],
-  },
-  {
-    name: 'lembrete_pagamento',
-    label: 'Lembrete de Pagamento',
-    description: 'Lembrete para alunos com pagamento pendente',
-    icon: CreditCard,
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
-    iconColor: 'text-amber-600',
-    params: ['{{primeiro_nome}}'],
-    paramsLabel: ['Nome do aluno'],
-  },
-  {
-    name: 'pesquisa_nps',
-    label: 'Pesquisa NPS',
-    description: 'Pesquisa de satisfação para alunos ativos',
-    icon: BarChart3,
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
-    iconColor: 'text-blue-600',
-    params: ['{{primeiro_nome}}'],
-    paramsLabel: ['Nome do aluno'],
-  },
-
-  {
-    name: 'custom',
-    label: 'Outros Assuntos',
-    description: 'Enviar outro template aprovado pela Meta',
-    icon: Send,
-    color: 'bg-gray-50 text-gray-700 border-gray-200',
-    iconColor: 'text-gray-600',
-    params: [],
-    paramsLabel: [],
-  },
-];
-
 type SendMode = 'all' | 'course' | 'individual';
+
+const statusStyles: Record<string, { label: string; color: string; icon: any }> = {
+  APPROVED: { label: 'Aprovado', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
+  PENDING: { label: 'Pendente', color: 'bg-amber-50 text-amber-700', icon: Clock },
+  REJECTED: { label: 'Rejeitado', color: 'bg-red-50 text-red-700', icon: XCircle },
+};
+
+const variableMap: Record<number, string> = {
+  1: '{{primeiro_nome}}',
+  2: '{{curso}}',
+};
 
 export default function NewBroadcastPage() {
   const { user, loading: authLoading } = useAuth();
@@ -102,11 +67,18 @@ export default function NewBroadcastPage() {
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Template
+  // Templates
+  const [templates, setTemplates] = useState<MetaTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [showBody, setShowBody] = useState<string | null>(null);
 
-  const [customTemplateName, setCustomTemplateName] = useState('');
-  const [customParams, setCustomParams] = useState<string[]>([]);
+  // Criar template
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newBody, setNewBody] = useState('');
+  const [newCategory, setNewCategory] = useState('MARKETING');
+  const [creating, setCreating] = useState(false);
 
   // Send mode
   const [sendMode, setSendMode] = useState<SendMode>('all');
@@ -133,7 +105,18 @@ export default function NewBroadcastPage() {
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
-  useEffect(() => { if (user) loadCourses(); }, [user]);
+  useEffect(() => { if (user) { loadTemplates(); loadCourses(); } }, [user]);
+
+  const loadTemplates = async () => {
+    try {
+      const res = await api.get('/whatsapp/templates');
+      setTemplates(res.data);
+    } catch {
+      toast.error('Erro ao carregar templates');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   const loadCourses = async () => {
     try {
@@ -142,15 +125,37 @@ export default function NewBroadcastPage() {
     } catch {}
   };
 
+  const handleCreateTemplate = async () => {
+    if (!newName.trim()) { toast.error('Informe o nome do template'); return; }
+    if (!newBody.trim()) { toast.error('Informe o corpo da mensagem'); return; }
+
+    setCreating(true);
+    try {
+      await api.post('/whatsapp/templates', {
+        name: newName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+        category: newCategory,
+        language: 'pt_BR',
+        body: newBody,
+      });
+      toast.success('Template enviado para aprovação da Meta!');
+      setShowCreateForm(false);
+      setNewName('');
+      setNewBody('');
+      loadTemplates();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Erro ao criar template');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const searchStudents = async (term: string) => {
     if (term.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
       const res = await api.get(`/broadcasts/preview?search=${encodeURIComponent(term)}&limit=10`);
       setSearchResults(res.data.data || []);
-    } catch {} finally {
-      setSearching(false);
-    }
+    } catch {} finally { setSearching(false); }
   };
 
   useEffect(() => {
@@ -177,7 +182,6 @@ export default function NewBroadcastPage() {
       setShowPreview(true);
       return;
     }
-
     setLoadingPreview(true);
     try {
       const params = new URLSearchParams();
@@ -185,51 +189,25 @@ export default function NewBroadcastPage() {
       if (financialStatus) params.append('financial_status', financialStatus);
       if (loginStatus) params.append('login_status', loginStatus);
       params.append('limit', '50');
-
       const res = await api.get(`/broadcasts/preview?${params.toString()}`);
       setPreviewStudents(res.data.data || []);
       setTotalStudents(res.data.total || 0);
       setShowPreview(true);
-    } catch {
-      toast.error('Erro ao carregar preview');
-    } finally {
-      setLoadingPreview(false);
-    }
+    } catch { toast.error('Erro ao carregar preview'); }
+    finally { setLoadingPreview(false); }
   };
 
   const handleSend = async () => {
-    if (!selectedTemplate) { toast.error('Selecione um modelo de mensagem'); return; }
+    const tpl = templates.find(t => t.name === selectedTemplate);
+    if (!tpl) { toast.error('Selecione um template'); return; }
+    if (tpl.status !== 'APPROVED') { toast.error('Só é possível enviar templates aprovados'); return; }
+    if (sendMode === 'individual' && selectedStudents.length === 0) { toast.error('Selecione pelo menos um aluno'); return; }
+    if (sendMode === 'course' && !selectedCourseId) { toast.error('Selecione um curso'); return; }
 
-    let templateDef = templates.find(t => t.name === selectedTemplate);
-    if (!templateDef) return;
-
-    const finalTemplateName = selectedTemplate === 'custom' ? customTemplateName : templateDef.name;
-    const finalParams = selectedTemplate === 'custom' ? customParams : templateDef.params;
-
-    if (selectedTemplate === 'custom' && !customTemplateName.trim()) {
-      toast.error('Informe o nome do template');
-      return;
-    }
-
-    if (sendMode === 'individual' && selectedStudents.length === 0) {
-      toast.error('Selecione pelo menos um aluno');
-      return;
-    }
-    if (sendMode === 'course' && !selectedCourseId) {
-      toast.error('Selecione um curso');
-      return;
-    }
-
-    const courseName = sendMode === 'course'
-      ? courses.find(c => c.id === selectedCourseId)?.name || ''
-      : sendMode === 'all' ? 'Todos' : 'Individual';
-
-    const displayLabel = selectedTemplate === 'custom' ? customTemplateName : templateDef.label;
-
+    const courseName = sendMode === 'course' ? courses.find(c => c.id === selectedCourseId)?.name || '' : '';
     const confirmMsg = sendMode === 'individual'
-      ? `Enviar "${displayLabel}" para ${selectedStudents.length} aluno(s)?`
-      : `Enviar "${displayLabel}" para ${totalStudents} alunos${sendMode === 'course' ? ` do curso "${courseName}"` : ''}?`;
-
+      ? `Enviar "${tpl.name}" para ${selectedStudents.length} aluno(s)?`
+      : `Enviar "${tpl.name}" para ${totalStudents} alunos?`;
     if (!confirm(confirmMsg)) return;
 
     setSaving(true);
@@ -242,37 +220,37 @@ export default function NewBroadcastPage() {
         filters.search = selectedStudents.map(s => s.email).join('||');
       }
 
-      const broadcastName = sendMode === 'individual'
-        ? `${displayLabel} — ${selectedStudents.map(s => s.name.split(' ')[0]).join(', ')}`
-        : sendMode === 'course'
-        ? `${displayLabel} — ${courseName}`
-        : `${displayLabel} — Todos`;
+      // Monta params automáticos baseado no param_count
+      const templateParams: string[] = [];
+      for (let i = 1; i <= tpl.param_count; i++) {
+        templateParams.push(variableMap[i] || `{{primeiro_nome}}`);
+      }
 
-      // Cria o disparo
+      const broadcastName = sendMode === 'individual'
+        ? `${tpl.name} — ${selectedStudents.map(s => s.name.split(' ')[0]).join(', ')}`
+        : sendMode === 'course'
+        ? `${tpl.name} — ${courseName}`
+        : `${tpl.name} — Todos`;
+
       const res = await api.post('/broadcasts', {
         name: broadcastName,
-        description: null,
         channel: 'cs',
         filters,
-        template_name: finalTemplateName,
-        template_language: 'pt_BR',
-        template_params: finalParams,
+        template_name: tpl.name,
+        template_language: tpl.language,
+        template_params: templateParams,
       });
 
-      // Inicia envio automaticamente
       await api.post(`/broadcasts/${res.data.id}/send`);
       toast.success(`Disparo iniciado! ${res.data.total_students} aluno(s) receberão a mensagem.`);
       router.push(`/broadcasts/${res.data.id}`);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Erro ao criar disparo');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
-  const selectedTemplateDef = templates.find(t => t.name === selectedTemplate);
-
-  const canPreview = selectedTemplate && (
+  const selectedTpl = templates.find(t => t.name === selectedTemplate);
+  const canPreview = selectedTemplate && selectedTpl?.status === 'APPROVED' && (
     sendMode === 'all' ||
     (sendMode === 'course' && selectedCourseId) ||
     (sendMode === 'individual' && selectedStudents.length > 0)
@@ -293,98 +271,161 @@ export default function NewBroadcastPage() {
           <p className="text-sm text-gray-500 mt-1">Envie mensagens pelo WhatsApp para seus alunos</p>
         </div>
 
-        {/* PASSO 1 — Modelo de Mensagem */}
+        {/* PASSO 1 — Selecionar Template */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-            <h2 className="text-lg font-semibold text-[#27273D]">O que enviar?</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+              <h2 className="text-lg font-semibold text-[#27273D]">Escolha a mensagem</h2>
+            </div>
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#2A658F] bg-[#E2ECF4] hover:bg-[#CCE4F4] rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Criar novo
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {templates.map((t) => {
-              const Icon = t.icon;
-              const isSelected = selectedTemplate === t.name;
-              return (
-                <button
-                  key={t.name}
-                  onClick={() => setSelectedTemplate(t.name)}
-                  className={`relative text-left p-4 rounded-xl border-2 transition-all duration-200 ${
-                    isSelected
-                      ? 'border-[#2A658F] bg-[#E2ECF4] shadow-md'
-                      : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className="absolute top-3 right-3">
-                      <CheckCircle2 className="w-5 h-5 text-[#2A658F]" />
-                    </div>
-                  )}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${isSelected ? 'bg-[#2A658F]/10' : 'bg-gray-50'}`}>
-                    <Icon className={`w-5 h-5 ${isSelected ? 'text-[#2A658F]' : t.iconColor}`} />
-                  </div>
-                  <h3 className={`font-medium mb-1 ${isSelected ? 'text-[#2A658F]' : 'text-[#27273D]'}`}>{t.label}</h3>
-                  <p className="text-xs text-gray-500">{t.description}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedTemplate === 'custom' && (
-            <div className="mt-4 space-y-3 p-4 bg-gray-50 rounded-xl">
+          {/* Criar template */}
+          {showCreateForm && (
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl space-y-3 border border-gray-200">
+              <h3 className="text-sm font-semibold text-[#27273D]">Criar novo template</h3>
+              <p className="text-xs text-gray-500">O template será enviado para aprovação da Meta. Pode levar de minutos a 24h.</p>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome do template (exato da Meta) *</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Nome (sem espaços ou acentos)</label>
                 <input
                   type="text"
-                  value={customTemplateName}
-                  onChange={(e) => setCustomTemplateName(e.target.value)}
-                  placeholder="Ex: lembrete_documentos"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none text-sm"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="ex: aviso_matricula"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 outline-none"
                 />
               </div>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">Parâmetros</label>
-                  <button onClick={() => setCustomParams([...customParams, '{{primeiro_nome}}'])} className="text-xs text-[#2A658F] hover:underline">+ Adicionar</button>
-                </div>
-                {customParams.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">Nenhum parâmetro (template sem variáveis)</p>
-                ) : (
-                  <div className="space-y-2">
-                    {customParams.map((p, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 w-10">{`{{${i + 1}}}`}</span>
-                        <input
-                          type="text"
-                          value={p}
-                          onChange={(e) => { const u = [...customParams]; u[i] = e.target.value; setCustomParams(u); }}
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-[#2A658F] outline-none"
-                        />
-                        <button onClick={() => setCustomParams(customParams.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-sm">✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-gray-400 mt-2">Variáveis: {`{{primeiro_nome}}`} {`{{curso}}`} {`{{email}}`} {`{{nome}}`}</p>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Categoria</label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] outline-none"
+                >
+                  <option value="MARKETING">Marketing</option>
+                  <option value="UTILITY">Utilidade</option>
+                </select>
               </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Mensagem</label>
+                <textarea
+                  value={newBody}
+                  onChange={(e) => setNewBody(e.target.value)}
+                  placeholder={"Olá, {{1}}! Aqui é do CENAT...\n\nUse {{1}}, {{2}} para variáveis"}
+                  rows={5}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 outline-none resize-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Use {'{{1}}'} para nome, {'{{2}}'} para curso, etc.</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowCreateForm(false)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateTemplate}
+                  disabled={creating}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#2A658F] rounded-lg hover:bg-[#1e4f72] transition-colors disabled:opacity-50"
+                >
+                  {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  Enviar para aprovação
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de templates */}
+          {loadingTemplates ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+            </div>
+          ) : templates.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">Nenhum template encontrado</p>
+          ) : (
+            <div className="space-y-2">
+              {templates.map((t) => {
+                const isSelected = selectedTemplate === t.name;
+                const st = statusStyles[t.status] || statusStyles.PENDING;
+                const StIcon = st.icon;
+                const isApproved = t.status === 'APPROVED';
+
+                return (
+                  <div key={t.id}>
+                    <button
+                      onClick={() => { if (isApproved) setSelectedTemplate(isSelected ? '' : t.name); }}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                        isSelected
+                          ? 'border-[#2A658F] bg-[#E2ECF4] shadow-md'
+                          : isApproved
+                          ? 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                          : 'border-gray-100 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-[#2A658F]/10' : 'bg-gray-50'}`}>
+                            <MessageCircle className={`w-5 h-5 ${isSelected ? 'text-[#2A658F]' : 'text-gray-400'}`} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className={`font-medium ${isSelected ? 'text-[#2A658F]' : 'text-[#27273D]'}`}>
+                                {t.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </h3>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${st.color}`}>
+                                <StIcon className="w-3 h-3" />
+                                {st.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {t.category} · {t.param_count} parâmetro(s) · {t.language}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowBody(showBody === t.name ? null : t.name); }}
+                            className="p-1.5 text-gray-400 hover:text-[#2A658F] hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-[#2A658F]" />}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Preview do body */}
+                    {showBody === t.name && (
+                      <div className="mt-1 ml-14 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 whitespace-pre-wrap border border-gray-100">
+                        {t.body || 'Sem conteúdo'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* PASSO 2 — Para quem enviar */}
-        {selectedTemplate && (
+        {selectedTemplate && selectedTpl?.status === 'APPROVED' && (
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
               <h2 className="text-lg font-semibold text-[#27273D]">Para quem enviar?</h2>
             </div>
 
-            {/* Modo de envio */}
             <div className="grid grid-cols-3 gap-3 mb-5">
-              {[
+              {([
                 { key: 'all' as SendMode, label: 'Todos os alunos', icon: Users, desc: 'Enviar para todos' },
                 { key: 'course' as SendMode, label: 'Por curso', icon: GraduationCap, desc: 'Filtrar por curso' },
                 { key: 'individual' as SendMode, label: 'Individual', icon: User, desc: 'Escolher alunos' },
-              ].map((mode) => {
+              ]).map((mode) => {
                 const Icon = mode.icon;
                 const isSelected = sendMode === mode.key;
                 return (
@@ -392,9 +433,7 @@ export default function NewBroadcastPage() {
                     key={mode.key}
                     onClick={() => { setSendMode(mode.key); setShowPreview(false); }}
                     className={`text-center p-4 rounded-xl border-2 transition-all duration-200 ${
-                      isSelected
-                        ? 'border-[#2A658F] bg-[#E2ECF4]'
-                        : 'border-gray-100 hover:border-gray-200'
+                      isSelected ? 'border-[#2A658F] bg-[#E2ECF4]' : 'border-gray-100 hover:border-gray-200'
                     }`}
                   >
                     <Icon className={`w-5 h-5 mx-auto mb-2 ${isSelected ? 'text-[#2A658F]' : 'text-gray-400'}`} />
@@ -405,7 +444,6 @@ export default function NewBroadcastPage() {
               })}
             </div>
 
-            {/* Filtros por curso */}
             {sendMode === 'course' && (
               <div className="mb-4">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Selecione o curso</label>
@@ -422,7 +460,6 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            {/* Busca individual */}
             {sendMode === 'individual' && (
               <div className="mb-4">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Buscar aluno por nome ou email</label>
@@ -438,7 +475,6 @@ export default function NewBroadcastPage() {
                   {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
                 </div>
 
-                {/* Resultados da busca */}
                 {searchResults.length > 0 && (
                   <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-lg">
                     {searchResults.map((s) => (
@@ -465,16 +501,12 @@ export default function NewBroadcastPage() {
                   </div>
                 )}
 
-                {/* Alunos selecionados */}
                 {selectedStudents.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs font-medium text-gray-500 mb-2">{selectedStudents.length} aluno(s) selecionado(s)</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedStudents.map((s) => (
-                        <span
-                          key={s.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E2ECF4] text-[#2A658F] text-sm font-medium rounded-full"
-                        >
+                        <span key={s.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E2ECF4] text-[#2A658F] text-sm font-medium rounded-full">
                           {s.name.split(' ')[0]}
                           <button onClick={() => removeStudent(s.id)} className="hover:text-red-500 transition-colors">
                             <X className="w-3.5 h-3.5" />
@@ -487,7 +519,6 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            {/* Filtros extras (para todos e por curso) */}
             {sendMode !== 'individual' && (
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
@@ -518,7 +549,6 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            {/* Botão preview */}
             <button
               onClick={loadPreview}
               disabled={!canPreview || loadingPreview}
@@ -530,7 +560,7 @@ export default function NewBroadcastPage() {
           </div>
         )}
 
-        {/* PASSO 3 — Preview e Confirmar */}
+        {/* PASSO 3 — Confirmar */}
         {showPreview && (
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -538,14 +568,11 @@ export default function NewBroadcastPage() {
               <h2 className="text-lg font-semibold text-[#27273D]">Confirmar envio</h2>
             </div>
 
-            {/* Resumo */}
             <div className="bg-gradient-to-r from-[#27273D] to-[#2A658F] rounded-xl p-5 text-white mb-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-white/60 text-xs mb-1">Mensagem</p>
-                  <p className="font-medium">
-                    {selectedTemplate === 'custom' ? customTemplateName : selectedTemplateDef?.label}
-                  </p>
+                  <p className="font-medium">{selectedTpl?.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                 </div>
                 <div>
                   <p className="text-white/60 text-xs mb-1">Destinatários</p>
@@ -554,7 +581,6 @@ export default function NewBroadcastPage() {
               </div>
             </div>
 
-            {/* Lista */}
             {previewStudents.length > 0 && (
               <div className="max-h-60 overflow-y-auto mb-5 border border-gray-100 rounded-xl">
                 {previewStudents.map((s, i) => (
@@ -576,17 +602,12 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            {/* Botão enviar */}
             <button
               onClick={handleSend}
               disabled={saving}
               className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-white bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl hover:shadow-lg hover:shadow-[#2A658F]/30 transition-all disabled:opacity-50"
             >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Enviar para {totalStudents} aluno(s)
             </button>
           </div>
