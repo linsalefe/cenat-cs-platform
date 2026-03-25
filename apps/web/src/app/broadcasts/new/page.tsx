@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import AppLayout from '@/components/AppLayout';
@@ -8,12 +8,16 @@ import {
   ArrowLeft,
   Send,
   Users,
-  Filter,
-  Eye,
+  User,
   Loader2,
-  Save,
   CheckCircle2,
   Search,
+  MessageCircle,
+  GraduationCap,
+  CreditCard,
+  BarChart3,
+  X,
+  ChevronDown,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -36,71 +40,86 @@ interface CourseOption {
   count: number;
 }
 
-const channelOptions = [
-  { key: 'cs', label: 'CS' },
-  { key: 'secretaria', label: 'Secretaria' },
-  { key: 'financeiro', label: 'Financeiro' },
-  { key: 'pedagogico', label: 'Pedagógico' },
+const templates = [
+  {
+    name: 'boas_vindas',
+    label: 'Boas-vindas',
+    description: 'Mensagem de boas-vindas para novos alunos',
+    icon: MessageCircle,
+    color: 'bg-teal-50 text-teal-700 border-teal-200',
+    iconColor: 'text-teal-600',
+    params: ['{{primeiro_nome}}', '{{curso}}'],
+    paramsLabel: ['Nome do aluno', 'Curso'],
+  },
+  {
+    name: 'lembrete_acesso',
+    label: 'Lembrete de Acesso',
+    description: 'Lembrete para alunos que não acessaram o Moodle',
+    icon: GraduationCap,
+    color: 'bg-purple-50 text-purple-700 border-purple-200',
+    iconColor: 'text-purple-600',
+    params: ['{{primeiro_nome}}'],
+    paramsLabel: ['Nome do aluno'],
+  },
+  {
+    name: 'lembrete_pagamento',
+    label: 'Lembrete de Pagamento',
+    description: 'Lembrete para alunos com pagamento pendente',
+    icon: CreditCard,
+    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    iconColor: 'text-amber-600',
+    params: ['{{primeiro_nome}}'],
+    paramsLabel: ['Nome do aluno'],
+  },
+  {
+    name: 'pesquisa_nps',
+    label: 'Pesquisa NPS',
+    description: 'Pesquisa de satisfação para alunos ativos',
+    icon: BarChart3,
+    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    iconColor: 'text-blue-600',
+    params: ['{{primeiro_nome}}'],
+    paramsLabel: ['Nome do aluno'],
+  },
 ];
 
-const financialOptions = [
-  { key: '', label: 'Todos' },
-  { key: 'em_dia', label: 'Em dia' },
-  { key: 'pendente', label: 'Pendente' },
-  { key: 'inadimplente', label: 'Inadimplente' },
-];
-
-const loginOptions = [
-  { key: '', label: 'Todos' },
-  { key: 'logged', label: 'Já acessou' },
-  { key: 'never_logged', label: 'Nunca acessou' },
-];
-
-const docsOptions = [
-  { key: '', label: 'Todos' },
-  { key: 'complete', label: 'Completa' },
-  { key: 'incomplete', label: 'Incompleta' },
-  { key: 'none', label: 'Nenhum doc' },
-];
+type SendMode = 'all' | 'course' | 'individual';
 
 export default function NewBroadcastPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [step, setStep] = useState(1);
 
-  // Step 1 - Info
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [channel, setChannel] = useState('cs');
+  // Template
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
-  // Step 2 - Filters
-  const [loginStatus, setLoginStatus] = useState('');
-  const [docsStatus, setDocsStatus] = useState('');
-  const [financialStatus, setFinancialStatus] = useState('');
-  const [courseId, setCourseId] = useState<number | null>(null);
+  // Send mode
+  const [sendMode, setSendMode] = useState<SendMode>('all');
+
+  // Course filter
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
-  // Step 3 - Preview
-  const [students, setStudents] = useState<StudentPreview[]>([]);
+  // Individual
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<StudentPreview[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<StudentPreview[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  // Filters extras
+  const [financialStatus, setFinancialStatus] = useState('');
+  const [loginStatus, setLoginStatus] = useState('');
+
+  // Preview
+  const [previewStudents, setPreviewStudents] = useState<StudentPreview[]>([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [loadingPreview, setLoadingPreview] = useState(false);
-
-  // Step 4 - Template
-  const [templateName, setTemplateName] = useState('');
-  const [templateParams, setTemplateParams] = useState<string[]>([]);
-  const [templateLanguage, setTemplateLanguage] = useState('pt_BR');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/login');
-  }, [user, authLoading, router]);
-
-  useEffect(() => {
-    if (user) loadCourses();
-  }, [user]);
+  useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
+  useEffect(() => { if (user) loadCourses(); }, [user]);
 
   const loadCourses = async () => {
     try {
@@ -109,19 +128,54 @@ export default function NewBroadcastPage() {
     } catch {}
   };
 
+  const searchStudents = async (term: string) => {
+    if (term.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await api.get(`/broadcasts/preview?search=${encodeURIComponent(term)}&limit=10`);
+      setSearchResults(res.data.data || []);
+    } catch {} finally {
+      setSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchStudents(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const addStudent = (student: StudentPreview) => {
+    if (!selectedStudents.find(s => s.id === student.id)) {
+      setSelectedStudents(prev => [...prev, student]);
+    }
+    setSearchTerm('');
+    setSearchResults([]);
+  };
+
+  const removeStudent = (id: number) => {
+    setSelectedStudents(prev => prev.filter(s => s.id !== id));
+  };
+
   const loadPreview = async () => {
+    if (sendMode === 'individual') {
+      setPreviewStudents(selectedStudents);
+      setTotalStudents(selectedStudents.length);
+      setShowPreview(true);
+      return;
+    }
+
     setLoadingPreview(true);
     try {
       const params = new URLSearchParams();
-      if (loginStatus) params.append('login_status', loginStatus);
-      if (docsStatus) params.append('docs_status', docsStatus);
+      if (sendMode === 'course' && selectedCourseId) params.append('course_id', String(selectedCourseId));
       if (financialStatus) params.append('financial_status', financialStatus);
-      if (courseId) params.append('course_id', String(courseId));
+      if (loginStatus) params.append('login_status', loginStatus);
       params.append('limit', '50');
 
       const res = await api.get(`/broadcasts/preview?${params.toString()}`);
-      setStudents(res.data.data || []);
+      setPreviewStudents(res.data.data || []);
       setTotalStudents(res.data.total || 0);
+      setShowPreview(true);
     } catch {
       toast.error('Erro ao carregar preview');
     } finally {
@@ -129,35 +183,62 @@ export default function NewBroadcastPage() {
     }
   };
 
-  useEffect(() => {
-    if (step === 3) loadPreview();
-  }, [step]);
+  const handleSend = async () => {
+    if (!selectedTemplate) { toast.error('Selecione um modelo de mensagem'); return; }
 
-  const handleSave = async () => {
-    if (!name.trim()) { toast.error('Informe o nome do disparo'); return; }
-    if (!templateName.trim()) { toast.error('Informe o nome do template'); return; }
-    if (totalStudents === 0) { toast.error('Nenhum aluno será impactado'); return; }
+    const template = templates.find(t => t.name === selectedTemplate);
+    if (!template) return;
+
+    if (sendMode === 'individual' && selectedStudents.length === 0) {
+      toast.error('Selecione pelo menos um aluno');
+      return;
+    }
+    if (sendMode === 'course' && !selectedCourseId) {
+      toast.error('Selecione um curso');
+      return;
+    }
+
+    const courseName = sendMode === 'course'
+      ? courses.find(c => c.id === selectedCourseId)?.name || ''
+      : sendMode === 'all' ? 'Todos' : 'Individual';
+
+    const confirmMsg = sendMode === 'individual'
+      ? `Enviar "${template.label}" para ${selectedStudents.length} aluno(s)?`
+      : `Enviar "${template.label}" para ${totalStudents} alunos${sendMode === 'course' ? ` do curso "${courseName}"` : ''}?`;
+
+    if (!confirm(confirmMsg)) return;
 
     setSaving(true);
     try {
       const filters: Record<string, any> = {};
-      if (loginStatus) filters.login_status = loginStatus;
-      if (docsStatus) filters.docs_status = docsStatus;
+      if (sendMode === 'course' && selectedCourseId) filters.course_id = selectedCourseId;
       if (financialStatus) filters.financial_status = financialStatus;
-      if (courseId) filters.course_id = courseId;
+      if (loginStatus) filters.login_status = loginStatus;
+      if (sendMode === 'individual') {
+        filters.search = selectedStudents.map(s => s.email).join('||');
+      }
 
+      const broadcastName = sendMode === 'individual'
+        ? `${template.label} — ${selectedStudents.map(s => s.name.split(' ')[0]).join(', ')}`
+        : sendMode === 'course'
+        ? `${template.label} — ${courseName}`
+        : `${template.label} — Todos`;
+
+      // Cria o disparo
       const res = await api.post('/broadcasts', {
-        name,
-        description: description || null,
-        channel,
+        name: broadcastName,
+        description: null,
+        channel: 'cs',
         filters,
-        template_name: templateName,
-        template_language: templateLanguage,
-        template_params: templateParams.filter(p => p.trim()),
+        template_name: template.name,
+        template_language: 'pt_BR',
+        template_params: template.params,
       });
 
-      toast.success(`Disparo criado! ${res.data.total_students} alunos serão impactados.`);
-      router.push('/broadcasts');
+      // Inicia envio automaticamente
+      await api.post(`/broadcasts/${res.data.id}/send`);
+      toast.success(`Disparo iniciado! ${res.data.total_students} aluno(s) receberão a mensagem.`);
+      router.push(`/broadcasts/${res.data.id}`);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Erro ao criar disparo');
     } finally {
@@ -165,277 +246,283 @@ export default function NewBroadcastPage() {
     }
   };
 
-  const addParam = () => setTemplateParams([...templateParams, '']);
-  const removeParam = (idx: number) => setTemplateParams(templateParams.filter((_, i) => i !== idx));
-  const updateParam = (idx: number, value: string) => {
-    const updated = [...templateParams];
-    updated[idx] = value;
-    setTemplateParams(updated);
-  };
+  const selectedTemplateDef = templates.find(t => t.name === selectedTemplate);
+
+  const canPreview = selectedTemplate && (
+    sendMode === 'all' ||
+    (sendMode === 'course' && selectedCourseId) ||
+    (sendMode === 'individual' && selectedStudents.length > 0)
+  );
 
   if (authLoading) return null;
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className={`max-w-3xl mx-auto space-y-6 transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Header */}
-        <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+        <div>
           <button onClick={() => router.push('/broadcasts')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4">
             <ArrowLeft className="w-4 h-4" />
-            Voltar para Disparos
+            Voltar
           </button>
-          <p className="text-sm font-medium text-[#2A658F] mb-1">Novo Disparo</p>
-          <h1 className="text-2xl font-semibold text-[#27273D] tracking-tight">Criar Disparo em Massa</h1>
+          <h1 className="text-2xl font-semibold text-[#27273D]">Novo Disparo</h1>
+          <p className="text-sm text-gray-500 mt-1">Envie mensagens pelo WhatsApp para seus alunos</p>
         </div>
 
-        {/* Steps indicator */}
-        <div className="flex items-center gap-2">
-          {[
-            { n: 1, label: 'Info' },
-            { n: 2, label: 'Filtros' },
-            { n: 3, label: 'Preview' },
-            { n: 4, label: 'Template' },
-          ].map((s) => (
-            <button
-              key={s.n}
-              onClick={() => setStep(s.n)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                step === s.n
-                  ? 'bg-[#2A658F] text-white shadow-md'
-                  : step > s.n
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-white text-gray-500 border border-gray-200'
-              }`}
-            >
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                step === s.n ? 'bg-white/20 text-white' : step > s.n ? 'bg-emerald-200 text-emerald-700' : 'bg-gray-100 text-gray-500'
-              }`}>
-                {step > s.n ? <CheckCircle2 className="w-4 h-4" /> : s.n}
-              </span>
-              {s.label}
-            </button>
-          ))}
+        {/* PASSO 1 — Modelo de Mensagem */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+            <h2 className="text-lg font-semibold text-[#27273D]">O que enviar?</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {templates.map((t) => {
+              const Icon = t.icon;
+              const isSelected = selectedTemplate === t.name;
+              return (
+                <button
+                  key={t.name}
+                  onClick={() => setSelectedTemplate(t.name)}
+                  className={`relative text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                    isSelected
+                      ? 'border-[#2A658F] bg-[#E2ECF4] shadow-md'
+                      : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle2 className="w-5 h-5 text-[#2A658F]" />
+                    </div>
+                  )}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${isSelected ? 'bg-[#2A658F]/10' : 'bg-gray-50'}`}>
+                    <Icon className={`w-5 h-5 ${isSelected ? 'text-[#2A658F]' : t.iconColor}`} />
+                  </div>
+                  <h3 className={`font-medium mb-1 ${isSelected ? 'text-[#2A658F]' : 'text-[#27273D]'}`}>{t.label}</h3>
+                  <p className="text-xs text-gray-500">{t.description}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Step 1 - Info */}
-        {step === 1 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-[#27273D]">Informações do Disparo</h2>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome do disparo *</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Lembrete inadimplentes - Janeiro" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none" />
+        {/* PASSO 2 — Para quem enviar */}
+        {selectedTemplate && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+              <h2 className="text-lg font-semibold text-[#27273D]">Para quem enviar?</h2>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Descrição (opcional)</label>
-              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Canal de envio</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {channelOptions.map((ch) => (
-                  <button key={ch.key} onClick={() => setChannel(ch.key)} className={`p-3 rounded-xl border text-sm font-medium transition-all ${channel === ch.key ? 'bg-[#2A658F] text-white border-[#2A658F]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
-                    {ch.label}
+
+            {/* Modo de envio */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { key: 'all' as SendMode, label: 'Todos os alunos', icon: Users, desc: 'Enviar para todos' },
+                { key: 'course' as SendMode, label: 'Por curso', icon: GraduationCap, desc: 'Filtrar por curso' },
+                { key: 'individual' as SendMode, label: 'Individual', icon: User, desc: 'Escolher alunos' },
+              ].map((mode) => {
+                const Icon = mode.icon;
+                const isSelected = sendMode === mode.key;
+                return (
+                  <button
+                    key={mode.key}
+                    onClick={() => { setSendMode(mode.key); setShowPreview(false); }}
+                    className={`text-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                      isSelected
+                        ? 'border-[#2A658F] bg-[#E2ECF4]'
+                        : 'border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 mx-auto mb-2 ${isSelected ? 'text-[#2A658F]' : 'text-gray-400'}`} />
+                    <p className={`text-sm font-medium ${isSelected ? 'text-[#2A658F]' : 'text-gray-700'}`}>{mode.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{mode.desc}</p>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
-            <div className="flex justify-end">
-              <button onClick={() => { if (!name.trim()) { toast.error('Informe o nome'); return; } setStep(2); }} className="px-6 py-2.5 text-sm font-medium text-white bg-[#2A658F] rounded-xl hover:bg-[#1e4f72] transition-all">
-                Próximo →
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Step 2 - Filters */}
-        {step === 2 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-[#27273D] flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
-              Filtrar Alunos
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Status de Login</label>
-                <select value={loginStatus} onChange={(e) => setLoginStatus(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none">
-                  {loginOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            {/* Filtros por curso */}
+            {sendMode === 'course' && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Selecione o curso</label>
+                <select
+                  value={selectedCourseId || ''}
+                  onChange={(e) => { setSelectedCourseId(e.target.value ? Number(e.target.value) : null); setShowPreview(false); }}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                >
+                  <option value="">Selecione...</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.count} alunos)</option>
+                  ))}
                 </select>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Documentação</label>
-                <select value={docsStatus} onChange={(e) => setDocsStatus(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none">
-                  {docsOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Status Financeiro</label>
-                <select value={financialStatus} onChange={(e) => setFinancialStatus(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none">
-                  {financialOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">Curso</label>
-                <select value={courseId || ''} onChange={(e) => setCourseId(e.target.value ? Number(e.target.value) : null)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none">
-                  <option value="">Todos os cursos</option>
-                  {courses.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.count})</option>)}
-                </select>
-              </div>
-            </div>
+            )}
 
-            <div className="flex justify-between">
-              <button onClick={() => setStep(1)} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
-                ← Voltar
-              </button>
-              <button onClick={() => setStep(3)} className="px-6 py-2.5 text-sm font-medium text-white bg-[#2A658F] rounded-xl hover:bg-[#1e4f72] transition-all">
-                Ver Preview →
-              </button>
-            </div>
-          </div>
-        )}
+            {/* Busca individual */}
+            {sendMode === 'individual' && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Buscar aluno por nome ou email</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Digite o nome ou email..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                  />
+                  {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+                </div>
 
-        {/* Step 3 - Preview */}
-        {step === 3 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#27273D] flex items-center gap-2">
-                <Users className="w-5 h-5 text-gray-400" />
-                Preview — {totalStudents} alunos serão impactados
-              </h2>
-              <button onClick={loadPreview} disabled={loadingPreview} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#2A658F] bg-[#E2ECF4] rounded-lg hover:bg-[#CCE4F4] transition-colors">
-                {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                Atualizar
-              </button>
-            </div>
-
-            <div className="bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl p-4 text-white">
-              <p className="text-3xl font-bold">{totalStudents}</p>
-              <p className="text-white/70 text-sm">alunos receberão a mensagem</p>
-            </div>
-
-            {loadingPreview ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto max-h-80 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr className="text-left text-xs font-medium text-gray-500 uppercase">
-                      <th className="px-4 py-2">Nome</th>
-                      <th className="px-4 py-2">Telefone</th>
-                      <th className="px-4 py-2">Curso</th>
-                      <th className="px-4 py-2">Financeiro</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {students.map((s) => (
-                      <tr key={s.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 font-medium text-gray-800">{s.name}</td>
-                        <td className="px-4 py-2 text-gray-600">{s.phone}</td>
-                        <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{s.primary_course_name || '-'}</td>
-                        <td className="px-4 py-2">
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            s.financial_status === 'em_dia' ? 'bg-emerald-50 text-emerald-700' :
-                            s.financial_status === 'inadimplente' ? 'bg-red-50 text-red-700' :
-                            s.financial_status === 'pendente' ? 'bg-amber-50 text-amber-700' :
-                            'bg-gray-100 text-gray-500'
-                          }`}>
-                            {s.financial_status || 'N/A'}
-                          </span>
-                        </td>
-                      </tr>
+                {/* Resultados da busca */}
+                {searchResults.length > 0 && (
+                  <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-lg">
+                    {searchResults.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => addStudent(s)}
+                        disabled={!!selectedStudents.find(ss => ss.id === s.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 disabled:opacity-40"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {s.name?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-800 truncate">{s.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{s.phone} · {s.primary_course_name || 'Sem curso'}</p>
+                        </div>
+                        {selectedStudents.find(ss => ss.id === s.id) ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <span className="text-xs text-[#2A658F] font-medium flex-shrink-0">Adicionar</span>
+                        )}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-                {totalStudents > 50 && (
-                  <p className="text-xs text-gray-400 text-center py-2">Mostrando 50 de {totalStudents} alunos</p>
+                  </div>
+                )}
+
+                {/* Alunos selecionados */}
+                {selectedStudents.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-gray-500 mb-2">{selectedStudents.length} aluno(s) selecionado(s)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedStudents.map((s) => (
+                        <span
+                          key={s.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E2ECF4] text-[#2A658F] text-sm font-medium rounded-full"
+                        >
+                          {s.name.split(' ')[0]}
+                          <button onClick={() => removeStudent(s.id)} className="hover:text-red-500 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
-            <div className="flex justify-between">
-              <button onClick={() => setStep(2)} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
-                ← Filtros
-              </button>
-              <button onClick={() => setStep(4)} className="px-6 py-2.5 text-sm font-medium text-white bg-[#2A658F] rounded-xl hover:bg-[#1e4f72] transition-all">
-                Configurar Template →
-              </button>
-            </div>
+            {/* Filtros extras (para todos e por curso) */}
+            {sendMode !== 'individual' && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Status financeiro</label>
+                  <select
+                    value={financialStatus}
+                    onChange={(e) => { setFinancialStatus(e.target.value); setShowPreview(false); }}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                  >
+                    <option value="">Todos</option>
+                    <option value="em_dia">Em dia</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="inadimplente">Inadimplente</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Acesso ao Moodle</label>
+                  <select
+                    value={loginStatus}
+                    onChange={(e) => { setLoginStatus(e.target.value); setShowPreview(false); }}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                  >
+                    <option value="">Todos</option>
+                    <option value="logged">Já acessou</option>
+                    <option value="never_logged">Nunca acessou</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Botão preview */}
+            <button
+              onClick={loadPreview}
+              disabled={!canPreview || loadingPreview}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-[#2A658F] bg-[#E2ECF4] hover:bg-[#CCE4F4] rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+              Ver quantos alunos receberão
+            </button>
           </div>
         )}
 
-        {/* Step 4 - Template */}
-        {step === 4 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-[#27273D]">Template Meta (aprovado)</h2>
-
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
-              ⚠️ Use apenas templates aprovados pela Meta. O nome deve ser exatamente igual ao cadastrado no Business Manager.
+        {/* PASSO 3 — Preview e Confirmar */}
+        {showPreview && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+              <h2 className="text-lg font-semibold text-[#27273D]">Confirmar envio</h2>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome do template *</label>
-              <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Ex: boas_vindas, lembrete_acesso" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none" />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Idioma do template *</label>
-              <select value={templateLanguage} onChange={(e) => setTemplateLanguage(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none">
-                <option value="pt_BR">Português (BR)</option>
-                <option value="en_US">English (US)</option>
-                <option value="en">English</option>
-                <option value="es">Español</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">Parâmetros do template</label>
-                <button onClick={addParam} className="text-sm text-[#2A658F] hover:underline">+ Adicionar parâmetro</button>
-              </div>
-              <p className="text-xs text-gray-500 mb-3">
-                Use variáveis: <code className="bg-gray-100 px-1 rounded">{'{{nome}}'}</code> <code className="bg-gray-100 px-1 rounded">{'{{primeiro_nome}}'}</code> <code className="bg-gray-100 px-1 rounded">{'{{curso}}'}</code> <code className="bg-gray-100 px-1 rounded">{'{{email}}'}</code> <code className="bg-gray-100 px-1 rounded">{'{{status_financeiro}}'}</code>
-              </p>
-
-              {templateParams.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">Nenhum parâmetro (template sem variáveis)</p>
-              ) : (
-                <div className="space-y-2">
-                  {templateParams.map((param, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 w-16">{`{{${idx + 1}}}`}</span>
-                      <input type="text" value={param} onChange={(e) => updateParam(idx, e.target.value)} placeholder={`Ex: {{primeiro_nome}}`} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none" />
-                      <button onClick={() => removeParam(idx)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
-                    </div>
-                  ))}
+            {/* Resumo */}
+            <div className="bg-gradient-to-r from-[#27273D] to-[#2A658F] rounded-xl p-5 text-white mb-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Mensagem</p>
+                  <p className="font-medium">{selectedTemplateDef?.label}</p>
                 </div>
-              )}
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Destinatários</p>
+                  <p className="text-2xl font-bold">{totalStudents}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Summary */}
-            <div className="bg-gradient-to-r from-[#27273D] to-[#2A658F] rounded-xl p-5 text-white">
-              <h3 className="text-sm font-medium text-white/70 mb-2">Resumo do disparo</h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="text-white/60">Nome:</span> {name || '-'}</p>
-                <p><span className="text-white/60">Canal:</span> {channelOptions.find(c => c.key === channel)?.label}</p>
-                <p><span className="text-white/60">Alunos:</span> <span className="font-bold text-lg">{totalStudents}</span></p>
-                <p><span className="text-white/60">Template:</span> {templateName || '-'}</p>
-                {templateParams.length > 0 && (
-                  <p><span className="text-white/60">Params:</span> {templateParams.join(', ')}</p>
+            {/* Lista */}
+            {previewStudents.length > 0 && (
+              <div className="max-h-60 overflow-y-auto mb-5 border border-gray-100 rounded-xl">
+                {previewStudents.map((s, i) => (
+                  <div key={s.id} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                      {s.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-800 truncate">{s.name}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{s.phone}</span>
+                  </div>
+                ))}
+                {totalStudents > 50 && (
+                  <div className="px-4 py-2 text-center text-xs text-gray-400 border-t border-gray-50">
+                    Mostrando 50 de {totalStudents} alunos
+                  </div>
                 )}
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-between">
-              <button onClick={() => setStep(3)} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
-                ← Preview
-              </button>
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl hover:shadow-lg transition-all disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Criar Disparo
-              </button>
-            </div>
+            {/* Botão enviar */}
+            <button
+              onClick={handleSend}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-white bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl hover:shadow-lg hover:shadow-[#2A658F]/30 transition-all disabled:opacity-50"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Enviar para {totalStudents} aluno(s)
+            </button>
           </div>
         )}
       </div>
