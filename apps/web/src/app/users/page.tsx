@@ -25,6 +25,7 @@ interface UserData {
   name: string;
   email: string;
   role: string;
+  channel: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -44,7 +45,7 @@ export default function UsersPage() {
   const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'atendente' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'atendente', channel: '' });
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
@@ -63,20 +64,20 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditingUser(null);
-    setForm({ name: '', email: '', password: '', role: 'atendente' });
+    setForm({ name: '', email: '', password: '', role: 'atendente', channel: '' });
     setShowModal(true);
   };
 
   const openEdit = (u: UserData) => {
     setEditingUser(u);
-    setForm({ name: u.name, email: u.email, password: '', role: u.role });
+    setForm({ name: u.name, email: u.email, password: '', role: u.role, channel: u.channel || '' });
     setShowModal(true);
   };
 
   const handleSave = async () => {
     try {
       if (editingUser) {
-        const payload: any = { name: form.name, role: form.role };
+        const payload: any = { name: form.name, role: form.role, channel: form.channel || null };
         if (form.password) payload.password = form.password;
         await api.put(`/users/${editingUser.id}`, payload);
         toast.success('Usuário atualizado!');
@@ -169,6 +170,7 @@ export default function UsersPage() {
               <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
                 <th className="px-6 py-4">Usuário</th>
                 <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Canal</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Criado em</th>
                 <th className="px-6 py-4 text-right">Ações</th>
@@ -198,6 +200,9 @@ export default function UsersPage() {
                         <Icon className="w-3 h-3" />
                         {cfg.label}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {u.channel ? u.channel.toUpperCase() : 'Todos'}
                     </td>
                     <td className="px-6 py-4">
                       <button
@@ -311,6 +316,23 @@ export default function UsersPage() {
                   })}
                 </div>
               </div>
+
+              {(form.role === 'atendente' || form.role === 'visualizador') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Canal</label>
+                  <select
+                    value={form.channel}
+                    onChange={(e) => setForm({ ...form, channel: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2A658F] focus:border-transparent"
+                  >
+                    <option value="">Todos os canais</option>
+                    <option value="cs">CS</option>
+                    <option value="financeiro">Financeiro</option>
+                    <option value="pedagogico">Pedagógico</option>
+                    <option value="atendimento">Atendimento</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
