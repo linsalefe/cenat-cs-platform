@@ -145,3 +145,12 @@ async def delete_template(template_name: str, current_user=Depends(get_current_u
         raise HTTPException(400, result["error"].get("message", "Erro ao deletar template"))
 
     return {"status": "deleted", "name": template_name}
+
+@router.get("/channels")
+async def list_channels(current_user=Depends(get_current_user)):
+    """Lista canais WhatsApp configurados"""
+    from app.core.whatsapp_channels import get_configured_channels
+    return [
+        {"slug": ch.slug, "name": ch.name}
+        for ch in get_configured_channels()
+    ]
