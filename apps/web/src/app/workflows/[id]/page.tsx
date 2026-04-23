@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -13,12 +19,14 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Node,
-  Edge,
-  Connection,
+  useReactFlow,
+  type Node,
+  type Edge,
+  type Connection,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 
-// CSS do React Flow — importante para o canvas renderizar corretamente
+// CSS obrigatório do React Flow
 import '@xyflow/react/dist/style.css';
 
 import AppLayout from '@/components/AppLayout';
@@ -31,10 +39,16 @@ import {
   Play,
   Pause,
   Loader2,
-  Info,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+import NodeLibrary from '@/components/workflows/NodeLibrary';
+import NodeConfigPanel, {
+  defaultDataFor,
+} from '@/components/workflows/NodeConfigPanel';
+import { nodeTypes } from '@/components/workflows/nodes';
+import { validateNodeData } from '@/components/workflows/node-definitions';
 
 interface Workflow {
   id: number;
@@ -51,17 +65,22 @@ function WorkflowEditor() {
   const router = useRouter();
   const id = Number(params?.id);
 
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
+
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
+  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [dirty, setDirty] = useState(false);
   const firstLoad = useRef(true);
 
-  // Carregar workflow
+  /* ---------- Load ---------- */
   useEffect(() => {
     if (!id || Number.isNaN(id)) return;
     (async () => {
@@ -78,28 +97,103 @@ function WorkflowEditor() {
         router.push('/workflows');
       } finally {
         setLoading(false);
-        // Evita que o primeiro setNodes/setEdges marque dirty
         setTimeout(() => {
           firstLoad.current = false;
-        }, 0);
+        }, 50);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Marca dirty sempre que nodes/edges/nome mudam (após o carregamento inicial)
   useEffect(() => {
     if (firstLoad.current) return;
     setDirty(true);
   }, [nodes, edges, name]);
 
+  /* ---------- React Flow handlers ---------- */
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge(connection, eds));
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            // edges com sourceHandle 'no' ficam vermelhas, 'yes' ficam verdes,
+            // neutras ficam azuis (primary)
+            style: {
+              stroke:
+                connection.sourceHandle === 'no'
+                  ? 'var(--destructive)'
+                  : connection.sourceHandle === 'yes'
+                  ? '#10b981'
+                  : 'var(--primary)',
+              strokeWidth: 2,
+            },
+            animated: true,
+          },
+          eds
+        )
+      );
     },
     [setEdges]
   );
 
+  /* ---------- Drag & drop da library ---------- */
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('application/cenat-workflow-node');
+      if (!type || !rfInstance) return;
+
+      const position = rfInstance.screenToFlowPosition({
+        x: e.clientX,
+        y: e.clientY,
+      });
+
+      const newNode: Node = {
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        position,
+        data: defaultDataFor(type),
+      };
+
+      setNodes((nds) => nds.concat(newNode));
+      setSelectedNodeId(newNode.id);
+    },
+    [rfInstance, setNodes]
+  );
+
+  /* ---------- Selection & mutations ---------- */
+  const updateNodeData = useCallback(
+    (nodeId: string, data: Record<string, unknown>) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === nodeId ? { ...n, data } : n))
+      );
+    },
+    [setNodes]
+  );
+
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) =>
+        eds.filter((e) => e.source !== nodeId && e.target !== nodeId)
+      );
+      setSelectedNodeId(null);
+    },
+    [setNodes, setEdges]
+  );
+
+  const selectedNode = useMemo(
+    () => nodes.find((n) => n.id === selectedNodeId) || null,
+    [nodes, selectedNodeId]
+  );
+
+  /* ---------- Save / Toggle ---------- */
   const handleSave = async () => {
     if (!workflow) return;
     try {
@@ -122,6 +216,36 @@ function WorkflowEditor() {
 
   const handleToggle = async () => {
     if (!workflow) return;
+    // Validação antes de ativar
+    if (workflow.status !== 'active') {
+      const invalid = nodes.filter(
+        (n) =>
+          !validateNodeData(
+            n.type || '',
+            (n.data as Record<string, unknown>) || {}
+          ).valid
+      );
+      const hasTrigger = nodes.some((n) => n.type?.startsWith('trigger.'));
+      const hasAction = nodes.some((n) => n.type?.startsWith('action.'));
+      if (!hasTrigger) {
+        toast.error('Adicione pelo menos um gatilho antes de ativar.');
+        return;
+      }
+      if (!hasAction) {
+        toast.error('Adicione pelo menos uma ação antes de ativar.');
+        return;
+      }
+      if (invalid.length > 0) {
+        toast.error(
+          `${invalid.length} nó(s) com configuração incompleta. Corrija antes de ativar.`
+        );
+        return;
+      }
+      if (dirty) {
+        toast.error('Salve as alterações antes de ativar.');
+        return;
+      }
+    }
     try {
       const res = await api.patch(`/workflows/${workflow.id}/toggle`);
       setWorkflow(res.data);
@@ -134,6 +258,7 @@ function WorkflowEditor() {
     }
   };
 
+  /* ---------- Render ---------- */
   if (loading) {
     return (
       <AppLayout>
@@ -162,8 +287,8 @@ function WorkflowEditor() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
-        {/* Editor toolbar */}
+      <div className="space-y-3">
+        {/* Toolbar */}
         <Card className="p-3">
           <div className="flex items-center gap-3 flex-wrap">
             <Button variant="ghost" size="sm" asChild>
@@ -199,14 +324,6 @@ function WorkflowEditor() {
                 variant="outline"
                 size="sm"
                 onClick={handleToggle}
-                disabled={nodes.length === 0}
-                title={
-                  nodes.length === 0
-                    ? 'Adicione nós antes de ativar'
-                    : isActive
-                    ? 'Pausar'
-                    : 'Ativar'
-                }
               >
                 {isActive ? (
                   <>
@@ -232,47 +349,66 @@ function WorkflowEditor() {
           </div>
         </Card>
 
-        {/* Canvas */}
-        <Card className="p-0 overflow-hidden h-[calc(100vh-220px)]">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-            className="bg-background"
-          >
-            <Background gap={16} size={1} />
-            <Controls />
-            <MiniMap
-              nodeColor="var(--primary)"
-              maskColor="hsl(var(--muted) / 0.5)"
-              pannable
-              zoomable
+        {/* Editor: library + canvas + config */}
+        <Card className="p-0 overflow-hidden h-[calc(100vh-200px)]">
+          <div className="flex h-full">
+            <NodeLibrary
+              collapsed={libraryCollapsed}
+              onToggleCollapsed={() => setLibraryCollapsed((v) => !v)}
             />
-          </ReactFlow>
 
-          {nodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-card/95 backdrop-blur border rounded-lg p-6 max-w-sm text-center shadow-md">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                  <Info className="w-6 h-6 text-primary" />
+            <div className="flex-1 relative" ref={reactFlowWrapper}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onInit={setRfInstance}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onNodeClick={(_, n) => setSelectedNodeId(n.id)}
+                onPaneClick={() => setSelectedNodeId(null)}
+                nodeTypes={nodeTypes}
+                fitView
+                className="bg-background"
+                defaultEdgeOptions={{
+                  style: { stroke: 'var(--primary)', strokeWidth: 2 },
+                  animated: true,
+                }}
+              >
+                <Background gap={16} size={1} />
+                <Controls />
+                <MiniMap
+                  nodeColor="var(--primary)"
+                  maskColor="rgba(0,0,0,0.05)"
+                  pannable
+                  zoomable
+                />
+              </ReactFlow>
+
+              {nodes.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-card/95 backdrop-blur border rounded-lg px-5 py-4 max-w-xs text-center shadow-md">
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      Canvas vazio
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Arraste um <span className="font-medium text-foreground">Gatilho</span>{' '}
+                      da biblioteca para começar.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">
-                  Canvas vazio
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  A biblioteca de gatilhos e ações específica para retenção de
-                  alunos será adicionada no próximo passo (Prompt A.2).
-                  <br />
-                  <br />
-                  Por ora, este editor valida que o React Flow está rodando e
-                  que salvar/carregar funcionam.
-                </p>
-              </div>
+              )}
             </div>
-          )}
+
+            <NodeConfigPanel
+              node={selectedNode}
+              onUpdate={updateNodeData}
+              onDelete={deleteNode}
+              onClose={() => setSelectedNodeId(null)}
+            />
+          </div>
         </Card>
       </div>
     </AppLayout>
