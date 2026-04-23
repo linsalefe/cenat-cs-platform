@@ -172,7 +172,7 @@ export default function TestRunDialog({
       .get('/students', { params: { limit: 50, search: studentSearch || undefined } })
       .then((res) => {
         if (!alive) return;
-        const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+        const items = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.items || []);
         setStudents(items);
       })
       .catch((e) => console.error(e))
