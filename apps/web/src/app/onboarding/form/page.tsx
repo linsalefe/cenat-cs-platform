@@ -14,10 +14,27 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const [studentName, setStudentName] = useState('');
 
+  type CustomField = {
+    id: number;
+    key: string;
+    label: string;
+    type: 'text' | 'select';
+    placeholder: string | null;
+    required: boolean;
+    options: string[];
+  };
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/onboarding/courses`)
+    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    fetch(`${base}/onboarding/courses`)
       .then((r) => r.json())
       .then((data) => setCourses(data))
+      .catch(() => {});
+    fetch(`${base}/onboarding/form-schema`)
+      .then((r) => r.json())
+      .then((data) => setCustomFields(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -35,12 +52,26 @@ export default function OnboardingPage() {
     if (!phone.trim() || phone.replace(/\D/g, '').length < 10) { setError('Informe um telefone válido'); return; }
     if (!course.trim()) { setError('Selecione o curso'); return; }
 
+    // Valida custom fields obrigatórios
+    for (const f of customFields) {
+      if (f.required && !(customValues[f.key] || '').trim()) {
+        setError(`Informe: ${f.label}`);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone: phone.replace(/\D/g, ''), course }),
+        body: JSON.stringify({
+          name,
+          email,
+          phone: phone.replace(/\D/g, ''),
+          course,
+          custom_fields: customValues,
+        }),
       });
 
       if (!res.ok) {
@@ -174,6 +205,40 @@ export default function OnboardingPage() {
               />
             )}
           </div>
+
+          {/* Custom fields (dinâmicos) */}
+          {customFields.map((f) => (
+            <div key={f.id}>
+              <label className="text-sm font-semibold text-foreground mb-2 block">
+                {f.label}
+                {f.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              {f.type === 'text' ? (
+                <input
+                  type="text"
+                  value={customValues[f.key] || ''}
+                  onChange={(e) => setCustomValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder || ''}
+                  className="w-full px-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10
+                    transition-all outline-none text-sm"
+                />
+              ) : (
+                <select
+                  value={customValues[f.key] || ''}
+                  onChange={(e) => setCustomValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  className="w-full px-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10
+                    transition-all outline-none text-sm"
+                >
+                  <option value="">{f.placeholder || 'Selecione...'}</option>
+                  {f.options.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ))}
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">

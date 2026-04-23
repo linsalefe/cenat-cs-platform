@@ -16,6 +16,7 @@ import copy
 from app.core.deps import get_db, get_current_user
 from app.models.student import Student
 from app.models.automation import Automation, AutomationLog
+from app.models.onboarding_form_field import OnboardingFormField
 from app.services.automation_service import execute_action
 from app.integrations.whatsapp_meta import normalize_br_phone
 
@@ -30,6 +31,54 @@ VALID_STATUSES = [
     "follow_up",
     "concluido",
 ]
+
+
+def _validate_and_normalize_custom_fields(
+    db,
+    raw: dict | None,
+) -> tuple[dict, list[str]]:
+    """Valida custom_fields contra a definição ativa em OnboardingFormField.
+
+    Retorna (valores_normalizados, erros). Campos não listados no schema
+    são ignorados silenciosamente (não quebra).
+    """
+    from app.models.onboarding_form_field import OnboardingFormField
+
+    raw = raw or {}
+    errors: list[str] = []
+
+    active_fields = (
+        db.query(OnboardingFormField)
+        .filter(OnboardingFormField.active == True)  # noqa: E712
+        .all()
+    )
+    by_key = {f.key: f for f in active_fields}
+
+    normalized: dict = {}
+
+    for key, spec in by_key.items():
+        value = raw.get(key)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            if spec.required:
+                errors.append(f"Campo '{spec.label}' é obrigatório")
+            continue
+
+        if spec.type == "text":
+            normalized[key] = str(value).strip()[:2000]
+        elif spec.type == "select":
+            opts = spec.options or []
+            if str(value) not in opts:
+                errors.append(
+                    f"Valor inválido para '{spec.label}' "
+                    f"(esperado: {opts})"
+                )
+                continue
+            normalized[key] = str(value)
+        else:
+            # Tipo desconhecido — ignora
+            continue
+
+    return normalized, errors
 
 
 def _dispatch_onboarding_entered(db: Session, student: Student) -> None:
@@ -57,6 +106,7 @@ class OnboardingForm(BaseModel):
     email: EmailStr
     phone: str
     course: str
+    custom_fields: Optional[dict] = None
 
 
 @router.get("/courses")
@@ -77,12 +127,23 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
         form.phone.replace("(", "").replace(")", "").replace("-", "").replace(" ", "")
     )
 
+    # Validar custom_fields contra schema ativo
+    custom_values, field_errors = _validate_and_normalize_custom_fields(
+        db, form.custom_fields
+    )
+    if field_errors:
+        raise HTTPException(400, {"custom_fields_errors": field_errors})
+
     student = db.query(Student).filter(Student.email == form.email).first()
     is_new = student is None
 
     if student:
         student.name = form.name
         student.phone = phone_clean
+        # Merge: preserva valores antigos não re-enviados
+        merged = dict(student.custom_fields or {})
+        merged.update(custom_values)
+        student.custom_fields = merged
     else:
         student = Student(
             name=form.name,
@@ -90,6 +151,7 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
             phone=phone_clean,
             onboarding_status="novo",
             primary_course_name=form.course,
+            custom_fields=custom_values or {},
         )
         db.add(student)
 
@@ -156,6 +218,7 @@ class ManualOnboardingCreate(BaseModel):
     phone: str
     course: Optional[str] = None
     status: Optional[str] = "novo"  # qualquer um de VALID_STATUSES
+    custom_fields: Optional[dict] = None
 
 
 @router.post("/students")
@@ -187,12 +250,19 @@ def create_onboarding_student(
             f"Já existe aluno com este email (id {existing.id}, status: {existing.onboarding_status or '-'}).",
         )
 
+    custom_values, field_errors = _validate_and_normalize_custom_fields(
+        db, data.custom_fields
+    )
+    if field_errors:
+        raise HTTPException(400, {"custom_fields_errors": field_errors})
+
     student = Student(
         name=data.name,
         email=data.email,
         phone=phone_clean,
         onboarding_status=status,
         primary_course_name=data.course,
+        custom_fields=custom_values or {},
     )
     db.add(student)
     db.commit()
@@ -209,6 +279,7 @@ def create_onboarding_student(
         "phone": student.phone,
         "primary_course_name": student.primary_course_name,
         "onboarding_status": student.onboarding_status,
+        "custom_fields": student.custom_fields or {},
         "created_at": student.created_at.isoformat() if student.created_at else None,
     }
 
@@ -234,6 +305,7 @@ def list_onboarding_students(
             "moodle_first_access": s.moodle_first_access.isoformat() if s.moodle_first_access else None,
             "documents_count": s.documents_count or 0,
             "documents_total": s.documents_total or 5,
+            "custom_fields": s.custom_fields or {},
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
         for s in students
