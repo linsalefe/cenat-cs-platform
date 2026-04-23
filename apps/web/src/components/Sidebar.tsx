@@ -62,6 +62,13 @@ interface MenuSection {
 
 const menuSections: MenuSection[] = [
   {
+    title: 'Visão Geral',
+    items: [
+      { href: '/', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard' },
+      { href: '/metrics', label: 'Métricas', icon: BarChart3, module: 'reports' },
+    ],
+  },
+  {
     title: 'Atendimento',
     items: [
       { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations', hasBadge: true },
@@ -95,16 +102,14 @@ const menuSections: MenuSection[] = [
   {
     title: 'Gestão',
     items: [
-      { href: '/', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard' },
-      { href: '/metrics', label: 'Métricas', icon: BarChart3, module: 'reports' },
       { href: '/reports', label: 'Relatórios', icon: FileText, module: 'reports' },
     ],
   },
   {
     title: 'Configuração',
     items: [
-      { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
       { href: '/settings/onboarding-form', label: 'Formulário', icon: ClipboardList, module: 'onboarding_form' },
+      { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
     ],
   },
 ];
