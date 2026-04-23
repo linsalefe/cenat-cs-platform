@@ -185,16 +185,16 @@ export default function StudentsPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-100 rounded-2xl"></div>
+              <div key={i} className="h-24 bg-muted rounded-2xl"></div>
             ))}
           </div>
-          <div className="h-12 bg-gray-100 rounded-xl"></div>
+          <div className="h-12 bg-muted rounded-xl"></div>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-xl"></div>
+              <div key={i} className="h-20 bg-muted rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -212,13 +212,13 @@ export default function StudentsPage() {
           }`}
         >
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Gestão</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Alunos</h1>
+            <p className="text-sm font-medium text-primary mb-1">Gestão</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Alunos</h1>
           </div>
           <button
             onClick={handleSyncMoodle}
             disabled={syncing}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#2A658F] text-white rounded-xl
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl
               hover:bg-[#1E4F73] disabled:opacity-50 transition-all duration-300
               shadow-lg shadow-[#2A658F]/20"
           >
@@ -249,58 +249,58 @@ export default function StudentsPage() {
         >
           <button
             onClick={() => { clearFilters(); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${!activeFilterCount ? 'border-[#2A658F]/30 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${!activeFilterCount ? 'border-primary/30 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-[#2A658F]" />
+                <GraduationCap className="w-5 h-5 text-primary" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{stats?.total || 0}</p>
-            <p className="text-sm text-gray-500">Total</p>
+            <p className="text-2xl font-semibold text-foreground">{stats?.total || 0}</p>
+            <p className="text-sm text-muted-foreground">Total</p>
           </button>
 
           <button
             onClick={() => { clearFilters(); setFilterLogin('never_logged'); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${filterLogin === 'never_logged' ? 'border-orange-200 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${filterLogin === 'never_logged' ? 'border-orange-200 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
                 <LogIn className="w-5 h-5 text-orange-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{stats?.never_logged || 0}</p>
-            <p className="text-sm text-gray-500">Nunca logaram</p>
+            <p className="text-2xl font-semibold text-foreground">{stats?.never_logged || 0}</p>
+            <p className="text-sm text-muted-foreground">Nunca logaram</p>
           </button>
 
           <button
             onClick={() => { clearFilters(); setFilterDocs('none'); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${filterDocs === 'none' ? 'border-red-200 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${filterDocs === 'none' ? 'border-red-200 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                 <FileText className="w-5 h-5 text-red-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{stats?.documents?.none || 0}</p>
-            <p className="text-sm text-gray-500">Sem documentos</p>
+            <p className="text-2xl font-semibold text-foreground">{stats?.documents?.none || 0}</p>
+            <p className="text-sm text-muted-foreground">Sem documentos</p>
           </button>
 
           <button
             onClick={() => { clearFilters(); setFilterFinancial('inadimplente'); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${filterFinancial === 'inadimplente' ? 'border-red-200 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${filterFinancial === 'inadimplente' ? 'border-red-200 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-red-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{stats?.financial?.inadimplente || 0}</p>
-            <p className="text-sm text-gray-500">Inadimplentes</p>
+            <p className="text-2xl font-semibold text-foreground">{stats?.financial?.inadimplente || 0}</p>
+            <p className="text-sm text-muted-foreground">Inadimplentes</p>
           </button>
         </div>
 
@@ -314,18 +314,18 @@ export default function StudentsPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
               <input
                 type="text"
                 placeholder="Buscar por nome ou email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl
+                  focus:border-primary focus:ring-4 focus:ring-primary/10
                   transition-all duration-200 outline-none"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground">
                   <XCircle className="w-5 h-5" />
                 </button>
               )}
@@ -336,13 +336,13 @@ export default function StudentsPage() {
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-3 border rounded-xl transition-all
                 ${showFilters || activeFilterCount > 0
-                  ? 'border-[#2A658F] bg-[#E2ECF4] text-[#2A658F]'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card text-muted-foreground hover:border-border'}`}
             >
               <Filter className="w-4 h-4" />
               <span className="text-sm font-medium">Filtros</span>
               {activeFilterCount > 0 && (
-                <span className="w-5 h-5 bg-[#2A658F] text-white text-xs rounded-full flex items-center justify-center">
+                <span className="w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -353,7 +353,7 @@ export default function StudentsPage() {
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1 px-3 py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1 px-3 py-3 text-sm text-muted-foreground hover:text-foreground/90 transition-colors"
               >
                 <X className="w-4 h-4" />
                 Limpar
@@ -363,15 +363,15 @@ export default function StudentsPage() {
 
           {/* Filter Dropdowns */}
           {showFilters && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Curso */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">Curso</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase mb-1.5 block">Curso</label>
                 <select
                   value={filterCourse}
                   onChange={(e) => setFilterCourse(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white
-                    focus:border-[#2A658F] focus:ring-2 focus:ring-[#2A658F]/10 outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-card
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
                 >
                   <option value="">Todos os cursos</option>
                   {courses.map((c) => (
@@ -384,12 +384,12 @@ export default function StudentsPage() {
 
               {/* Login */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">Login</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase mb-1.5 block">Login</label>
                 <select
                   value={filterLogin}
                   onChange={(e) => setFilterLogin(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white
-                    focus:border-[#2A658F] focus:ring-2 focus:ring-[#2A658F]/10 outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-card
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
                 >
                   <option value="">Todos</option>
                   <option value="never_logged">Nunca logou</option>
@@ -399,12 +399,12 @@ export default function StudentsPage() {
 
               {/* Documentos */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">Documentos</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase mb-1.5 block">Documentos</label>
                 <select
                   value={filterDocs}
                   onChange={(e) => setFilterDocs(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white
-                    focus:border-[#2A658F] focus:ring-2 focus:ring-[#2A658F]/10 outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-card
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
                 >
                   <option value="">Todos</option>
                   <option value="complete">Completos</option>
@@ -415,12 +415,12 @@ export default function StudentsPage() {
 
               {/* Financeiro */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">Financeiro</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase mb-1.5 block">Financeiro</label>
                 <select
                   value={filterFinancial}
                   onChange={(e) => setFilterFinancial(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white
-                    focus:border-[#2A658F] focus:ring-2 focus:ring-[#2A658F]/10 outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-card
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none"
                 >
                   <option value="">Todos</option>
                   <option value="em_dia">Em dia</option>
@@ -469,10 +469,10 @@ export default function StudentsPage() {
         </div>
 
         {/* Results count */}
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            Mostrando <span className="font-semibold text-gray-700">{students.length}</span> de{' '}
-            <span className="font-semibold text-gray-700">{pagination?.total || 0}</span> alunos
+            Mostrando <span className="font-semibold text-foreground/90">{students.length}</span> de{' '}
+            <span className="font-semibold text-foreground/90">{pagination?.total || 0}</span> alunos
           </span>
         </div>
 
@@ -484,25 +484,25 @@ export default function StudentsPage() {
           style={{ transitionDelay: '300ms' }}
         >
           {students.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-gray-400" />
+            <div className="bg-card rounded-2xl border border-border p-12 text-center">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-muted-foreground/70" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhum aluno encontrado</h3>
-              <p className="text-gray-500">Tente ajustar os filtros</p>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum aluno encontrado</h3>
+              <p className="text-muted-foreground">Tente ajustar os filtros</p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50/80 border-b border-gray-100">
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Aluno</th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Curso</th>
-                      <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Login</th>
-                      <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Docs</th>
-                      <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Financeiro</th>
-                      <th className="px-4 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Ações</th>
+                    <tr className="bg-muted/50/80 border-b border-border">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Aluno</th>
+                      <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Curso</th>
+                      <th className="px-4 py-4 text-center text-xs font-semibold text-muted-foreground uppercase">Login</th>
+                      <th className="px-4 py-4 text-center text-xs font-semibold text-muted-foreground uppercase">Docs</th>
+                      <th className="px-4 py-4 text-center text-xs font-semibold text-muted-foreground uppercase">Financeiro</th>
+                      <th className="px-4 py-4 text-right text-xs font-semibold text-muted-foreground uppercase">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -513,17 +513,17 @@ export default function StudentsPage() {
                       return (
                         <tr
                           key={student.id}
-                          className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                          className="hover:bg-muted/50/50 transition-colors group cursor-pointer"
                           onClick={() => router.push(`/risk/${student.id}`)}
                         >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <Avatar name={student.name} size="sm" />
                               <div className="min-w-0">
-                                <p className="font-medium text-gray-900 group-hover:text-[#2A658F] transition-colors truncate">
+                                <p className="font-medium text-foreground group-hover:text-primary transition-colors truncate">
                                   {student.name}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
                                   <span className="truncate">{student.email}</span>
                                 </div>
                               </div>
@@ -531,18 +531,18 @@ export default function StudentsPage() {
                           </td>
                           <td className="px-4 py-4">
                             {student.primary_course_name ? (
-                              <span className="text-xs text-gray-600 line-clamp-2" title={student.primary_course_name}>
+                              <span className="text-xs text-muted-foreground line-clamp-2" title={student.primary_course_name}>
                                 {student.primary_course_name.length > 40
                                   ? student.primary_course_name.slice(0, 40) + '...'
                                   : student.primary_course_name}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-muted-foreground/50">—</span>
                             )}
                           </td>
                           <td className="px-4 py-4 text-center">
                             {!student.moodle_user_id ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">
                                 <AlertCircle className="w-3 h-3" /> Sem Moodle
                               </span>
                             ) : neverLogged ? (
@@ -575,7 +575,7 @@ export default function StudentsPage() {
                                 Em dia
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-muted-foreground/50">—</span>
                             )}
                           </td>
                           <td className="px-4 py-4 text-right">
@@ -585,7 +585,7 @@ export default function StudentsPage() {
                                   href={`https://wa.me/55${student.phone.replace(/\D/g, '')}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                  className="p-2 text-muted-foreground/70 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                                   title="WhatsApp"
                                 >
                                   <MessageCircle className="w-4 h-4" />
@@ -593,14 +593,14 @@ export default function StudentsPage() {
                               )}
                               <a
                                 href={`mailto:${student.email}`}
-                                className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all"
+                                className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                 title="Email"
                               >
                                 <Mail className="w-4 h-4" />
                               </a>
                               <button
                                 onClick={() => router.push(`/risk/${student.id}`)}
-                                className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all"
+                                className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
@@ -618,26 +618,26 @@ export default function StudentsPage() {
 
         {/* Pagination */}
         {pagination && pagination.total_pages > 1 && (
-          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between bg-card rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground">
               {((pagination.page - 1) * PER_PAGE) + 1} - {Math.min(pagination.page * PER_PAGE, pagination.total)} de {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600
-                  border border-gray-200 rounded-lg hover:bg-gray-50
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground
+                  border border-border rounded-lg hover:bg-muted/50
                   disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft className="w-4 h-4" /> Anterior
               </button>
-              <span className="px-3 py-2 text-sm text-gray-600">{pagination.page} / {pagination.total_pages}</span>
+              <span className="px-3 py-2 text-sm text-muted-foreground">{pagination.page} / {pagination.total_pages}</span>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(pagination.total_pages, p + 1))}
                 disabled={currentPage === pagination.total_pages}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600
-                  border border-gray-200 rounded-lg hover:bg-gray-50
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground
+                  border border-border rounded-lg hover:bg-muted/50
                   disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Próximo <ChevronRight className="w-4 h-4" />

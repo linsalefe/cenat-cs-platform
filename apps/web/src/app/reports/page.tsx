@@ -78,7 +78,7 @@ export default function ReportsPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-muted-foreground/70 animate-spin" />
         </div>
       </AppLayout>
     );
@@ -96,8 +96,8 @@ export default function ReportsPage() {
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
         }`}>
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Visão Executiva</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Relatório Geral</h1>
+            <p className="text-sm font-medium text-primary mb-1">Visão Executiva</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Relatório Geral</h1>
           </div>
           <div className="flex gap-2">
             <button
@@ -115,7 +115,7 @@ export default function ReportsPage() {
                   toast.error('Erro ao exportar PDF');
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#2A658F] bg-[#E2ECF4] rounded-xl hover:bg-[#CCE4F4] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-xl hover:bg-primary/15 transition-colors"
             >
               <Download className="w-4 h-4" />
               PDF
@@ -149,26 +149,26 @@ export default function ReportsPage() {
         }`} style={{ transitionDelay: '50ms' }}>
           <button
             onClick={() => router.push('/reports/inadimplencia')}
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 text-left hover:shadow-md hover:border-red-200 transition-all group"
+            className="flex items-center gap-3 bg-card rounded-xl border border-border px-4 py-3 text-left hover:shadow-md hover:border-red-200 transition-all group"
           >
             <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <DollarSign className="w-4 h-4 text-red-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-[#27273D]">Inadimplência por Curso</h3>
-              <p className="text-xs text-gray-500">Taxa, valores e top devedores</p>
+              <h3 className="font-semibold text-sm text-foreground">Inadimplência por Curso</h3>
+              <p className="text-xs text-muted-foreground">Taxa, valores e top devedores</p>
             </div>
           </button>
           <button
             onClick={() => router.push('/reports/courses')}
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 text-left hover:shadow-md hover:border-purple-200 transition-all group"
+            className="flex items-center gap-3 bg-card rounded-xl border border-border px-4 py-3 text-left hover:shadow-md hover:border-purple-200 transition-all group"
           >
             <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <GraduationCap className="w-4 h-4 text-purple-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-[#27273D]">Desempenho por Curso</h3>
-              <p className="text-xs text-gray-500">Progresso, notas e risco</p>
+              <h3 className="font-semibold text-sm text-foreground">Desempenho por Curso</h3>
+              <p className="text-xs text-muted-foreground">Progresso, notas e risco</p>
             </div>
           </button>
         </div>
@@ -177,7 +177,7 @@ export default function ReportsPage() {
         <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '100ms' }}>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -186,11 +186,11 @@ export default function ReportsPage() {
                 {data.summary.phone_coverage}% c/ tel
               </span>
             </div>
-            <p className="text-3xl font-bold text-[#27273D]">{data.summary.total_students.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Alunos</p>
+            <p className="text-3xl font-bold text-foreground">{data.summary.total_students.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Alunos</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-red-600" />
@@ -200,20 +200,20 @@ export default function ReportsPage() {
               </span>
             </div>
             <p className="text-3xl font-bold text-red-600">{formatCurrency(data.financial.overdue_total)}</p>
-            <p className="text-sm text-gray-500">Valor em atraso</p>
+            <p className="text-sm text-muted-foreground">Valor em atraso</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
             <p className="text-3xl font-bold text-emerald-600">{data.financial.health_rate}%</p>
-            <p className="text-sm text-gray-500">Saúde financeira</p>
+            <p className="text-sm text-muted-foreground">Saúde financeira</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
                 <Monitor className="w-5 h-5 text-purple-600" />
@@ -222,8 +222,8 @@ export default function ReportsPage() {
                 {data.moodle.never_accessed} sem acesso
               </span>
             </div>
-            <p className="text-3xl font-bold text-[#27273D]">{data.moodle.accessed.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Acessaram Moodle</p>
+            <p className="text-3xl font-bold text-foreground">{data.moodle.accessed.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Acessaram Moodle</p>
           </div>
         </div>
 
@@ -233,9 +233,9 @@ export default function ReportsPage() {
         }`} style={{ transitionDelay: '200ms' }}>
 
           {/* Financial Breakdown */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-gray-400" />
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-muted-foreground/70" />
               Situação Financeira
             </h3>
             <div className="space-y-4">
@@ -246,12 +246,12 @@ export default function ReportsPage() {
               ].map((item) => (
                 <div key={item.label}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">{item.label}</span>
-                    <span className="font-medium text-[#27273D]">
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="font-medium text-foreground">
                       {item.value} ({item.total ? ((item.value / item.total) * 100).toFixed(1) : 0}%)
                     </span>
                   </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className={`h-full ${item.color} rounded-full transition-all duration-1000`}
                       style={{ width: `${item.total ? (item.value / item.total) * 100 : 0}%` }}
@@ -260,16 +260,16 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between text-sm">
-              <span className="text-gray-500">Total com dados financeiros</span>
-              <span className="font-semibold text-[#27273D]">{data.financial.total}</span>
+            <div className="mt-4 pt-4 border-t border-border flex justify-between text-sm">
+              <span className="text-muted-foreground">Total com dados financeiros</span>
+              <span className="font-semibold text-foreground">{data.financial.total}</span>
             </div>
           </div>
 
           {/* Risk Distribution */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-gray-400" />
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-muted-foreground/70" />
               Distribuição de Risco
             </h3>
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -285,8 +285,8 @@ export default function ReportsPage() {
                   <div key={item.level} className={`${item.bg} rounded-xl p-4 text-center`}>
                     <Icon className={`w-6 h-6 ${item.color} mx-auto mb-2`} />
                     <p className={`text-2xl font-bold ${item.color}`}>{count}</p>
-                    <p className="text-xs text-gray-500">{item.label}</p>
-                    <p className="text-xs font-medium text-gray-400 mt-1">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className="text-xs font-medium text-muted-foreground/70 mt-1">
                       {totalRisk ? ((count / totalRisk) * 100).toFixed(0) : 0}%
                     </p>
                   </div>
@@ -321,66 +321,66 @@ export default function ReportsPage() {
         }`} style={{ transitionDelay: '300ms' }}>
 
           {/* Documents */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-[#27273D] mb-3 flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-gray-400" />
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-muted-foreground/70" />
               Documentação
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Completa</span>
+                <span className="text-sm text-muted-foreground">Completa</span>
                 <span className="text-sm font-semibold text-emerald-600">{data.documents.complete}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Incompleta</span>
+                <span className="text-sm text-muted-foreground">Incompleta</span>
                 <span className="text-sm font-semibold text-amber-600">{data.documents.incomplete}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Sem documentos</span>
+                <span className="text-sm text-muted-foreground">Sem documentos</span>
                 <span className="text-sm font-semibold text-red-600">{data.documents.none}</span>
               </div>
             </div>
           </div>
 
           {/* Broadcasts */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-[#27273D] mb-3 flex items-center gap-2">
-              <Send className="w-5 h-5 text-gray-400" />
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Send className="w-5 h-5 text-muted-foreground/70" />
               Disparos
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Campanhas</span>
+                <span className="text-sm text-muted-foreground">Campanhas</span>
                 <span className="text-sm font-semibold">{data.broadcasts.total}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Mensagens enviadas</span>
+                <span className="text-sm text-muted-foreground">Mensagens enviadas</span>
                 <span className="text-sm font-semibold text-emerald-600">{data.broadcasts.messages_sent}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Falhas</span>
+                <span className="text-sm text-muted-foreground">Falhas</span>
                 <span className="text-sm font-semibold text-red-600">{data.broadcasts.messages_failed}</span>
               </div>
             </div>
           </div>
 
           {/* Journeys */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-[#27273D] mb-3 flex items-center gap-2">
-              <GitBranch className="w-5 h-5 text-gray-400" />
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+              <GitBranch className="w-5 h-5 text-muted-foreground/70" />
               Réguas
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total</span>
+                <span className="text-sm text-muted-foreground">Total</span>
                 <span className="text-sm font-semibold">{data.journeys.total}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Ativas</span>
+                <span className="text-sm text-muted-foreground">Ativas</span>
                 <span className="text-sm font-semibold text-emerald-600">{data.journeys.active}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Alunos em jornada</span>
+                <span className="text-sm text-muted-foreground">Alunos em jornada</span>
                 <span className="text-sm font-semibold text-blue-600">{data.journeys.students_active}</span>
               </div>
             </div>
@@ -388,17 +388,17 @@ export default function ReportsPage() {
         </div>
 
         {/* Courses Table */}
-        <div className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+        <div className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '400ms' }}>
-          <h3 className="font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-gray-400" />
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-muted-foreground/70" />
             Desempenho por Curso ({data.courses.length} cursos)
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase border-b border-border">
                   <th className="px-3 py-3">Curso</th>
                   <th className="px-3 py-3 text-center">Alunos</th>
                   <th className="px-3 py-3 text-center">Em dia</th>
@@ -415,9 +415,9 @@ export default function ReportsPage() {
                   const pendPct = total ? (course.pendentes / total) * 100 : 0;
                   const inadPct = total ? (course.inadimplentes / total) * 100 : 0;
                   return (
-                    <tr key={idx} className="hover:bg-gray-50">
+                    <tr key={idx} className="hover:bg-muted/50">
                       <td className="px-3 py-3">
-                        <p className="font-medium text-gray-800 line-clamp-1 max-w-xs" title={course.course}>
+                        <p className="font-medium text-foreground line-clamp-1 max-w-xs" title={course.course}>
                           {course.course}
                         </p>
                       </td>
@@ -425,9 +425,9 @@ export default function ReportsPage() {
                       <td className="px-3 py-3 text-center text-emerald-600 font-medium">{course.em_dia}</td>
                       <td className="px-3 py-3 text-center text-amber-600 font-medium">{course.pendentes}</td>
                       <td className="px-3 py-3 text-center text-red-600 font-medium">{course.inadimplentes}</td>
-                      <td className="px-3 py-3 text-right text-gray-600">{formatCurrency(course.avg_overdue)}</td>
+                      <td className="px-3 py-3 text-right text-muted-foreground">{formatCurrency(course.avg_overdue)}</td>
                       <td className="px-3 py-3">
-                        <div className="h-2.5 rounded-full overflow-hidden flex bg-gray-100">
+                        <div className="h-2.5 rounded-full overflow-hidden flex bg-muted">
                           <div className="bg-emerald-500 h-full" style={{ width: `${healthPct}%` }} />
                           <div className="bg-amber-500 h-full" style={{ width: `${pendPct}%` }} />
                           <div className="bg-red-500 h-full" style={{ width: `${inadPct}%` }} />

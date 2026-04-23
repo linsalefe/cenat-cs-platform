@@ -116,15 +116,15 @@ export default function MetricsDashboard() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 bg-gray-100 rounded-2xl"></div>
+              <div key={i} className="h-28 bg-muted rounded-2xl"></div>
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-80 bg-gray-100 rounded-2xl"></div>
-            <div className="h-80 bg-gray-100 rounded-2xl"></div>
+            <div className="h-80 bg-muted rounded-2xl"></div>
+            <div className="h-80 bg-muted rounded-2xl"></div>
           </div>
         </div>
       </AppLayout>
@@ -141,16 +141,16 @@ export default function MetricsDashboard() {
           }`}
         >
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Análise</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Métricas</h1>
+            <p className="text-sm font-medium text-primary mb-1">Análise</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Métricas</h1>
           </div>
 
           <div className="flex items-center gap-3">
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium
-                focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 outline-none transition-all"
+              className="px-4 py-2.5 bg-card border border-border rounded-xl text-sm font-medium
+                focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
             >
               <option value={7}>Últimos 7 dias</option>
               <option value={30}>Últimos 30 dias</option>
@@ -160,8 +160,8 @@ export default function MetricsDashboard() {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600
-                bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-muted-foreground
+                bg-card border border-border rounded-xl hover:bg-muted/50 transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
@@ -175,17 +175,17 @@ export default function MetricsDashboard() {
           }`}
           style={{ transitionDelay: '100ms' }}
         >
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-slate-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{overview?.students.total.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Total de alunos</p>
+            <p className="text-2xl font-semibold text-foreground">{overview?.students.total.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Total de alunos</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-orange-600" />
@@ -196,21 +196,21 @@ export default function MetricsDashboard() {
                 </span>
               )}
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{overview?.students.at_risk}</p>
-            <p className="text-sm text-gray-500">Em risco</p>
+            <p className="text-2xl font-semibold text-foreground">{overview?.students.at_risk}</p>
+            <p className="text-sm text-muted-foreground">Em risco</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Ticket className="w-5 h-5 text-blue-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{overview?.tickets.open}</p>
-            <p className="text-sm text-gray-500">Tickets abertos</p>
+            <p className="text-2xl font-semibold text-foreground">{overview?.tickets.open}</p>
+            <p className="text-sm text-muted-foreground">Tickets abertos</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                 <Clock className="w-5 h-5 text-emerald-600" />
@@ -221,10 +221,10 @@ export default function MetricsDashboard() {
                 </span>
               )}
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">
+            <p className="text-2xl font-semibold text-foreground">
               {overview?.tickets.sla_percentage !== null ? `${overview.tickets.sla_percentage}%` : '—'}
             </p>
-            <p className="text-sm text-gray-500">SLA cumprido</p>
+            <p className="text-sm text-muted-foreground">SLA cumprido</p>
           </div>
         </div>
 
@@ -232,24 +232,24 @@ export default function MetricsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Tickets por Dia */}
           <div
-            className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+            className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '200ms' }}
           >
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-lg font-semibold text-[#27273D]">Tickets - Últimos 7 dias</h2>
-                <p className="text-sm text-gray-500">Criados vs Fechados</p>
+                <h2 className="text-lg font-semibold text-foreground">Tickets - Últimos 7 dias</h2>
+                <p className="text-sm text-muted-foreground">Criados vs Fechados</p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-[#2A658F] rounded" />
-                  <span className="text-xs text-gray-500">Criados</span>
+                  <div className="w-3 h-3 bg-primary rounded" />
+                  <span className="text-xs text-muted-foreground">Criados</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-emerald-500 rounded" />
-                  <span className="text-xs text-gray-500">Fechados</span>
+                  <span className="text-xs text-muted-foreground">Fechados</span>
                 </div>
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function MetricsDashboard() {
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                   <div className="w-full flex gap-1 items-end h-36">
                     <div
-                      className="flex-1 bg-[#2A658F] rounded-t transition-all duration-500"
+                      className="flex-1 bg-primary rounded-t transition-all duration-500"
                       style={{
                         height: `${(day.created / (maxDaily || 1)) * 100}%`,
                         minHeight: day.created > 0 ? '8px' : '0',
@@ -275,7 +275,7 @@ export default function MetricsDashboard() {
                       title={`Fechados: ${day.closed}`}
                     />
                   </div>
-                  <span className="text-xs text-gray-400">{day.date}</span>
+                  <span className="text-xs text-muted-foreground/70">{day.date}</span>
                 </div>
               ))}
             </div>
@@ -283,14 +283,14 @@ export default function MetricsDashboard() {
 
           {/* Distribuição de Risco */}
           <div
-            className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+            className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '250ms' }}
           >
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-[#27273D]">Distribuição de Risco</h2>
-              <p className="text-sm text-gray-500">Por nível de risco</p>
+              <h2 className="text-lg font-semibold text-foreground">Distribuição de Risco</h2>
+              <p className="text-sm text-muted-foreground">Por nível de risco</p>
             </div>
 
             <div className="space-y-4">
@@ -307,8 +307,8 @@ export default function MetricsDashboard() {
                 return (
                   <div key={item.key}>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-600">{item.label}</span>
-                      <span className="font-medium text-[#27273D]">{count} alunos ({pct.toFixed(1)}%)</span>
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="font-medium text-foreground">{count} alunos ({pct.toFixed(1)}%)</span>
                     </div>
                     <div className={`h-3 ${item.bgLight} rounded-full overflow-hidden`}>
                       <div
@@ -327,32 +327,32 @@ export default function MetricsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Engajamento */}
           <div
-            className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+            className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '300ms' }}
           >
             <div className="flex items-center gap-2 mb-6">
-              <Activity className="w-5 h-5 text-[#2A658F]" />
-              <h2 className="text-lg font-semibold text-[#27273D]">Engajamento</h2>
+              <Activity className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Engajamento</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-slate-50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-semibold text-[#27273D]">
+                <p className="text-2xl font-semibold text-foreground">
                   {engagement?.avg_progress !== null ? `${engagement.avg_progress}%` : '—'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Progresso médio</p>
+                <p className="text-xs text-muted-foreground mt-1">Progresso médio</p>
               </div>
               <div className="bg-slate-50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-semibold text-[#27273D]">
+                <p className="text-2xl font-semibold text-foreground">
                   {engagement?.avg_days_without_access !== null ? `${engagement.avg_days_without_access}d` : '—'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Média sem acesso</p>
+                <p className="text-xs text-muted-foreground mt-1">Média sem acesso</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-500 mb-3">Dias sem acesso</p>
+            <p className="text-sm text-muted-foreground mb-3">Dias sem acesso</p>
             <div className="space-y-2">
               {engagement?.access_distribution.map((item) => {
                 const total = engagement?.total_with_data || 1;
@@ -362,11 +362,11 @@ export default function MetricsDashboard() {
 
                 return (
                   <div key={item.label} className="flex items-center gap-3">
-                    <span className="w-20 text-xs text-gray-500">{item.label}</span>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <span className="w-20 text-xs text-muted-foreground">{item.label}</span>
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                       <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-8 text-xs text-gray-600 text-right">{item.count}</span>
+                    <span className="w-8 text-xs text-muted-foreground text-right">{item.count}</span>
                   </div>
                 );
               })}
@@ -375,21 +375,21 @@ export default function MetricsDashboard() {
 
           {/* Satisfação */}
           <div
-            className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+            className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '350ms' }}
           >
             <div className="flex items-center gap-2 mb-6">
-              <Target className="w-5 h-5 text-[#2A658F]" />
-              <h2 className="text-lg font-semibold text-[#27273D]">Satisfação</h2>
+              <Target className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Satisfação</h2>
             </div>
 
             <div className="space-y-6">
               {/* NPS */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">NPS</span>
+                  <span className="text-sm text-muted-foreground">NPS</span>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                     satisfaction?.nps.score !== null && satisfaction.nps.score >= 50
                       ? 'bg-emerald-50 text-emerald-600'
@@ -404,16 +404,16 @@ export default function MetricsDashboard() {
                   }`}>
                     {satisfaction?.nps.score !== null ? satisfaction.nps.score : '—'}
                   </p>
-                  <p className="text-sm text-gray-400 mb-1">{satisfaction?.nps.responses} respostas</p>
+                  <p className="text-sm text-muted-foreground/70 mb-1">{satisfaction?.nps.responses} respostas</p>
                 </div>
               </div>
 
-              <div className="h-px bg-gray-100" />
+              <div className="h-px bg-muted" />
 
               {/* CSAT */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">CSAT</span>
+                  <span className="text-sm text-muted-foreground">CSAT</span>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                     satisfaction?.csat.score !== null && satisfaction.csat.score >= 80
                       ? 'bg-emerald-50 text-emerald-600'
@@ -428,7 +428,7 @@ export default function MetricsDashboard() {
                   }`}>
                     {satisfaction?.csat.score !== null ? `${satisfaction.csat.score}%` : '—'}
                   </p>
-                  <p className="text-sm text-gray-400 mb-1">{satisfaction?.csat.responses} respostas</p>
+                  <p className="text-sm text-muted-foreground/70 mb-1">{satisfaction?.csat.responses} respostas</p>
                 </div>
               </div>
 
@@ -444,47 +444,47 @@ export default function MetricsDashboard() {
 
           {/* Atendimento */}
           <div
-            className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+            className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '400ms' }}
           >
             <div className="flex items-center gap-2 mb-6">
-              <Ticket className="w-5 h-5 text-[#2A658F]" />
-              <h2 className="text-lg font-semibold text-[#27273D]">Atendimento</h2>
+              <Ticket className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Atendimento</h2>
             </div>
 
             <div className="space-y-4">
               <div className="bg-slate-50 rounded-xl p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Criados no período</span>
-                  <span className="text-xl font-semibold text-[#27273D]">{overview?.tickets.created_period}</span>
+                  <span className="text-sm text-muted-foreground">Criados no período</span>
+                  <span className="text-xl font-semibold text-foreground">{overview?.tickets.created_period}</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 rounded-xl p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Resolvidos no período</span>
+                  <span className="text-sm text-muted-foreground">Resolvidos no período</span>
                   <span className="text-xl font-semibold text-emerald-600">{overview?.tickets.closed_period}</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 rounded-xl p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Tempo médio de resolução</span>
-                  <span className="text-xl font-semibold text-[#27273D]">
+                  <span className="text-sm text-muted-foreground">Tempo médio de resolução</span>
+                  <span className="text-xl font-semibold text-foreground">
                     {overview?.tickets.avg_resolution_hours !== null ? `${overview.tickets.avg_resolution_hours}h` : '—'}
                   </span>
                 </div>
               </div>
 
               <div className="pt-2">
-                <p className="text-sm text-gray-500 mb-3">Por categoria</p>
+                <p className="text-sm text-muted-foreground mb-3">Por categoria</p>
                 <div className="space-y-2">
                   {tickets?.by_category.slice(0, 4).map((cat) => (
                     <div key={cat.category} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{cat.category}</span>
-                      <span className="font-medium text-[#27273D]">{cat.count}</span>
+                      <span className="text-muted-foreground">{cat.category}</span>
+                      <span className="font-medium text-foreground">{cat.count}</span>
                     </div>
                   ))}
                 </div>
