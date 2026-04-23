@@ -46,6 +46,7 @@ const pageTitles: Record<string, string> = {
   '/workflows': 'Workflows',
   '/workflows/[id]': 'Editor de Workflow',
   '/users': 'Usuários',
+  '/settings/onboarding-form': 'Formulário de onboarding',
 };
 
 function getPageTitle(pathname: string): string {

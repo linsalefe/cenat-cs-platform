@@ -15,3 +15,4 @@ from app.models.conversation import Conversation, ConversationMessage
 from app.models.journey import JourneyRule, JourneyStep, StudentJourney
 from app.models.workflow import Workflow
 from app.models.workflow_run import WorkflowRun
+from app.models.onboarding_form_field import OnboardingFormField

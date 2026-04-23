@@ -90,8 +90,11 @@ def db_ping():
 
 # Importado separadamente pois é rota pública
 from app.api.routes.onboarding import router as onboarding_router
+from app.api.routes.onboarding_form import router as onboarding_form_router, public_router as onboarding_form_public_router
 from app.api.routes.asaas_webhook import router as asaas_webhook_router
 from app.api.routes.attendance import router as attendance_router
 app.include_router(onboarding_router, prefix="/api")
+app.include_router(onboarding_form_router, prefix="/api")
+app.include_router(onboarding_form_public_router, prefix="/api")
 app.include_router(asaas_webhook_router, prefix="/api")
 app.include_router(attendance_router, prefix="/api")

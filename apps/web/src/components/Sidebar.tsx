@@ -24,6 +24,7 @@ import {
   Search,
   Zap,
   Workflow,
+  ClipboardList,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -103,6 +104,7 @@ const menuSections: MenuSection[] = [
     title: 'Configuração',
     items: [
       { href: '/users', label: 'Usuários', icon: Shield, module: 'users' },
+      { href: '/settings/onboarding-form', label: 'Formulário', icon: ClipboardList, module: 'onboarding_form' },
     ],
   },
 ];
