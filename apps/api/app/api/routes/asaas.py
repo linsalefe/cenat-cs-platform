@@ -127,10 +127,7 @@ async def financial_summary(
                         "limit": 100,
                         "offset": offset,
                     }
-                    if status in ["RECEIVED", "CONFIRMED"]:
-                        params["paymentDate[ge]"] = start_date
-                        params["paymentDate[le]"] = end_date
-                    elif status == "PENDING":
+                    if status in ["RECEIVED", "CONFIRMED", "PENDING"]:
                         params["dueDate[ge]"] = start_date
                         params["dueDate[le]"] = end_date
                     elif status == "OVERDUE":
