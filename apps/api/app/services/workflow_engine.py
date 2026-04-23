@@ -1,18 +1,21 @@
 """
-Workflow Engine — B.1
+Workflow Engine — B.2
 
-Executa um Workflow a partir de um trigger node, percorrendo o grafo
-linearmente. Suporta nodes do tipo trigger/condition/action/delay.
+Mudança em relação ao B.1: `action.send_whatsapp` agora pode:
+  - Rodar em **dry-run** (env var WORKFLOWS_WHATSAPP_DRY_RUN=true, default) —
+    apenas registra o que seria enviado no result, sem chamar a Meta.
+  - Rodar em **real** (env var = "false") — chama
+    `app.integrations.whatsapp_meta.send_template()` preenchendo as variáveis
+    {{1}}=primeiro_nome e {{2}}=curso (fallback "sua pós-graduação no CENAT"),
+    mesma convenção adotada no resto do projeto.
 
-Para B.1 (MVP):
-  - `action.send_whatsapp` é STUB — apenas loga o que enviaria
-  - Delays não são agendados (run fica em `waiting_delay`)
-  - Triggers não executam lógica própria — são pontos de entrada
-  - Conditions avaliam contra o Student atual
+Demais partes do engine são idênticas ao B.1.
 """
 
 from __future__ import annotations
 
+import asyncio
+import os
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -29,9 +32,8 @@ from app.models.ticket import Ticket, TicketStatus, TicketCategory, TicketPriori
 # Constants
 # ============================================================
 
-MAX_NODE_EXECUTIONS = 50  # safety net contra loops infinitos
+MAX_NODE_EXECUTIONS = 50
 
-# Frontend priority labels → backend enum
 PRIORITY_MAP = {
     "baixa": TicketPriority.LOW,
     "media": TicketPriority.MEDIUM,
@@ -39,7 +41,6 @@ PRIORITY_MAP = {
     "urgente": TicketPriority.URGENT,
 }
 
-# Risk level order para comparação (min_level)
 RISK_ORDER = {
     "baixo": 1,
     "medio": 2,
@@ -59,6 +60,17 @@ DELAY_UNIT_TO_TIMEDELTA_KW = {
     "days": "days",
 }
 
+WHATSAPP_COURSE_FALLBACK = "sua pós-graduação no CENAT"
+
+
+def _is_dry_run() -> bool:
+    """Default seguro: dry-run ativado. Para enviar de verdade, exportar
+    WORKFLOWS_WHATSAPP_DRY_RUN=false no ambiente da API."""
+    return (
+        os.environ.get("WORKFLOWS_WHATSAPP_DRY_RUN", "true").strip().lower()
+        != "false"
+    )
+
 
 # ============================================================
 # Helpers: grafo
@@ -74,19 +86,12 @@ def _find_node(nodes: list[dict], node_id: str) -> Optional[dict]:
 def _find_next_edge(
     edges: list[dict], source_id: str, source_handle: Optional[str] = None
 ) -> Optional[dict]:
-    """Retorna a primeira edge que sai de source_id.
-    Se source_handle for passado, filtra por ele (usado em conditions).
-    """
     for e in edges:
         if e.get("source") != source_id:
             continue
         if source_handle is not None:
-            # A edge precisa ter sourceHandle igual ao solicitado
             if e.get("sourceHandle") != source_handle:
                 continue
-        else:
-            # Nó sem handles (trigger/action/delay) — pega qualquer edge
-            pass
         return e
     return None
 
@@ -119,6 +124,17 @@ def _gen_ticket_protocol() -> str:
     return f"WF-{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
 
 
+def _first_name(full_name: Optional[str]) -> str:
+    if not full_name:
+        return "aluno(a)"
+    parts = full_name.strip().split()
+    return parts[0] if parts else "aluno(a)"
+
+
+def _course_name_or_fallback(student: Student) -> str:
+    return student.primary_course_name or WHATSAPP_COURSE_FALLBACK
+
+
 # ============================================================
 # Condition evaluators
 # ============================================================
@@ -126,13 +142,11 @@ def _gen_ticket_protocol() -> str:
 def _evaluate_condition(
     db: Session, node: dict, student: Student
 ) -> tuple[bool, dict[str, Any]]:
-    """Retorna (matched, debug_info)."""
     node_type = node.get("type") or ""
     data = node.get("data") or {}
 
     if node_type == "condition.course_is":
         course_ids = data.get("course_ids") or []
-        # Aceita tanto ids quanto strings
         try:
             course_ids_int = [int(c) for c in course_ids]
         except (ValueError, TypeError):
@@ -161,7 +175,6 @@ def _evaluate_condition(
             "expected_min_level": min_level,
         }
 
-    # Condition desconhecida — não casa
     return False, {"reason": f"condition_type_desconhecido: {node_type}"}
 
 
@@ -169,24 +182,110 @@ def _evaluate_condition(
 # Action handlers
 # ============================================================
 
-def _action_send_whatsapp_stub(
+def _action_send_whatsapp(
     db: Session, node: dict, student: Student, user_id: Optional[int]
 ) -> dict[str, Any]:
-    """STUB do WhatsApp. Não envia mensagem — apenas loga o que enviaria."""
+    """Envia template via Meta Cloud API OU loga em dry-run.
+
+    Variáveis de template preenchidas por convenção:
+      {{1}} = primeiro nome do aluno
+      {{2}} = nome do curso (fallback "sua pós-graduação no CENAT")
+    """
     data = node.get("data") or {}
-    template = data.get("template_name") or "(não informado)"
-    channel = data.get("channel") or "cs"
-    return {
-        "status": "stubbed",
-        "action": "send_whatsapp",
-        "would_send": {
-            "to_phone": student.phone,
-            "to_name": student.name,
-            "template": template,
-            "channel": channel,
+    template = (data.get("template_name") or "").strip()
+    channel = (data.get("channel") or "cs").strip() or "cs"
+
+    dry_run = _is_dry_run()
+    first_name = _first_name(student.name)
+    course_name = _course_name_or_fallback(student)
+
+    would_send = {
+        "to_phone": student.phone,
+        "to_name": student.name,
+        "template": template or "(não informado)",
+        "language": "pt_BR",
+        "channel": channel,
+        "params": {
+            "1": first_name,
+            "2": course_name,
         },
-        "note": "Integração real será ligada no Prompt B.2.",
     }
+
+    # Validações (param faltante e telefone ausente viram erros, não exceções)
+    if not template:
+        return {
+            "status": "error",
+            "action": "send_whatsapp",
+            "dry_run": dry_run,
+            "error": "template_name não configurado no node",
+            "would_send": would_send,
+        }
+
+    if not student.phone:
+        return {
+            "status": "error",
+            "action": "send_whatsapp",
+            "dry_run": dry_run,
+            "error": f"aluno {student.id} sem telefone cadastrado",
+            "would_send": would_send,
+        }
+
+    # Modo dry-run — não chama a Meta
+    if dry_run:
+        return {
+            "status": "dry_run",
+            "action": "send_whatsapp",
+            "dry_run": True,
+            "would_send": would_send,
+            "note": (
+                "WORKFLOWS_WHATSAPP_DRY_RUN ativo. "
+                "Defina WORKFLOWS_WHATSAPP_DRY_RUN=false no .env da API "
+                "e reinicie o cenat-api para enviar de verdade."
+            ),
+        }
+
+    # Modo real
+    components = [
+        {
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": first_name},
+                {"type": "text", "text": course_name},
+            ],
+        }
+    ]
+
+    try:
+        from app.integrations.whatsapp_meta import send_template
+
+        # O engine roda em contexto sync (rota FastAPI def, não async def).
+        # asyncio.run() cria um novo event loop; seguro nesse contexto.
+        meta_result = asyncio.run(
+            send_template(
+                phone=student.phone,
+                template_name=template,
+                language="pt_BR",
+                components=components,
+                channel_slug=channel,
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 — queremos capturar tudo
+        return {
+            "status": "error",
+            "action": "send_whatsapp",
+            "dry_run": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "would_send": would_send,
+        }
+
+    # meta_result é {status: "sent"|"error", ...}
+    merged: dict[str, Any] = {
+        "action": "send_whatsapp",
+        "dry_run": False,
+        "would_send": would_send,
+    }
+    merged.update(meta_result)
+    return merged
 
 
 def _action_create_ticket(
@@ -213,7 +312,7 @@ def _action_create_ticket(
         subject=title,
     )
     db.add(ticket)
-    db.flush()  # garante ID
+    db.flush()
 
     return {
         "status": "ok",
@@ -242,8 +341,6 @@ def _action_assign_user(
             "reason": "user_id_nao_informado",
         }
 
-    # Assume que a coluna students.assigned_to_id existe
-    # (criada via scripts/migrate_add_student_assigned_to.py).
     student.assigned_to_id = target_id  # type: ignore[attr-defined]
     db.flush()
 
@@ -279,7 +376,7 @@ def _action_set_onboarding_status(
 
 
 ACTION_HANDLERS = {
-    "action.send_whatsapp": _action_send_whatsapp_stub,
+    "action.send_whatsapp": _action_send_whatsapp,
     "action.create_ticket": _action_create_ticket,
     "action.assign_user": _action_assign_user,
     "action.set_onboarding_status": _action_set_onboarding_status,
@@ -291,7 +388,6 @@ ACTION_HANDLERS = {
 # ============================================================
 
 def _handle_delay(node: dict) -> datetime:
-    """Retorna o resume_at absoluto baseado na config do delay."""
     data = node.get("data") or {}
     try:
         amount = int(data.get("amount") or 1)
@@ -314,13 +410,9 @@ def execute_workflow(
     triggered_by: str = "manual",
     triggered_by_user: Optional[int] = None,
 ) -> WorkflowRun:
-    """Executa um workflow a partir de um trigger node. Retorna o WorkflowRun
-    persistido (commit feito)."""
-
     nodes = workflow.nodes or []
     edges = workflow.edges or []
 
-    # Se nenhum trigger_node_id foi informado, usa o primeiro trigger encontrado
     start_id = trigger_node_id or _first_trigger_node_id(nodes)
 
     run = WorkflowRun(
@@ -336,7 +428,6 @@ def execute_workflow(
     db.add(run)
     db.flush()
 
-    # Validações básicas
     if not nodes:
         run.status = "skipped"
         run.error_message = "Workflow vazio."
@@ -361,7 +452,6 @@ def execute_workflow(
     run.status = "running"
     db.flush()
 
-    # Loop iterativo (evita profundidade de recursão)
     current_id: Optional[str] = start_id
     executed_nodes: list[str] = []
     result: dict[str, Any] = {}
@@ -383,7 +473,6 @@ def execute_workflow(
             run.current_node_id = current_id
 
             if node_type.startswith("trigger."):
-                # Triggers são pontos de entrada. Seguem para o próximo.
                 result[current_id] = {
                     "status": "ok",
                     "kind": "trigger",
@@ -408,7 +497,6 @@ def execute_workflow(
                 continue
 
             if node_type.startswith("delay."):
-                # Para B.1: marca waiting_delay e encerra a execução.
                 resume_at = _handle_delay(node)
                 result[current_id] = {
                     "status": "waiting",
@@ -443,7 +531,6 @@ def execute_workflow(
                 current_id = nxt.get("target") if nxt else None
                 continue
 
-            # Tipo desconhecido — pula
             result[current_id] = {
                 "status": "skipped",
                 "type": node_type,
@@ -451,7 +538,6 @@ def execute_workflow(
             }
             current_id = None
 
-        # Fim do loop
         run.executed_nodes = executed_nodes
         run.result = result
         if waiting_delay:
@@ -460,7 +546,6 @@ def execute_workflow(
             run.status = "completed"
             run.finished_at = datetime.utcnow()
 
-        # Atualiza counters no workflow
         workflow.runs_count = (workflow.runs_count or 0) + 1
         workflow.last_run_at = datetime.utcnow()
 
@@ -469,16 +554,13 @@ def execute_workflow(
         return run
 
     except Exception as exc:
-        # Salvar estado parcial em caso de erro
         db.rollback()
-        # Recarrega o run (rollback pode ter limpado o commit inicial)
         run = (
             db.query(WorkflowRun)
             .filter(WorkflowRun.id == run.id)
             .first()
         )
         if run is None:
-            # Se sumiu no rollback, cria um novo finalizado
             run = WorkflowRun(
                 workflow_id=workflow.id,
                 student_id=student.id,
