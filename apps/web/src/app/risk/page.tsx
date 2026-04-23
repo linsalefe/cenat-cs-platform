@@ -91,7 +91,7 @@ const levelConfig: Record<string, { label: string; color: string; bg: string; ba
 
 const trendConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   worsening: { label: 'Piorando', color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight },
-  stable: { label: 'Estável', color: 'text-gray-500', bg: 'bg-gray-50', icon: Minus },
+  stable: { label: 'Estável', color: 'text-muted-foreground', bg: 'bg-muted/50', icon: Minus },
   improving: { label: 'Melhorando', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: ArrowDownRight },
 };
 
@@ -172,10 +172,10 @@ export default function RiskDashboard() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 bg-gray-100 rounded-2xl"></div>
+              <div key={i} className="h-28 bg-muted rounded-2xl"></div>
             ))}
           </div>
         </div>
@@ -193,8 +193,8 @@ export default function RiskDashboard() {
           }`}
         >
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Análise Preditiva</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Risco de Evasão</h1>
+            <p className="text-sm font-medium text-primary mb-1">Análise Preditiva</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Risco de Evasão</h1>
           </div>
 
           <div className="flex items-center gap-3">
@@ -207,9 +207,9 @@ export default function RiskDashboard() {
               </div>
             )}
             {(summary?.abandonment?.abandoned || 0) > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl">
-                <UserX className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-xl">
+                <UserX className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground/90">
                   {summary?.abandonment.abandoned} abandono(s)
                 </span>
               </div>
@@ -238,8 +238,8 @@ export default function RiskDashboard() {
               <button
                 key={item.key}
                 onClick={() => { setSelectedLevel(item.key); setCurrentPage(1); setSelectedTrend(''); }}
-                className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-                  ${isSelected ? `${config.border} shadow-lg` : 'border-gray-100 hover:border-gray-200'}`}
+                className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+                  ${isSelected ? `${config.border} shadow-lg` : 'border-border hover:border-border'}`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className={`w-10 h-10 ${config.bg} rounded-xl flex items-center justify-center`}>
@@ -247,8 +247,8 @@ export default function RiskDashboard() {
                   </div>
                   {isSelected && <div className={`w-2 h-2 ${config.bar} rounded-full`} />}
                 </div>
-                <p className="text-2xl font-semibold text-[#27273D]">{count as number}</p>
-                <p className="text-sm text-gray-500">{config.label}</p>
+                <p className="text-2xl font-semibold text-foreground">{count as number}</p>
+                <p className="text-sm text-muted-foreground">{config.label}</p>
               </button>
             );
           })}
@@ -264,53 +264,53 @@ export default function RiskDashboard() {
           {/* Piorando */}
           <button
             onClick={() => { setSelectedTrend(selectedTrend === 'worsening' ? '' : 'worsening'); setCurrentPage(1); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${selectedTrend === 'worsening' ? 'border-red-200 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${selectedTrend === 'worsening' ? 'border-red-200 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
                 <ArrowUpRight className="w-5 h-5 text-red-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{summary?.trends?.worsening || 0}</p>
-            <p className="text-sm text-gray-500">Piorando</p>
+            <p className="text-2xl font-semibold text-foreground">{summary?.trends?.worsening || 0}</p>
+            <p className="text-sm text-muted-foreground">Piorando</p>
           </button>
 
           {/* Melhorando */}
           <button
             onClick={() => { setSelectedTrend(selectedTrend === 'improving' ? '' : 'improving'); setCurrentPage(1); }}
-            className={`bg-white rounded-2xl p-5 border transition-all duration-300 text-left
-              ${selectedTrend === 'improving' ? 'border-emerald-200 shadow-lg' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border transition-all duration-300 text-left
+              ${selectedTrend === 'improving' ? 'border-emerald-200 shadow-lg' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                 <ArrowDownRight className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{summary?.trends?.improving || 0}</p>
-            <p className="text-sm text-gray-500">Melhorando</p>
+            <p className="text-2xl font-semibold text-foreground">{summary?.trends?.improving || 0}</p>
+            <p className="text-sm text-muted-foreground">Melhorando</p>
           </button>
 
           {/* Em risco de abandono */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 text-left">
+          <div className="bg-card rounded-2xl p-5 border border-border text-left">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-amber-600" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{summary?.abandonment?.at_risk || 0}</p>
-            <p className="text-sm text-gray-500">Risco de abandono</p>
+            <p className="text-2xl font-semibold text-foreground">{summary?.abandonment?.at_risk || 0}</p>
+            <p className="text-sm text-muted-foreground">Risco de abandono</p>
           </div>
 
           {/* Abandonos confirmados */}
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 text-left">
+          <div className="bg-card rounded-2xl p-5 border border-border text-left">
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                <UserX className="w-5 h-5 text-gray-600" />
+              <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center">
+                <UserX className="w-5 h-5 text-muted-foreground" />
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{summary?.abandonment?.abandoned || 0}</p>
-            <p className="text-sm text-gray-500">Abandonos</p>
+            <p className="text-2xl font-semibold text-foreground">{summary?.abandonment?.abandoned || 0}</p>
+            <p className="text-sm text-muted-foreground">Abandonos</p>
           </div>
         </div>
 
@@ -322,14 +322,14 @@ export default function RiskDashboard() {
           style={{ transitionDelay: '200ms' }}
         >
           <div className="relative max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
             <input
               type="text"
               placeholder="Buscar por nome ou email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl
-                focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+              className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl
+                focus:border-primary focus:ring-4 focus:ring-primary/10 
                 transition-all duration-200 outline-none"
             />
           </div>
@@ -343,12 +343,12 @@ export default function RiskDashboard() {
           style={{ transitionDelay: '300ms' }}
         >
           {filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-gray-400" />
+            <div className="bg-card rounded-2xl border border-border p-12 text-center">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-muted-foreground/70" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhum aluno encontrado</h3>
-              <p className="text-gray-500">Tente ajustar os filtros</p>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum aluno encontrado</h3>
+              <p className="text-muted-foreground">Tente ajustar os filtros</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -362,8 +362,8 @@ export default function RiskDashboard() {
                   <div
                     key={student.student_id}
                     onClick={() => router.push(`/risk/${student.student_id}`)}
-                    className="group bg-white rounded-xl border border-gray-100 p-5
-                      hover:border-gray-200 hover:shadow-lg hover:shadow-gray-100/50
+                    className="group bg-card rounded-xl border border-border p-5
+                      hover:border-border hover:shadow-lg hover:shadow-foreground/5/50
                       transition-all duration-300 cursor-pointer"
                   >
                     <div className="flex items-center gap-4">
@@ -374,7 +374,7 @@ export default function RiskDashboard() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors truncate">
+                          <h3 className="font-medium text-foreground group-hover:text-primary transition-colors truncate">
                             {student.student_name}
                           </h3>
                           <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${config.bg} ${config.color}`}>
@@ -395,15 +395,15 @@ export default function RiskDashboard() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500 truncate">{student.student_email}</p>
+                        <p className="text-sm text-muted-foreground truncate">{student.student_email}</p>
                       </div>
 
                       {/* Score + Trend Delta */}
                       <div className="hidden sm:block w-36">
                         <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-gray-500">Score</span>
+                          <span className="text-muted-foreground">Score</span>
                           <div className="flex items-center gap-1">
-                            <span className="font-semibold text-[#27273D]">{student.score.toFixed(1)}</span>
+                            <span className="font-semibold text-foreground">{student.score.toFixed(1)}</span>
                             {student.trend_delta !== 0 && (
                               <span className={`text-xs ${student.trend_delta > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                                 {student.trend_delta > 0 ? '+' : ''}{student.trend_delta.toFixed(1)}
@@ -411,7 +411,7 @@ export default function RiskDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className={`h-full ${config.bar} rounded-full transition-all duration-500`}
                             style={{ width: `${student.score}%` }}
@@ -421,11 +421,11 @@ export default function RiskDashboard() {
 
                       {/* Attendance mini */}
                       <div className="hidden lg:block text-center w-20">
-                        <p className="text-xs text-gray-400 mb-1">Faltas</p>
-                        <p className={`text-sm font-semibold ${student.attendance_info.consecutive_absences >= 8 ? 'text-red-600' : student.attendance_info.consecutive_absences >= 3 ? 'text-amber-600' : 'text-gray-700'}`}>
+                        <p className="text-xs text-muted-foreground/70 mb-1">Faltas</p>
+                        <p className={`text-sm font-semibold ${student.attendance_info.consecutive_absences >= 8 ? 'text-red-600' : student.attendance_info.consecutive_absences >= 3 ? 'text-amber-600' : 'text-foreground/90'}`}>
                           {student.attendance_info.consecutive_absences} consec.
                         </p>
-                        <p className="text-xs text-gray-400">{student.attendance_info.rate}%</p>
+                        <p className="text-xs text-muted-foreground/70">{student.attendance_info.rate}%</p>
                       </div>
 
                       {/* Actions */}
@@ -434,8 +434,8 @@ export default function RiskDashboard() {
                           onClick={(e) => createTicket(e, student)}
                           disabled={isCreating}
                           className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium
-                            border border-gray-200 text-gray-600 rounded-lg
-                            hover:border-[#2A658F] hover:text-[#2A658F] hover:bg-[#E2ECF4]
+                            border border-border text-muted-foreground rounded-lg
+                            hover:border-primary hover:text-primary hover:bg-primary/10
                             transition-all disabled:opacity-50"
                         >
                           <Ticket className="w-3.5 h-3.5" />
@@ -445,13 +445,13 @@ export default function RiskDashboard() {
                         <a
                           href={`mailto:${student.student_email}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all"
+                          className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                         >
                           <Mail className="w-4 h-4" />
                         </a>
                       </div>
 
-                      <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-[#2A658F] group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </div>
                   </div>
                 );
@@ -462,26 +462,26 @@ export default function RiskDashboard() {
 
         {/* Pagination */}
         {pagination && pagination.total_pages > 1 && (
-          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between bg-card rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground">
               {(pagination.page - 1) * pagination.per_page + 1} - {Math.min(pagination.page * pagination.per_page, pagination.total)} de {pagination.total}
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600
-                  border border-gray-200 rounded-lg hover:bg-gray-50
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground
+                  border border-border rounded-lg hover:bg-muted/50
                   disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft className="w-4 h-4" /> Anterior
               </button>
-              <span className="px-3 py-2 text-sm text-gray-600">{pagination.page} / {pagination.total_pages}</span>
+              <span className="px-3 py-2 text-sm text-muted-foreground">{pagination.page} / {pagination.total_pages}</span>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(pagination.total_pages, p + 1))}
                 disabled={currentPage === pagination.total_pages}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600
-                  border border-gray-200 rounded-lg hover:bg-gray-50
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground
+                  border border-border rounded-lg hover:bg-muted/50
                   disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Próximo <ChevronRight className="w-4 h-4" />

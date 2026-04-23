@@ -50,7 +50,7 @@ const columns = [
   { id: 'docs_pendentes', label: 'Docs Pendentes', color: 'text-amber-700', bg: 'bg-amber-50', headerBg: 'bg-amber-500', icon: FileWarning },
   { id: 'docs_ok', label: 'Docs OK', color: 'text-emerald-700', bg: 'bg-emerald-50', headerBg: 'bg-emerald-500', icon: FileCheck },
   { id: 'acesso_moodle', label: 'Acesso Moodle', color: 'text-purple-700', bg: 'bg-purple-50', headerBg: 'bg-purple-500', icon: GraduationCap },
-  { id: 'concluido', label: 'Concluído', color: 'text-gray-700', bg: 'bg-gray-50', headerBg: 'bg-gray-500', icon: CheckCircle2 },
+  { id: 'concluido', label: 'Concluído', color: 'text-foreground/90', bg: 'bg-muted/50', headerBg: 'bg-muted/500', icon: CheckCircle2 },
 ];
 
 function DraggableCard({
@@ -79,22 +79,22 @@ function DraggableCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white rounded-xl border border-gray-100 p-3.5 cursor-grab active:cursor-grabbing
-        hover:border-gray-200 hover:shadow-md transition-shadow duration-200 touch-none
+      className={`bg-card rounded-xl border border-border p-3.5 cursor-grab active:cursor-grabbing
+        hover:border-border hover:shadow-md transition-shadow duration-200 touch-none
         ${isDragging ? 'opacity-50 shadow-xl' : ''}`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
           {student.name?.charAt(0)?.toUpperCase() || '?'}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-medium text-[#27273D] truncate">{student.name}</h4>
-          <p className="text-[10px] text-gray-400 truncate">{student.email}</p>
+          <h4 className="text-sm font-medium text-foreground truncate">{student.name}</h4>
+          <p className="text-[10px] text-muted-foreground/70 truncate">{student.email}</p>
         </div>
       </div>
 
       {student.primary_course_name && (
-        <p className="text-[11px] text-[#2A658F] font-medium mb-2 line-clamp-1">
+        <p className="text-[11px] text-primary font-medium mb-2 line-clamp-1">
           {student.primary_course_name}
         </p>
       )}
@@ -102,12 +102,12 @@ function DraggableCard({
       <div className="flex items-center justify-between pt-2 border-t border-gray-50">
         <div className="flex items-center gap-2">
           {student.phone && (
-            <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+            <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5">
               <Phone className="w-3 h-3" />
               {student.phone.slice(-4)}
             </span>
           )}
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-muted-foreground/70">
             Docs: {student.documents_count}/{student.documents_total}
           </span>
         </div>
@@ -135,18 +135,18 @@ function DraggableCard({
 
 function CardOverlay({ student }: { student: StudentItem }) {
   return (
-    <div className="bg-white rounded-xl border-2 border-[#2A658F] p-3.5 shadow-2xl w-72 rotate-2">
+    <div className="bg-card rounded-xl border-2 border-primary p-3.5 shadow-2xl w-72 rotate-2">
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-xs font-bold">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-xs font-bold">
           {student.name?.charAt(0)?.toUpperCase() || '?'}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-medium text-[#27273D] truncate">{student.name}</h4>
-          <p className="text-[10px] text-gray-400 truncate">{student.email}</p>
+          <h4 className="text-sm font-medium text-foreground truncate">{student.name}</h4>
+          <p className="text-[10px] text-muted-foreground/70 truncate">{student.email}</p>
         </div>
       </div>
       {student.primary_course_name && (
-        <p className="text-[11px] text-[#2A658F] font-medium line-clamp-1">{student.primary_course_name}</p>
+        <p className="text-[11px] text-primary font-medium line-clamp-1">{student.primary_course_name}</p>
       )}
     </div>
   );
@@ -178,7 +178,7 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       className={`flex flex-col rounded-2xl min-w-[270px] w-[270px] max-h-full transition-all duration-200 ${
-        isOver ? 'bg-blue-50/80 ring-2 ring-[#2A658F]/30 scale-[1.01]' : 'bg-gray-50/80'
+        isOver ? 'bg-blue-50/80 ring-2 ring-primary/30 scale-[1.01]' : 'bg-muted/50/80'
       }`}
     >
       <div className="px-4 py-3 flex items-center justify-between flex-shrink-0">
@@ -215,8 +215,8 @@ function KanbanColumn({
       <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2.5 min-h-[200px]">
         {students.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Icon className="w-8 h-8 text-gray-300 mb-2" />
-            <p className="text-xs text-gray-400">{isOver ? 'Solte aqui' : 'Nenhum aluno'}</p>
+            <Icon className="w-8 h-8 text-muted-foreground/50 mb-2" />
+            <p className="text-xs text-muted-foreground/70">{isOver ? 'Solte aqui' : 'Nenhum aluno'}</p>
           </div>
         ) : (
           students.map((student) => (
@@ -379,10 +379,10 @@ export default function OnboardingKanbanPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-100 rounded-lg w-48" />
+          <div className="h-8 bg-muted rounded-lg w-48" />
           <div className="flex gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="w-[270px] h-96 bg-gray-100 rounded-2xl flex-shrink-0" />
+              <div key={i} className="w-[270px] h-96 bg-muted rounded-2xl flex-shrink-0" />
             ))}
           </div>
         </div>
@@ -396,25 +396,25 @@ export default function OnboardingKanbanPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Gestão de Alunos</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Onboarding</h1>
+            <p className="text-sm font-medium text-primary mb-1">Gestão de Alunos</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Onboarding</h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
                 type="text"
                 placeholder="Buscar aluno..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm w-56
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all duration-200 outline-none"
+                className="pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm w-56
+                  focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 outline-none"
               />
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-xl">
-              <Users className="w-4 h-4 text-[#2A658F]" />
-              <span className="text-sm font-medium text-[#27273D]">{students.length}</span>
-              <span className="text-xs text-gray-400">alunos</span>
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-card border border-border rounded-xl">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">{students.length}</span>
+              <span className="text-xs text-muted-foreground/70">alunos</span>
             </div>
           </div>
         </div>
@@ -424,10 +424,10 @@ export default function OnboardingKanbanPage() {
           {columns.map((col) => {
             const Icon = col.icon;
             return (
-              <div key={col.id} className="bg-white rounded-xl border border-gray-100 p-3 text-center">
+              <div key={col.id} className="bg-card rounded-xl border border-border p-3 text-center">
                 <Icon className={`w-4 h-4 mx-auto mb-1 ${col.color}`} />
-                <p className="text-lg font-semibold text-[#27273D]">{totalByStatus[col.id] || 0}</p>
-                <p className="text-[10px] text-gray-500 truncate">{col.label}</p>
+                <p className="text-lg font-semibold text-foreground">{totalByStatus[col.id] || 0}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{col.label}</p>
               </div>
             );
           })}

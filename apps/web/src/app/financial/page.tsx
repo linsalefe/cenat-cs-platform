@@ -81,8 +81,8 @@ const paymentStatusLabels: Record<string, { label: string; color: string; bg: st
   RECEIVED_IN_CASH: { label: 'Pago em dinheiro', color: 'text-emerald-700', bg: 'bg-emerald-50' },
   PENDING: { label: 'Pendente', color: 'text-amber-700', bg: 'bg-amber-50' },
   OVERDUE: { label: 'Vencido', color: 'text-red-700', bg: 'bg-red-50' },
-  REFUNDED: { label: 'Estornado', color: 'text-gray-700', bg: 'bg-gray-100' },
-  REFUND_REQUESTED: { label: 'Estorno solicitado', color: 'text-gray-700', bg: 'bg-gray-100' },
+  REFUNDED: { label: 'Estornado', color: 'text-foreground/90', bg: 'bg-muted' },
+  REFUND_REQUESTED: { label: 'Estorno solicitado', color: 'text-foreground/90', bg: 'bg-muted' },
   DUNNING_REQUESTED: { label: 'Negativado', color: 'text-red-700', bg: 'bg-red-50' },
   DUNNING_RECEIVED: { label: 'Recuperado', color: 'text-emerald-700', bg: 'bg-emerald-50' },
 };
@@ -214,11 +214,11 @@ export default function FinancialPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-100 rounded-lg w-48" />
+          <div className="h-8 bg-muted rounded-lg w-48" />
           <div className="grid grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-40 bg-gray-100 rounded-2xl" />)}
+            {[...Array(4)].map((_, i) => <div key={i} className="h-40 bg-muted rounded-2xl" />)}
           </div>
-          <div className="h-96 bg-gray-100 rounded-2xl" />
+          <div className="h-96 bg-muted rounded-2xl" />
         </div>
       </AppLayout>
     );
@@ -233,14 +233,14 @@ export default function FinancialPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Gestão Financeira</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Financeiro</h1>
+            <p className="text-sm font-medium text-primary mb-1">Gestão Financeira</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Financeiro</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSyncCustomers}
               disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-[#2A658F] bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary bg-card border border-border rounded-xl hover:bg-muted/50 transition-all disabled:opacity-50"
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               Vincular Alunos
@@ -248,7 +248,7 @@ export default function FinancialPage() {
             <button
               onClick={handleSyncFinancial}
               disabled={syncingFinancial}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary to-primary/80 rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
             >
               {syncingFinancial ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
               Atualizar Financeiro
@@ -257,18 +257,18 @@ export default function FinancialPage() {
         </div>
 
         {/* Situação das Cobranças */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <div className="bg-card rounded-2xl border border-border p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-[#27273D]">Situação das cobranças</h2>
-            <div className="flex bg-gray-100 rounded-xl p-1">
+            <h2 className="text-lg font-semibold text-foreground">Situação das cobranças</h2>
+            <div className="flex bg-muted rounded-xl p-1">
               {periods.map((pr) => (
                 <button
                   key={pr.key}
                   onClick={() => setPeriod(pr.key)}
                   className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
                     period === pr.key
-                      ? 'bg-white text-[#2A658F] shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground/90'
                   }`}
                 >
                   {pr.label}
@@ -279,69 +279,69 @@ export default function FinancialPage() {
 
           {loadingSummary ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-muted-foreground/70 animate-spin" />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Recebidas */}
-              <div className="border border-gray-200 rounded-xl p-5">
-                <p className="text-sm font-medium text-gray-600 mb-3">Recebidas</p>
+              <div className="border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Recebidas</p>
                 <p className="text-2xl font-bold text-emerald-600 mb-1">
                   {formatCurrency(p?.received.value || 0)}
                 </p>
-                <div className="w-full h-2 bg-gray-100 rounded-full mt-3 mb-4">
+                <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-emerald-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.received.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
 
               {/* Confirmadas */}
-              <div className="border border-gray-200 rounded-xl p-5">
-                <p className="text-sm font-medium text-gray-600 mb-3">Confirmadas</p>
+              <div className="border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Confirmadas</p>
                 <p className="text-2xl font-bold text-blue-600 mb-1">
                   {formatCurrency(p?.confirmed.value || 0)}
                 </p>
-                <div className="w-full h-2 bg-gray-100 rounded-full mt-3 mb-4">
+                <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-blue-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.confirmed.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
 
               {/* Aguardando */}
-              <div className="border border-gray-200 rounded-xl p-5">
-                <p className="text-sm font-medium text-gray-600 mb-3">Aguardando pagamento</p>
+              <div className="border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Aguardando pagamento</p>
                 <p className="text-2xl font-bold text-amber-600 mb-1">
                   {formatCurrency(p?.pending.value || 0)}
                 </p>
-                <div className="w-full h-2 bg-gray-100 rounded-full mt-3 mb-4">
+                <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-amber-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.pending.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
 
               {/* Vencidas */}
-              <div className="border border-gray-200 rounded-xl p-5">
-                <p className="text-sm font-medium text-gray-600 mb-3">Vencidas</p>
+              <div className="border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Vencidas</p>
                 <p className="text-2xl font-bold text-red-600 mb-1">
                   {formatCurrency(p?.overdue.value || 0)}
                 </p>
-                <div className="w-full h-2 bg-gray-100 rounded-full mt-3 mb-4">
+                <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-red-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.overdue.count || 0} cobranças</span>
                   </div>
                 </div>
@@ -357,7 +357,7 @@ export default function FinancialPage() {
             { label: 'Pendentes', value: s?.pendente || 0, color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock, filterKey: 'pendente' as const },
             { label: 'Inadimplentes', value: s?.inadimplente || 0, color: 'text-red-600', bg: 'bg-red-50', icon: AlertTriangle, filterKey: 'inadimplente' as const },
             { label: 'Valor em atraso', value: formatCurrency(s?.total_overdue || 0), color: 'text-red-600', bg: 'bg-red-50', icon: TrendingDown, filterKey: null },
-            { label: 'Sem vínculo', value: s?.sem_vinculo || 0, color: 'text-gray-600', bg: 'bg-gray-50', icon: Users, filterKey: 'sem_vinculo' as const },
+            { label: 'Sem vínculo', value: s?.sem_vinculo || 0, color: 'text-muted-foreground', bg: 'bg-muted/50', icon: Users, filterKey: 'sem_vinculo' as const },
           ].map((kpi, i) => {
             const Icon = kpi.icon;
             const isActive = kpi.filterKey && filter === kpi.filterKey;
@@ -365,42 +365,42 @@ export default function FinancialPage() {
               <button
                 key={i}
                 onClick={() => kpi.filterKey && setFilter(isActive ? 'all' : kpi.filterKey)}
-                className={`bg-white rounded-xl p-4 border text-left transition-all ${
-                  isActive ? 'border-[#2A658F] shadow-md' : 'border-gray-100 hover:border-gray-200'
+                className={`bg-card rounded-xl p-4 border text-left transition-all ${
+                  isActive ? 'border-primary shadow-md' : 'border-border hover:border-border'
                 } ${kpi.filterKey ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <div className={`w-8 h-8 ${kpi.bg} rounded-lg flex items-center justify-center mb-2`}>
                   <Icon className={`w-4 h-4 ${kpi.color}`} />
                 </div>
-                <p className={`text-xl font-bold ${typeof kpi.value === 'string' && kpi.value.includes('R$') ? kpi.color : 'text-[#27273D]'}`}>
+                <p className={`text-xl font-bold ${typeof kpi.value === 'string' && kpi.value.includes('R$') ? kpi.color : 'text-foreground'}`}>
                   {kpi.value}
                 </p>
-                <p className="text-xs text-gray-500">{kpi.label}</p>
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
               </button>
             );
           })}
         </div>
 
         {/* Busca + Tabela */}
-        <div className="bg-white rounded-2xl border border-gray-100">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-card rounded-2xl border border-border">
+          <div className="p-4 border-b border-border flex items-center justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
                 type="text"
                 placeholder="Buscar por nome, email ou CPF..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 outline-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none"
               />
             </div>
-            <span className="text-sm text-gray-400 ml-4">{filteredStudents.length} alunos</span>
+            <span className="text-sm text-muted-foreground/70 ml-4">{filteredStudents.length} alunos</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border">
                   <th className="px-5 py-3">Aluno</th>
                   <th className="px-5 py-3">CPF</th>
                   <th className="px-5 py-3">Telefone</th>
@@ -414,22 +414,22 @@ export default function FinancialPage() {
                   const st = statusConfig[student.financial_status || ''];
                   const StIcon = st?.icon;
                   return (
-                    <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={student.id} className="hover:bg-muted/50/50 transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                             {getInitials(student.name)}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-[#27273D]">{student.name}</p>
-                            <p className="text-xs text-gray-400">{student.email}</p>
+                            <p className="text-sm font-medium text-foreground">{student.name}</p>
+                            <p className="text-xs text-muted-foreground/70">{student.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-600">
+                      <td className="px-5 py-3 text-sm text-muted-foreground">
                         {student.cpf ? formatCPF(student.cpf) : '-'}
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-600">{student.phone || '-'}</td>
+                      <td className="px-5 py-3 text-sm text-muted-foreground">{student.phone || '-'}</td>
                       <td className="px-5 py-3">
                         {st ? (
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${st.bg} ${st.color} border ${st.border}`}>
@@ -437,21 +437,21 @@ export default function FinancialPage() {
                             {st.label}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">Sem vínculo</span>
+                          <span className="text-xs text-muted-foreground/70">Sem vínculo</span>
                         )}
                       </td>
                       <td className="px-5 py-3">
                         {student.overdue_value && student.overdue_value > 0 ? (
                           <span className="text-sm font-medium text-red-600">{formatCurrency(student.overdue_value)}</span>
                         ) : (
-                          <span className="text-sm text-gray-400">-</span>
+                          <span className="text-sm text-muted-foreground/70">-</span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
                         {(student.asaas_customer_id || student.financial_status) && (
                           <button
                             onClick={() => handleViewPayments(student)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#2A658F] hover:bg-[#2A658F]/10 rounded-lg transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             Cobranças
@@ -467,24 +467,24 @@ export default function FinancialPage() {
 
           {/* Paginação */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between p-4 border-t border-border">
+              <p className="text-sm text-muted-foreground">
                 {(currentPage - 1) * PER_PAGE + 1} - {Math.min(currentPage * PER_PAGE, filteredStudents.length)} de {filteredStudents.length}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="flex items-center gap-1 px-3 py-2 border border-gray-200 rounded-lg text-xs font-medium disabled:opacity-50 hover:bg-gray-50"
+                  className="flex items-center gap-1 px-3 py-2 border border-border rounded-lg text-xs font-medium disabled:opacity-50 hover:bg-muted/50"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Anterior
                 </button>
-                <span className="px-3 py-2 text-xs text-gray-500">{currentPage} / {totalPages}</span>
+                <span className="px-3 py-2 text-xs text-muted-foreground">{currentPage} / {totalPages}</span>
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="flex items-center gap-1 px-3 py-2 border border-gray-200 rounded-lg text-xs font-medium disabled:opacity-50 hover:bg-gray-50"
+                  className="flex items-center gap-1 px-3 py-2 border border-border rounded-lg text-xs font-medium disabled:opacity-50 hover:bg-muted/50"
                 >
                   Próximo
                   <ChevronRight className="w-4 h-4" />
@@ -498,33 +498,33 @@ export default function FinancialPage() {
       {/* Modal de Cobranças */}
       {selectedStudent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeModal}>
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-card rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[#27273D]">{selectedStudent.name}</h2>
-                <p className="text-sm text-gray-500">{selectedStudent.email}</p>
+                <h2 className="text-lg font-semibold text-foreground">{selectedStudent.name}</h2>
+                <p className="text-sm text-muted-foreground">{selectedStudent.email}</p>
               </div>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                <X className="w-5 h-5 text-gray-500" />
+              <button onClick={closeModal} className="p-2 hover:bg-muted rounded-xl transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
 
             {financialSummary && (
-              <div className="px-6 py-4 bg-gray-50 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="px-6 py-4 bg-muted/50 grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500">Total cobranças</p>
+                  <p className="text-xs text-muted-foreground">Total cobranças</p>
                   <p className="text-lg font-semibold">{financialSummary.total_payments}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Pagas</p>
+                  <p className="text-xs text-muted-foreground">Pagas</p>
                   <p className="text-lg font-semibold text-emerald-600">{financialSummary.received_count}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Pendentes</p>
+                  <p className="text-xs text-muted-foreground">Pendentes</p>
                   <p className="text-lg font-semibold text-amber-600">{financialSummary.pending_count}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Vencidas</p>
+                  <p className="text-xs text-muted-foreground">Vencidas</p>
                   <p className="text-lg font-semibold text-red-600">
                     {financialSummary.overdue_count} ({formatCurrency(financialSummary.overdue_value)})
                   </p>
@@ -535,17 +535,17 @@ export default function FinancialPage() {
             <div className="overflow-y-auto max-h-[50vh]">
               {loadingPayments ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-muted-foreground/70 animate-spin" />
                 </div>
               ) : payments.length === 0 ? (
                 <div className="text-center py-12">
-                  <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Nenhuma cobrança encontrada</p>
+                  <FileText className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhuma cobrança encontrada</p>
                 </div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       <th className="px-6 py-3">Vencimento</th>
                       <th className="px-6 py-3">Valor</th>
                       <th className="px-6 py-3">Tipo</th>
@@ -555,18 +555,18 @@ export default function FinancialPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {payments.map((payment) => {
-                      const ps = paymentStatusLabels[payment.status] || { label: payment.status, color: 'text-gray-600', bg: 'bg-gray-100' };
+                      const ps = paymentStatusLabels[payment.status] || { label: payment.status, color: 'text-muted-foreground', bg: 'bg-muted' };
                       return (
-                        <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-3 text-sm text-gray-700">{formatDate(payment.dueDate)}</td>
-                          <td className="px-6 py-3 text-sm font-medium text-[#27273D]">{formatCurrency(payment.value)}</td>
-                          <td className="px-6 py-3 text-sm text-gray-600">{billingTypeLabels[payment.billingType] || payment.billingType}</td>
+                        <tr key={payment.id} className="hover:bg-muted/50 transition-colors">
+                          <td className="px-6 py-3 text-sm text-foreground/90">{formatDate(payment.dueDate)}</td>
+                          <td className="px-6 py-3 text-sm font-medium text-foreground">{formatCurrency(payment.value)}</td>
+                          <td className="px-6 py-3 text-sm text-muted-foreground">{billingTypeLabels[payment.billingType] || payment.billingType}</td>
                           <td className="px-6 py-3">
                             <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${ps.bg} ${ps.color}`}>
                               {ps.label}
                             </span>
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-500">{payment.paymentDate ? formatDate(payment.paymentDate) : '-'}</td>
+                          <td className="px-6 py-3 text-sm text-muted-foreground">{payment.paymentDate ? formatDate(payment.paymentDate) : '-'}</td>
                         </tr>
                       );
                     })}
