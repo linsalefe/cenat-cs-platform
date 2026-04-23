@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import AppLayout from '@/components/AppLayout';
 import PageHeader from '@/components/PageHeader';
 import KpiCard from '@/components/KpiCard';
+import TestRunDialog from '@/components/workflows/TestRunDialog';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Workflow as WorkflowIcon,
+  PlayCircle,
   Plus,
   Play,
   Pause,
@@ -83,6 +85,7 @@ export default function WorkflowsPage() {
   const [newDescription, setNewDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WorkflowItem | null>(null);
+  const [testTarget, setTestTarget] = useState<WorkflowItem | null>(null);
 
   useEffect(() => {
     load();
@@ -291,6 +294,15 @@ export default function WorkflowsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => setTestTarget(w)}
+                      title="Testar"
+                      disabled={w.nodes_count === 0}
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleToggle(w)}
                       title={w.status === 'active' ? 'Pausar' : 'Ativar'}
                     >
@@ -404,6 +416,13 @@ export default function WorkflowsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    <TestRunDialog
+        open={!!testTarget}
+        onClose={() => setTestTarget(null)}
+        workflowId={testTarget?.id ?? null}
+        workflowName={testTarget?.name ?? ''}
+        onRunCompleted={load}
+      />
     </AppLayout>
   );
 }
