@@ -445,13 +445,13 @@ export default function OnboardingKanbanPage() {
     <AppLayout>
       <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-          <div>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-primary mb-1">Gestão de Alunos</p>
             <h1 className="text-3xl font-semibold text-foreground tracking-tight">Onboarding</h1>
           </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <div className="relative">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap lg:justify-end w-full lg:w-auto">
+            <div className="relative flex-1 sm:flex-initial min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
                 type="text"
@@ -462,14 +462,14 @@ export default function OnboardingKanbanPage() {
                   focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 outline-none"
               />
             </div>
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-card border border-border rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-card border border-border rounded-xl whitespace-nowrap flex-shrink-0">
               <Users className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">{students.length}</span>
               <span className="text-xs text-muted-foreground/70">alunos</span>
             </div>
             <button
               onClick={() => setNewOpen(true)}
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Novo aluno</span>
