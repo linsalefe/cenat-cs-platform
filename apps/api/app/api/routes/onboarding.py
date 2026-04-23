@@ -1,11 +1,16 @@
 """
 Rotas de onboarding:
 - Formulário público (POST /onboarding)
-- Kanban interno (GET/PATCH/POST com auth)
+- Criar aluno manualmente no Kanban (POST /onboarding/students)
+- Kanban interno (GET/PATCH com auth)
+
+B.3+: dispara evento "onboarding_entered" quando aluno entra com status "novo"
+(via formulário OU criação manual).
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from typing import Optional
 import copy
 
 from app.core.deps import get_db, get_current_user
@@ -16,10 +21,31 @@ from app.integrations.whatsapp_meta import normalize_br_phone
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
+# Conjunto unificado — alinhado com node-definitions.ts (workflows)
 VALID_STATUSES = [
-    "novo", "boas_vindas_enviada", "docs_pendentes",
-    "docs_ok", "acesso_moodle", "concluido"
+    "novo",
+    "em_contato",
+    "em_andamento",
+    "aguardando_doc",
+    "follow_up",
+    "concluido",
 ]
+
+
+def _dispatch_onboarding_entered(db: Session, student: Student) -> None:
+    """Fire-and-forget: dispara trigger.onboarding_entered via workflow_dispatcher.
+    Nunca quebra o fluxo de criação do aluno."""
+    try:
+        from app.services import workflow_dispatcher
+
+        workflow_dispatcher.dispatch(
+            db=db,
+            event_type="onboarding_entered",
+            student=student,
+            context={"onboarding_status": student.onboarding_status or "novo"},
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️ Falha ao despachar onboarding_entered: {exc}")
 
 
 # ──────────────────────────────────────
@@ -46,12 +72,13 @@ async def list_onboarding_courses():
 
 @router.post("")
 async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db)):
-    """Recebe formulário de onboarding e dispara automações"""
+    """Recebe formulário de onboarding e dispara automações."""
     phone_clean = normalize_br_phone(
         form.phone.replace("(", "").replace(")", "").replace("-", "").replace(" ", "")
     )
 
     student = db.query(Student).filter(Student.email == form.email).first()
+    is_new = student is None
 
     if student:
         student.name = form.name
@@ -62,6 +89,7 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
             email=form.email,
             phone=phone_clean,
             onboarding_status="novo",
+            primary_course_name=form.course,
         )
         db.add(student)
 
@@ -70,12 +98,17 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
 
     print(f"📋 Onboarding: {student.name} | {student.phone} | {form.course}")
 
+    # Dispara workflows (trigger.onboarding_entered) — só para alunos novos
+    if is_new:
+        _dispatch_onboarding_entered(db, student)
+
+    # Mantém automações legacy (system antigo de Automation)
     automations = db.query(Automation).filter(
         Automation.trigger_type == "form_submitted",
-        Automation.is_active == True,
+        Automation.is_active == True,  # noqa: E712
     ).all()
 
-    print(f"🔍 Automações encontradas: {len(automations)}")
+    print(f"🔍 Automações legacy encontradas: {len(automations)}")
 
     results = []
     for automation in automations:
@@ -116,6 +149,69 @@ async def submit_onboarding(form: OnboardingForm, db: Session = Depends(get_db))
 # ──────────────────────────────────────
 # ROTAS INTERNAS (Kanban — requer auth)
 # ──────────────────────────────────────
+
+class ManualOnboardingCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    course: Optional[str] = None
+    status: Optional[str] = "novo"  # qualquer um de VALID_STATUSES
+
+
+@router.post("/students")
+def create_onboarding_student(
+    data: ManualOnboardingCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Cria um aluno manualmente no Kanban (sem passar pelo formulário público).
+
+    Se email já existe, retorna 409.
+    Dispara trigger.onboarding_entered se criado com status "novo".
+    """
+    status = data.status or "novo"
+    if status not in VALID_STATUSES:
+        raise HTTPException(
+            400,
+            f"Status inválido. Use um de: {', '.join(VALID_STATUSES)}",
+        )
+
+    phone_clean = normalize_br_phone(
+        data.phone.replace("(", "").replace(")", "").replace("-", "").replace(" ", "")
+    )
+
+    existing = db.query(Student).filter(Student.email == data.email).first()
+    if existing:
+        raise HTTPException(
+            409,
+            f"Já existe aluno com este email (id {existing.id}, status: {existing.onboarding_status or '-'}).",
+        )
+
+    student = Student(
+        name=data.name,
+        email=data.email,
+        phone=phone_clean,
+        onboarding_status=status,
+        primary_course_name=data.course,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+
+    # Só dispara o trigger se caiu em "novo" (onboarding começando)
+    if status == "novo":
+        _dispatch_onboarding_entered(db, student)
+
+    return {
+        "id": student.id,
+        "name": student.name,
+        "email": student.email,
+        "phone": student.phone,
+        "primary_course_name": student.primary_course_name,
+        "onboarding_status": student.onboarding_status,
+        "created_at": student.created_at.isoformat() if student.created_at else None,
+    }
+
 
 @router.get("/students")
 def list_onboarding_students(
@@ -159,8 +255,14 @@ def update_onboarding_status(
     if not student:
         raise HTTPException(404, "Aluno não encontrado")
 
+    previous = student.onboarding_status
     student.onboarding_status = status
     db.commit()
+
+    # Se voltou / caiu em "novo", redispara (ex: reativar onboarding)
+    if status == "novo" and previous != "novo":
+        _dispatch_onboarding_entered(db, student)
+
     return {"ok": True}
 
 
@@ -170,7 +272,7 @@ async def send_welcome(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Envia template de boas-vindas e move para 'boas_vindas_enviada'"""
+    """Envia template de boas-vindas e move para 'em_contato'"""
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(404, "Aluno não encontrado")
@@ -193,7 +295,7 @@ async def send_welcome(
     )
 
     if result.get("status") == "sent":
-        student.onboarding_status = "boas_vindas_enviada"
+        student.onboarding_status = "em_contato"
         db.commit()
 
     return result

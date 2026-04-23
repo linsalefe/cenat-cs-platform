@@ -27,6 +27,8 @@ import {
   MessageCircle,
   Loader2,
   Users,
+  Plus,
+  X,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -46,10 +48,10 @@ interface StudentItem {
 
 const columns = [
   { id: 'novo', label: 'Novo', color: 'text-blue-700', bg: 'bg-blue-50', headerBg: 'bg-blue-500', icon: UserPlus },
-  { id: 'boas_vindas_enviada', label: 'Boas-vindas', color: 'text-teal-700', bg: 'bg-teal-50', headerBg: 'bg-teal-500', icon: Send },
-  { id: 'docs_pendentes', label: 'Docs Pendentes', color: 'text-amber-700', bg: 'bg-amber-50', headerBg: 'bg-amber-500', icon: FileWarning },
-  { id: 'docs_ok', label: 'Docs OK', color: 'text-emerald-700', bg: 'bg-emerald-50', headerBg: 'bg-emerald-500', icon: FileCheck },
-  { id: 'acesso_moodle', label: 'Acesso Moodle', color: 'text-purple-700', bg: 'bg-purple-50', headerBg: 'bg-purple-500', icon: GraduationCap },
+  { id: 'em_contato', label: 'Em contato', color: 'text-teal-700', bg: 'bg-teal-50', headerBg: 'bg-teal-500', icon: Send },
+  { id: 'em_andamento', label: 'Em andamento', color: 'text-amber-700', bg: 'bg-amber-50', headerBg: 'bg-amber-500', icon: Loader2 },
+  { id: 'aguardando_doc', label: 'Aguardando doc.', color: 'text-purple-700', bg: 'bg-purple-50', headerBg: 'bg-purple-500', icon: FileWarning },
+  { id: 'follow_up', label: 'Follow-up', color: 'text-orange-700', bg: 'bg-orange-50', headerBg: 'bg-orange-500', icon: MessageCircle },
   { id: 'concluido', label: 'Concluído', color: 'text-foreground/90', bg: 'bg-muted/50', headerBg: 'bg-muted/500', icon: CheckCircle2 },
 ];
 
@@ -240,6 +242,12 @@ export default function OnboardingKanbanPage() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState('');
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newCourse, setNewCourse] = useState('');
+  const [creating, setCreating] = useState(false);
   const [activeStudent, setActiveStudent] = useState<StudentItem | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<number | null>(null);
@@ -355,7 +363,7 @@ export default function OnboardingKanbanPage() {
         if (res.data.status === 'sent') {
           sent++;
           setStudents((prev) =>
-            prev.map((s) => (s.id === student.id ? { ...s, onboarding_status: 'boas_vindas_enviada' } : s))
+            prev.map((s) => (s.id === student.id ? { ...s, onboarding_status: 'em_contato' } : s))
           );
         } else {
           failed++;
@@ -367,6 +375,35 @@ export default function OnboardingKanbanPage() {
 
     setBulkSending(false);
     toast.success(`Envio concluído: ${sent} enviadas, ${failed} falhas`);
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newEmail.trim() || !newPhone.trim()) {
+      toast.error('Preencha nome, email e telefone');
+      return;
+    }
+    try {
+      setCreating(true);
+      const res = await api.post('/onboarding/students', {
+        name: newName.trim(),
+        email: newEmail.trim(),
+        phone: newPhone.trim(),
+        course: newCourse.trim() || null,
+        status: 'novo',
+      });
+      toast.success(`Aluno ${res.data.name} criado`);
+      setStudents((prev) => [res.data, ...prev]);
+      setNewOpen(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPhone('');
+      setNewCourse('');
+    } catch (e) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      toast.error(err?.response?.data?.detail || 'Erro ao criar aluno');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const totalByStatus = useMemo(() => {
@@ -416,6 +453,13 @@ export default function OnboardingKanbanPage() {
               <span className="text-sm font-medium text-foreground">{students.length}</span>
               <span className="text-xs text-muted-foreground/70">alunos</span>
             </div>
+            <button
+              onClick={() => setNewOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Novo aluno
+            </button>
           </div>
         </div>
 
@@ -462,6 +506,108 @@ export default function OnboardingKanbanPage() {
           </DndContext>
         </div>
       </div>
+
+      {/* Modal: Novo aluno */}
+      {newOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => !creating && setNewOpen(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Novo aluno</h2>
+              <button
+                onClick={() => !creating && setNewOpen(false)}
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground"
+                disabled={creating}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Cria um aluno diretamente no Kanban, sem passar pelo formulário público.
+              Workflows com gatilho &quot;Entrou no onboarding&quot; serão disparados.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1.5">
+                  Nome <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nome completo do aluno"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1.5">
+                  Email <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="aluno@exemplo.com"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1.5">
+                  Telefone <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="(11) 98765-4321"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1.5">
+                  Curso <span className="text-muted-foreground/60">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCourse}
+                  onChange={(e) => setNewCourse(e.target.value)}
+                  placeholder="Nome do curso"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button
+                onClick={() => setNewOpen(false)}
+                disabled={creating}
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+              >
+                {creating ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Criando...</>
+                ) : (
+                  <>Criar aluno</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
