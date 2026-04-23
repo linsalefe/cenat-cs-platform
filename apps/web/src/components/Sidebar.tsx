@@ -19,16 +19,38 @@ import {
   BookOpen,
   Send,
   LogOut,
-  ChevronRight,
   Shield,
   FileText,
+  Search,
+  Zap,
 } from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface MenuItem {
   href: string;
   label: string;
   icon: any;
   module: string;
+  hasBadge?: boolean;
 }
 
 interface MenuSection {
@@ -40,7 +62,7 @@ const menuSections: MenuSection[] = [
   {
     title: 'Atendimento',
     items: [
-      { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations' },
+      { href: '/conversations', label: 'Conversas', icon: MessageCircle, module: 'conversations', hasBadge: true },
       { href: '/tickets', label: 'Tickets', icon: Ticket, module: 'tickets' },
       { href: '/onboarding', label: 'Onboarding', icon: UserPlus, module: 'students' },
     ],
@@ -64,6 +86,7 @@ const menuSections: MenuSection[] = [
     title: 'Comunicação',
     items: [
       { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
+      { href: '/automations', label: 'Automações', icon: Zap, module: 'automations' },
     ],
   },
   {
@@ -82,7 +105,23 @@ const menuSections: MenuSection[] = [
   },
 ];
 
-export default function Sidebar() {
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrador',
+  gestor: 'Gestor',
+  atendente: 'Atendente',
+  visualizador: 'Visualizador',
+};
+
+function getInitials(name: string): string {
+  return (name || '??')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export default function AppSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { can, role } = usePermissions();
@@ -93,7 +132,10 @@ export default function Sidebar() {
       const fetchUnread = async () => {
         try {
           const res = await api.get('/conversations');
-          const total = res.data.reduce((acc: number, c: any) => acc + (c.unread_count || 0), 0);
+          const total = res.data.reduce(
+            (acc: number, c: any) => acc + (c.unread_count || 0),
+            0
+          );
           setUnreadCount(total);
         } catch {}
       };
@@ -103,22 +145,6 @@ export default function Sidebar() {
     }
   }, [user]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const ROLE_LABELS: Record<string, string> = {
-    admin: 'Administrador',
-    gestor: 'Gestor',
-    atendente: 'Atendente',
-    visualizador: 'Visualizador',
-  };
-
   const visibleSections = menuSections
     .map((section) => ({
       ...section,
@@ -126,86 +152,139 @@ export default function Sidebar() {
     }))
     .filter((section) => section.items.length > 0);
 
+  const openSearch = () => {
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        metaKey: true,
+        ctrlKey: true,
+        bubbles: true,
+      })
+    );
+  };
+
   return (
-    <aside className="w-64 bg-gradient-to-b from-[#27273D] to-[#1a1a2e] h-screen flex flex-col">
-      {/* Logo */}
-      <div className="p-6">
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="p-4">
+        {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-lg">C</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-chart-8 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <span className="text-white font-bold text-sm">C</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-wide">CENAT</h1>
-            <p className="text-[#8b8ba3] text-xs">Sistema de Retenção</p>
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+            <span className="font-semibold text-[15px] tracking-wide leading-tight text-foreground">
+              CENAT
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">
+              Sistema de Retenção
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Menu */}
-      <nav className="flex-1 px-3 py-2 overflow-y-auto">
+        {/* Search button */}
+        <button
+          onClick={openSearch}
+          className="sidebar-search mt-3 w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200
+                     bg-muted/30 hover:bg-muted/60 border border-border/50 text-muted-foreground"
+        >
+          <Search className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1 text-left text-[13px] group-data-[collapsible=icon]:hidden">
+            Buscar...
+          </span>
+          <kbd className="px-1.5 py-0.5 bg-background text-muted-foreground text-[10px] font-medium rounded border border-border group-data-[collapsible=icon]:hidden">
+            ⌘K
+          </kbd>
+        </button>
+      </SidebarHeader>
+
+      <SidebarContent className="px-2">
         {visibleSections.map((section) => (
-          <div key={section.title} className="mb-4">
-            <p className="px-4 text-[10px] font-semibold text-[#6b6b80] uppercase tracking-widest mb-2">
+          <SidebarGroup key={section.title}>
+            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {section.title}
-            </p>
-            <ul className="space-y-0.5">
+            </SidebarGroupLabel>
+            <SidebarMenu>
               {section.items.map((item) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== '/' && pathname.startsWith(item.href));
+                  (item.href !== '/' && pathname.startsWith(item.href + '/'));
                 const Icon = item.icon;
+                const showBadge = item.hasBadge && unreadCount > 0;
 
                 return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`group flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                        isActive
-                          ? 'bg-[#2A658F] text-white shadow-lg shadow-[#2A658F]/20'
-                          : 'text-[#a0a0b8] hover:bg-white/5 hover:text-white'
-                      }`}
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={isActive ? 'sidebar-item-active' : ''}
                     >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-[18px] h-[18px] ${isActive ? 'text-white' : 'text-[#6b6b80] group-hover:text-white'}`} />
-                        <span className="text-sm font-medium">{item.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.href === '/conversations' && unreadCount > 0 && (
-                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse">
+                      <Link href={item.href}>
+                        <div className={`sidebar-icon-wrap ${isActive ? 'bg-primary/10' : ''}`}>
+                          <Icon
+                            className={`w-[18px] h-[18px] sidebar-icon-colored transition-colors duration-150 ${
+                              isActive ? 'text-primary' : 'text-muted-foreground/70'
+                            }`}
+                            strokeWidth={isActive ? 2 : 1.75}
+                          />
+                        </div>
+                        <span className={`flex-1 ${isActive ? 'font-medium' : ''}`}>
+                          {item.label}
+                        </span>
+                        {showBadge && (
+                          <span className="badge-unread inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-destructive rounded-full">
                             {unreadCount}
                           </span>
                         )}
-                        {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
-                      </div>
-                    </Link>
-                  </li>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 );
               })}
-            </ul>
-          </div>
+            </SidebarMenu>
+          </SidebarGroup>
         ))}
-      </nav>
+      </SidebarContent>
 
-      {/* User */}
-      <div className="p-4 mx-3 mb-4 bg-white/5 rounded-xl">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white font-semibold text-sm shadow-lg">
-            {user?.name ? getInitials(user.name) : 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-[#6b6b80] text-xs truncate">{ROLE_LABELS[role] || role}</p>
-          </div>
-        </div>
-        <button
-          onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium
-            text-[#a0a0b8] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200"
-        >
-          <LogOut className="w-4 h-4" />
-          Sair
-        </button>
-      </div>
-    </aside>
+      <SidebarFooter className="p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="sidebar-user-card w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-accent transition-colors text-left">
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                  {getInitials(user?.name || '')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {ROLE_LABELS[role] || role}
+                </p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={logout}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
