@@ -322,3 +322,20 @@ def resume_delayed_runs(db: Session, limit: int = 50) -> dict:
             errors += 1
             print(f"❌ Erro ao retomar run {run.id}: {exc}")
     return {"eligible": len(runs), "resumed": resumed, "errors": errors}
+
+
+# ============================================================
+# E3 — Wait-for-reply dispatchers (usado pelo webhook + scheduler)
+# ============================================================
+
+def handle_student_replied(db: Session, student_id: int) -> int:
+    """Chamado pelo webhook do WhatsApp quando entra mensagem inbound.
+    Retoma runs waiting_reply do aluno pela branch 'yes'.
+    Retorna quantas runs foram retomadas."""
+    return workflow_engine.resume_on_reply(db, student_id)
+
+
+def timeout_waiting_replies(db: Session, limit: int = 50) -> dict:
+    """Chamado pelo scheduler periódico.
+    Retoma runs waiting_reply com deadline estourado pela branch 'no'."""
+    return workflow_engine.timeout_wait_for_reply(db, limit=limit)

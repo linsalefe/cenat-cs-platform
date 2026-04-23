@@ -380,6 +380,20 @@ def _handle_delay(node: dict) -> datetime:
     return datetime.utcnow() + timedelta(**{kw: amount})
 
 
+def _handle_wait_for_reply(node: dict) -> datetime:
+    """Retorna o reply_deadline a partir da config do wait_for_reply node."""
+    data = node.get("data") or {}
+    try:
+        amount = int(data.get("wait_days") or 3)
+    except (TypeError, ValueError):
+        amount = 3
+    if amount < 1:
+        amount = 1
+    if amount > 30:
+        amount = 30
+    return datetime.utcnow() + timedelta(days=amount)
+
+
 # ============================================================
 # Loop central (reusado por execute + resume)
 # ============================================================
@@ -405,6 +419,7 @@ def _run_loop(
     executed_nodes: list[str] = list(initial_executed or [])
     result: dict[str, Any] = dict(initial_result or {})
     waiting_delay = False
+    waiting_reply = False
 
     run.status = "running"
     db.flush()
@@ -463,6 +478,22 @@ def _run_loop(
                 current_id = None
                 continue
 
+            if node_type == "action.wait_for_reply":
+                # Para o fluxo marcando waiting_reply. O webhook (quando o
+                # aluno responder) ou o scheduler (se timeout) vão retomar.
+                reply_deadline = _handle_wait_for_reply(node)
+                result[current_id] = {
+                    "status": "waiting",
+                    "kind": "action",
+                    "type": node_type,
+                    "reply_deadline": reply_deadline.isoformat(),
+                }
+                run.reply_deadline = reply_deadline
+                run.reply_received_at = None
+                waiting_reply = True
+                current_id = None
+                continue
+
             if node_type.startswith("action."):
                 handler = ACTION_HANDLERS.get(node_type)
                 if not handler:
@@ -494,12 +525,15 @@ def _run_loop(
 
         run.executed_nodes = executed_nodes
         run.result = result
-        if waiting_delay:
+        if waiting_reply:
+            run.status = "waiting_reply"
+        elif waiting_delay:
             run.status = "waiting_delay"
         else:
             run.status = "completed"
             run.finished_at = datetime.utcnow()
             run.resume_at = None  # limpa para runs que retornaram do delay
+            run.reply_deadline = None  # limpa reply_deadline também
 
         if count_as_new_run:
             workflow.runs_count = (workflow.runs_count or 0) + 1
@@ -675,3 +709,145 @@ def resume_workflow(db: Session, run: WorkflowRun) -> WorkflowRun:
         initial_result=result,
         count_as_new_run=False,  # não incrementa runs_count de novo
     )
+
+
+
+# ============================================================
+# E3 — Wait-for-reply helpers
+# ============================================================
+
+def _resume_from_wait_for_reply(
+    db: Session,
+    run: WorkflowRun,
+    source_handle: str,
+) -> WorkflowRun:
+    """Retoma run parqueada em waiting_reply pela branch escolhida.
+
+    source_handle:
+      - 'yes' → aluno respondeu
+      - 'no'  → timeout (deadline estourado)
+    """
+    workflow = (
+        db.query(Workflow).filter(Workflow.id == run.workflow_id).first()
+    )
+    if workflow is None:
+        run.status = "failed"
+        run.error_message = "Workflow não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    student = (
+        db.query(Student).filter(Student.id == run.student_id).first()
+        if run.student_id
+        else None
+    )
+    if student is None:
+        run.status = "failed"
+        run.error_message = "Aluno não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    edges = workflow.edges or []
+    executed_nodes = list(run.executed_nodes or [])
+    result = dict(run.result or {})
+
+    if not executed_nodes:
+        run.status = "failed"
+        run.error_message = "Não há nó para retomar (executed_nodes vazio)."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    last_id = executed_nodes[-1]
+    nxt = _find_next_edge(edges, last_id, source_handle=source_handle)
+    next_id = nxt.get("target") if nxt else None
+
+    # Atualiza o result do wait node com outcome
+    if last_id in result:
+        result[last_id]["status"] = (
+            "replied" if source_handle == "yes" else "timed_out"
+        )
+        result[last_id]["resolved_handle"] = source_handle
+        run.result = result
+
+    # Se for timeout, limpar deadline; se for reply, marcar received_at
+    if source_handle == "yes":
+        run.reply_received_at = datetime.utcnow()
+    else:
+        run.reply_deadline = None  # limpa pra não ser pego 2x pelo scheduler
+
+    if next_id is None:
+        # Saída sem continuação → conclui
+        run.status = "completed"
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    db.commit()
+    db.refresh(run)
+
+    return _run_loop(
+        db=db,
+        workflow=workflow,
+        student=student,
+        run=run,
+        start_id=next_id,
+        triggered_by_user=run.triggered_by_user,
+        initial_executed=executed_nodes,
+        initial_result=result,
+        count_as_new_run=False,
+    )
+
+
+def resume_on_reply(db: Session, student_id: int) -> int:
+    """Encontra runs waiting_reply daquele aluno e retoma pela branch 'yes'.
+
+    Chamado pelo webhook do WhatsApp quando chega mensagem inbound.
+    Retorna quantas runs foram retomadas.
+    """
+    runs = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.status == "waiting_reply",
+            WorkflowRun.student_id == student_id,
+        )
+        .all()
+    )
+    count = 0
+    for run in runs:
+        try:
+            _resume_from_wait_for_reply(db, run, source_handle="yes")
+            count += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"❌ Erro ao retomar run {run.id} após reply: {exc}")
+    return count
+
+
+def timeout_wait_for_reply(db: Session, limit: int = 50) -> dict:
+    """Varre runs waiting_reply com deadline expirado e retoma pela branch 'no'.
+
+    Chamado pelo scheduler periódico.
+    """
+    now = datetime.utcnow()
+    runs = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.status == "waiting_reply",
+            WorkflowRun.reply_deadline.isnot(None),
+            WorkflowRun.reply_deadline <= now,
+        )
+        .limit(limit)
+        .all()
+    )
+    resumed = 0
+    errors = 0
+    for run in runs:
+        try:
+            _resume_from_wait_for_reply(db, run, source_handle="no")
+            resumed += 1
+        except Exception as exc:  # noqa: BLE001
+            errors += 1
+            print(f"❌ Erro ao dar timeout na run {run.id}: {exc}")
+    return {"eligible": len(runs), "resumed": resumed, "errors": errors}
