@@ -248,6 +248,7 @@ export default function OnboardingKanbanPage() {
   const [newPhone, setNewPhone] = useState('');
   const [newCourse, setNewCourse] = useState('');
   const [creating, setCreating] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<string[]>([]);
   const [activeStudent, setActiveStudent] = useState<StudentItem | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<number | null>(null);
@@ -258,6 +259,19 @@ export default function OnboardingKanbanPage() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
   useEffect(() => { if (user) loadStudents(); }, [user]);
+
+  useEffect(() => {
+    if (!newOpen) return;
+    let alive = true;
+    api.get('/onboarding/courses')
+      .then((res) => {
+        if (!alive) return;
+        const data = Array.isArray(res.data) ? res.data : [];
+        setAvailableCourses(data);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [newOpen]);
 
   const loadStudents = async () => {
     try {
@@ -436,7 +450,7 @@ export default function OnboardingKanbanPage() {
             <p className="text-sm font-medium text-primary mb-1">Gestão de Alunos</p>
             <h1 className="text-3xl font-semibold text-foreground tracking-tight">Onboarding</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
@@ -444,7 +458,7 @@ export default function OnboardingKanbanPage() {
                 placeholder="Buscar aluno..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm w-56
+                className="pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm w-full sm:w-56
                   focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 outline-none"
               />
             </div>
@@ -455,10 +469,11 @@ export default function OnboardingKanbanPage() {
             </div>
             <button
               onClick={() => setNewOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              Novo aluno
+              <span className="hidden sm:inline">Novo aluno</span>
+              <span className="sm:hidden">Novo</span>
             </button>
           </div>
         </div>
@@ -575,13 +590,26 @@ export default function OnboardingKanbanPage() {
                 <label className="text-xs font-medium text-foreground block mb-1.5">
                   Curso <span className="text-muted-foreground/60">(opcional)</span>
                 </label>
-                <input
-                  type="text"
-                  value={newCourse}
-                  onChange={(e) => setNewCourse(e.target.value)}
-                  placeholder="Nome do curso"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                />
+                {availableCourses.length > 0 ? (
+                  <select
+                    value={newCourse}
+                    onChange={(e) => setNewCourse(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    <option value="">Selecione um curso…</option>
+                    {availableCourses.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newCourse}
+                    onChange={(e) => setNewCourse(e.target.value)}
+                    placeholder="Nome do curso (lista de cursos indisponível)"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                )}
               </div>
             </div>
 
