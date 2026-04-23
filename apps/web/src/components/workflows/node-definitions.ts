@@ -53,7 +53,7 @@ export type FieldSpec =
       key: string;
       type: 'remoteSelect';
       label: string;
-      endpoint: '/courses' | '/users' | '/whatsapp-templates';
+      endpoint: '/courses' | '/users' | '/whatsapp/templates';
       valueKey: string;
       labelKey: string;
       multiple?: boolean;
@@ -201,7 +201,7 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
         key: 'template_name',
         type: 'remoteSelect',
         label: 'Template',
-        endpoint: '/whatsapp-templates',
+        endpoint: '/whatsapp/templates',
         valueKey: 'name',
         labelKey: 'name',
         required: true,
