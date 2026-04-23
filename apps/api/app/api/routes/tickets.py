@@ -13,7 +13,7 @@ from app.schemas.ticket import (
     TicketMessageCreate,
     TicketMessageResponse,
 )
-from app.services import ticket_service
+from app.services import ticket_service, workflow_dispatcher
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -37,6 +37,22 @@ def create_ticket(
         subject=data.subject,
         message=data.message,
     )
+
+    # B.3 — Event hook: dispara workflows com trigger.ticket_opened
+    try:
+        workflow_dispatcher.dispatch(
+            db=db,
+            event_type="ticket_opened",
+            student=student,
+            context={
+                "ticket_id": ticket.id,
+                "priority": ticket.priority.value if ticket.priority else "media",
+                "category": ticket.category.value if ticket.category else "other",
+            },
+        )
+    except Exception as _exc:  # noqa: BLE001
+        print(f"⚠️ Falha ao despachar workflow de ticket: {_exc}")
+
     return ticket
 
 

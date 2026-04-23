@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout';
 import PageHeader from '@/components/PageHeader';
 import KpiCard from '@/components/KpiCard';
 import TestRunDialog from '@/components/workflows/TestRunDialog';
+import RunsHistoryDialog from '@/components/workflows/RunsHistoryDialog';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ import {
 import {
   Workflow as WorkflowIcon,
   PlayCircle,
+  History,
   Plus,
   Play,
   Pause,
@@ -86,6 +88,7 @@ export default function WorkflowsPage() {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WorkflowItem | null>(null);
   const [testTarget, setTestTarget] = useState<WorkflowItem | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<WorkflowItem | null>(null);
 
   useEffect(() => {
     load();
@@ -294,6 +297,14 @@ export default function WorkflowsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => setHistoryTarget(w)}
+                      title="Histórico"
+                    >
+                      <History className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setTestTarget(w)}
                       title="Testar"
                       disabled={w.nodes_count === 0}
@@ -416,7 +427,13 @@ export default function WorkflowsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    <TestRunDialog
+    <RunsHistoryDialog
+        open={!!historyTarget}
+        onClose={() => setHistoryTarget(null)}
+        workflowId={historyTarget?.id ?? null}
+        workflowName={historyTarget?.name ?? ''}
+      />
+      <TestRunDialog
         open={!!testTarget}
         onClose={() => setTestTarget(null)}
         workflowId={testTarget?.id ?? null}
