@@ -1,15 +1,14 @@
 """
-Workflow Engine — B.2
+Workflow Engine — B.3
 
-Mudança em relação ao B.1: `action.send_whatsapp` agora pode:
-  - Rodar em **dry-run** (env var WORKFLOWS_WHATSAPP_DRY_RUN=true, default) —
-    apenas registra o que seria enviado no result, sem chamar a Meta.
-  - Rodar em **real** (env var = "false") — chama
-    `app.integrations.whatsapp_meta.send_template()` preenchendo as variáveis
-    {{1}}=primeiro_nome e {{2}}=curso (fallback "sua pós-graduação no CENAT"),
-    mesma convenção adotada no resto do projeto.
+Mudanças em relação ao B.2:
+  - Loop iterativo foi extraído em `_run_loop()` para permitir retomada.
+  - Novo `resume_workflow(db, run)`: retoma run parqueada em waiting_delay,
+    continuando a partir da próxima edge após o delay. Chamado pelo
+    scheduler (workflow_dispatcher.resume_delayed_runs).
 
-Demais partes do engine são idênticas ao B.1.
+Demais comportamentos (triggers, conditions, actions, WhatsApp dry-run)
+são idênticos ao B.2.
 """
 
 from __future__ import annotations
@@ -64,8 +63,6 @@ WHATSAPP_COURSE_FALLBACK = "sua pós-graduação no CENAT"
 
 
 def _is_dry_run() -> bool:
-    """Default seguro: dry-run ativado. Para enviar de verdade, exportar
-    WORKFLOWS_WHATSAPP_DRY_RUN=false no ambiente da API."""
     return (
         os.environ.get("WORKFLOWS_WHATSAPP_DRY_RUN", "true").strip().lower()
         != "false"
@@ -185,12 +182,6 @@ def _evaluate_condition(
 def _action_send_whatsapp(
     db: Session, node: dict, student: Student, user_id: Optional[int]
 ) -> dict[str, Any]:
-    """Envia template via Meta Cloud API OU loga em dry-run.
-
-    Variáveis de template preenchidas por convenção:
-      {{1}} = primeiro nome do aluno
-      {{2}} = nome do curso (fallback "sua pós-graduação no CENAT")
-    """
     data = node.get("data") or {}
     template = (data.get("template_name") or "").strip()
     channel = (data.get("channel") or "cs").strip() or "cs"
@@ -205,13 +196,9 @@ def _action_send_whatsapp(
         "template": template or "(não informado)",
         "language": "pt_BR",
         "channel": channel,
-        "params": {
-            "1": first_name,
-            "2": course_name,
-        },
+        "params": {"1": first_name, "2": course_name},
     }
 
-    # Validações (param faltante e telefone ausente viram erros, não exceções)
     if not template:
         return {
             "status": "error",
@@ -230,7 +217,6 @@ def _action_send_whatsapp(
             "would_send": would_send,
         }
 
-    # Modo dry-run — não chama a Meta
     if dry_run:
         return {
             "status": "dry_run",
@@ -244,7 +230,6 @@ def _action_send_whatsapp(
             ),
         }
 
-    # Modo real
     components = [
         {
             "type": "body",
@@ -258,8 +243,6 @@ def _action_send_whatsapp(
     try:
         from app.integrations.whatsapp_meta import send_template
 
-        # O engine roda em contexto sync (rota FastAPI def, não async def).
-        # asyncio.run() cria um novo event loop; seguro nesse contexto.
         meta_result = asyncio.run(
             send_template(
                 phone=student.phone,
@@ -269,7 +252,7 @@ def _action_send_whatsapp(
                 channel_slug=channel,
             )
         )
-    except Exception as exc:  # noqa: BLE001 — queremos capturar tudo
+    except Exception as exc:  # noqa: BLE001
         return {
             "status": "error",
             "action": "send_whatsapp",
@@ -278,7 +261,6 @@ def _action_send_whatsapp(
             "would_send": would_send,
         }
 
-    # meta_result é {status: "sent"|"error", ...}
     merged: dict[str, Any] = {
         "action": "send_whatsapp",
         "dry_run": False,
@@ -384,7 +366,7 @@ ACTION_HANDLERS = {
 
 
 # ============================================================
-# Delay handler
+# Delay
 # ============================================================
 
 def _handle_delay(node: dict) -> datetime:
@@ -399,63 +381,35 @@ def _handle_delay(node: dict) -> datetime:
 
 
 # ============================================================
-# Executor principal
+# Loop central (reusado por execute + resume)
 # ============================================================
 
-def execute_workflow(
+def _run_loop(
     db: Session,
     workflow: Workflow,
     student: Student,
-    trigger_node_id: Optional[str] = None,
-    triggered_by: str = "manual",
-    triggered_by_user: Optional[int] = None,
+    run: WorkflowRun,
+    start_id: str,
+    triggered_by_user: Optional[int],
+    initial_executed: Optional[list[str]] = None,
+    initial_result: Optional[dict[str, Any]] = None,
+    count_as_new_run: bool = True,
 ) -> WorkflowRun:
+    """Percorre o grafo a partir de start_id. Atualiza run.executed_nodes,
+    run.result, run.status, run.resume_at, run.finished_at no próprio objeto
+    (persistido ao final). Retorna o run com dados atualizados."""
+
     nodes = workflow.nodes or []
     edges = workflow.edges or []
 
-    start_id = trigger_node_id or _first_trigger_node_id(nodes)
-
-    run = WorkflowRun(
-        workflow_id=workflow.id,
-        student_id=student.id,
-        status="pending",
-        trigger_node_id=start_id,
-        triggered_by=triggered_by,
-        triggered_by_user=triggered_by_user,
-        executed_nodes=[],
-        result={},
-    )
-    db.add(run)
-    db.flush()
-
-    if not nodes:
-        run.status = "skipped"
-        run.error_message = "Workflow vazio."
-        run.finished_at = datetime.utcnow()
-        db.commit()
-        return run
-
-    if not start_id:
-        run.status = "skipped"
-        run.error_message = "Nenhum gatilho encontrado no workflow."
-        run.finished_at = datetime.utcnow()
-        db.commit()
-        return run
-
-    if _find_node(nodes, start_id) is None:
-        run.status = "skipped"
-        run.error_message = f"Trigger node '{start_id}' não existe no grafo."
-        run.finished_at = datetime.utcnow()
-        db.commit()
-        return run
+    executed_nodes: list[str] = list(initial_executed or [])
+    result: dict[str, Any] = dict(initial_result or {})
+    waiting_delay = False
 
     run.status = "running"
     db.flush()
 
     current_id: Optional[str] = start_id
-    executed_nodes: list[str] = []
-    result: dict[str, Any] = {}
-    waiting_delay = False
 
     try:
         while current_id is not None:
@@ -545,42 +499,179 @@ def execute_workflow(
         else:
             run.status = "completed"
             run.finished_at = datetime.utcnow()
+            run.resume_at = None  # limpa para runs que retornaram do delay
 
-        workflow.runs_count = (workflow.runs_count or 0) + 1
-        workflow.last_run_at = datetime.utcnow()
+        if count_as_new_run:
+            workflow.runs_count = (workflow.runs_count or 0) + 1
+            workflow.last_run_at = datetime.utcnow()
 
         db.commit()
         db.refresh(run)
         return run
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         db.rollback()
-        run = (
-            db.query(WorkflowRun)
-            .filter(WorkflowRun.id == run.id)
-            .first()
+        run_fresh = (
+            db.query(WorkflowRun).filter(WorkflowRun.id == run.id).first()
         )
-        if run is None:
-            run = WorkflowRun(
+        if run_fresh is None:
+            run_fresh = WorkflowRun(
                 workflow_id=workflow.id,
                 student_id=student.id,
                 status="failed",
-                trigger_node_id=start_id,
-                triggered_by=triggered_by,
+                trigger_node_id=run.trigger_node_id,
+                triggered_by=run.triggered_by,
                 triggered_by_user=triggered_by_user,
                 executed_nodes=executed_nodes,
                 result=result,
                 error_message=str(exc),
                 finished_at=datetime.utcnow(),
             )
-            db.add(run)
+            db.add(run_fresh)
         else:
-            run.status = "failed"
-            run.executed_nodes = executed_nodes
-            run.result = result
-            run.error_message = str(exc)
-            run.finished_at = datetime.utcnow()
+            run_fresh.status = "failed"
+            run_fresh.executed_nodes = executed_nodes
+            run_fresh.result = result
+            run_fresh.error_message = str(exc)
+            run_fresh.finished_at = datetime.utcnow()
 
         db.commit()
-        db.refresh(run)
+        db.refresh(run_fresh)
+        return run_fresh
+
+
+# ============================================================
+# API pública do engine
+# ============================================================
+
+def execute_workflow(
+    db: Session,
+    workflow: Workflow,
+    student: Student,
+    trigger_node_id: Optional[str] = None,
+    triggered_by: str = "manual",
+    triggered_by_user: Optional[int] = None,
+) -> WorkflowRun:
+    """Executa um workflow desde o início (a partir de um trigger node)."""
+
+    nodes = workflow.nodes or []
+    start_id = trigger_node_id or _first_trigger_node_id(nodes)
+
+    run = WorkflowRun(
+        workflow_id=workflow.id,
+        student_id=student.id,
+        status="pending",
+        trigger_node_id=start_id,
+        triggered_by=triggered_by,
+        triggered_by_user=triggered_by_user,
+        executed_nodes=[],
+        result={},
+    )
+    db.add(run)
+    db.flush()
+
+    if not nodes:
+        run.status = "skipped"
+        run.error_message = "Workflow vazio."
+        run.finished_at = datetime.utcnow()
+        db.commit()
         return run
+
+    if not start_id:
+        run.status = "skipped"
+        run.error_message = "Nenhum gatilho encontrado no workflow."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    if _find_node(nodes, start_id) is None:
+        run.status = "skipped"
+        run.error_message = f"Trigger node '{start_id}' não existe no grafo."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    return _run_loop(
+        db=db,
+        workflow=workflow,
+        student=student,
+        run=run,
+        start_id=start_id,
+        triggered_by_user=triggered_by_user,
+        initial_executed=[],
+        initial_result={},
+        count_as_new_run=True,
+    )
+
+
+def resume_workflow(db: Session, run: WorkflowRun) -> WorkflowRun:
+    """Retoma uma run parqueada em waiting_delay a partir da edge seguinte
+    ao último delay node. Retorna o run atualizado."""
+
+    workflow = (
+        db.query(Workflow).filter(Workflow.id == run.workflow_id).first()
+    )
+    if workflow is None:
+        run.status = "failed"
+        run.error_message = "Workflow não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    student = (
+        db.query(Student).filter(Student.id == run.student_id).first()
+        if run.student_id
+        else None
+    )
+    if student is None:
+        run.status = "failed"
+        run.error_message = "Aluno não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    nodes = workflow.nodes or []
+    edges = workflow.edges or []
+    executed_nodes = list(run.executed_nodes or [])
+    result = dict(run.result or {})
+
+    # Último nó executado deve ser o delay.
+    if not executed_nodes:
+        run.status = "failed"
+        run.error_message = "Não há nó para retomar (executed_nodes vazio)."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    last_id = executed_nodes[-1]
+    nxt = _find_next_edge(edges, last_id, source_handle=None)
+    next_id = nxt.get("target") if nxt else None
+
+    if next_id is None:
+        # Delay sem saída → conclui
+        run.status = "completed"
+        run.resume_at = None
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    # Atualiza o result do delay pra marcar como "completed"
+    if last_id in result:
+        result[last_id]["status"] = "completed"
+        run.result = result
+
+    run.resume_at = None
+    db.commit()
+    db.refresh(run)
+
+    return _run_loop(
+        db=db,
+        workflow=workflow,
+        student=student,
+        run=run,
+        start_id=next_id,
+        triggered_by_user=run.triggered_by_user,
+        initial_executed=executed_nodes,
+        initial_result=result,
+        count_as_new_run=False,  # não incrementa runs_count de novo
+    )
