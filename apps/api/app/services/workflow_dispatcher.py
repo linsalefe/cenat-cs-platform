@@ -40,6 +40,7 @@ EVENT_TO_TRIGGER: dict[str, str] = {
     "payment_overdue": "trigger.payment_overdue",
     "nps_low": "trigger.nps_low",
     "ticket_opened": "trigger.ticket_opened",
+    "onboarding_entered": "trigger.onboarding_entered",
 }
 
 # Ordem das prioridades de ticket (pra trigger.ticket_opened)
@@ -125,6 +126,11 @@ def _trigger_matches(
         except (TypeError, ValueError):
             max_score = 6
         return int(score) <= max_score
+
+    if t_type == "trigger.onboarding_entered":
+        # Dispara sempre que o aluno entra no onboarding com status "novo".
+        # O filtro de status é feito pelo próprio evento (só emitido em "novo").
+        return True
 
     if t_type == "trigger.inactive_moodle":
         # Best-effort: o model Student não tem 'last_moodle_access'.

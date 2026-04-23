@@ -8,6 +8,7 @@ import {
   Send,
   FilePlus,
   UserCheck,
+  UserPlus,
   Route,
   GitBranch,
   BookOpen,
@@ -185,6 +186,17 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
         helpText: '0-6 = detrator, 7-8 = neutro, 9-10 = promotor. Padrão: 6.',
       },
     ],
+  },
+
+  'trigger.onboarding_entered': {
+    type: 'trigger.onboarding_entered',
+    kind: 'trigger',
+    label: 'Entrou no onboarding',
+    description: 'Dispara quando um aluno entra no funil de onboarding (pelo formulário público ou criado manualmente no Kanban).',
+    icon: UserPlus,
+    color: 'blue',
+    defaultData: {},
+    fields: [],
   },
 
   /* ---------- ACTIONS ---------- */
