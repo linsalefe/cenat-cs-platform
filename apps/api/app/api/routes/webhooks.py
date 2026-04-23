@@ -156,6 +156,15 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                         db.add(student)
                         db.flush()
 
+                    # E3: retoma runs waiting_reply daquele aluno
+                    try:
+                        from app.services import workflow_dispatcher
+                        resumed = workflow_dispatcher.handle_student_replied(db, student.id)
+                        if resumed > 0:
+                            print(f"💬 {resumed} workflow run(s) retomada(s) após resposta do aluno {student.id}")
+                    except Exception as _exc:  # noqa: BLE001
+                        print(f"⚠️ Falha ao retomar workflows após inbound: {_exc}")
+
                     # Busca ticket aberto do aluno
                     open_ticket = db.query(Ticket).filter(
                         Ticket.student_id == student.id,

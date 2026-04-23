@@ -13,6 +13,9 @@ class WorkflowRun(Base):
       - failed: erro durante execução (detalhes em error_message)
       - skipped: não executou (ex: sem trigger ou grafo inválido)
       - waiting_delay: parou em um delay.wait. resume_at diz quando retomar.
+      - waiting_reply: parou em action.wait_for_reply. reply_deadline diz quando
+        desistir (sair pela branch "não respondeu"). reply_received_at marca
+        quando o aluno respondeu, se respondeu.
     """
 
     __tablename__ = "workflow_runs"
@@ -55,6 +58,10 @@ class WorkflowRun(Base):
 
     # Delay
     resume_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Wait-for-reply (E3)
+    reply_deadline = Column(DateTime(timezone=True), nullable=True, index=True)
+    reply_received_at = Column(DateTime(timezone=True), nullable=True)
 
     # Timestamps
     started_at = Column(
