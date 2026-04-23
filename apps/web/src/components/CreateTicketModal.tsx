@@ -25,7 +25,7 @@ const categories = [
 ];
 
 const priorities = [
-  { value: 'low', label: 'Baixa', color: 'text-gray-600' },
+  { value: 'low', label: 'Baixa', color: 'text-muted-foreground' },
   { value: 'medium', label: 'Média', color: 'text-amber-600' },
   { value: 'high', label: 'Alta', color: 'text-orange-600' },
   { value: 'urgent', label: 'Urgente', color: 'text-red-600' },
@@ -146,18 +146,18 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all"
+          className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg transform transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between p-6 border-b border-border">
             <div>
-              <h2 className="text-xl font-semibold text-[#27273D]">Novo Ticket</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Criar ticket manualmente</p>
+              <h2 className="text-xl font-semibold text-foreground">Novo Ticket</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Criar ticket manualmente</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -167,12 +167,12 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
             {/* Aluno */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <User className="w-4 h-4 text-gray-400" />
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground/90 mb-2">
+                <User className="w-4 h-4 text-muted-foreground/70" />
                 Aluno
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -182,30 +182,30 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
                   }}
                   onFocus={() => searchTerm.length >= 2 && setShowDropdown(true)}
                   placeholder="Buscar por nome ou email..."
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                  className="w-full pl-11 pr-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10 
                     transition-all outline-none"
                 />
                 {loadingStudents && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70 animate-spin" />
                 )}
 
                 {/* Dropdown */}
                 {showDropdown && filteredStudents.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
                     {filteredStudents.map((student) => (
                       <button
                         key={student.id}
                         type="button"
                         onClick={() => handleSelectStudent(student)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-muted/50 flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2A658F] to-[#3d7ba8] flex items-center justify-center text-white text-xs font-semibold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-xs font-semibold">
                           {student.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
+                          <p className="text-sm font-medium text-foreground">{student.name}</p>
+                          <p className="text-xs text-muted-foreground">{student.email}</p>
                         </div>
                       </button>
                     ))}
@@ -223,15 +223,15 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
             {/* Categoria e Prioridade */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <Tag className="w-4 h-4 text-gray-400" />
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground/90 mb-2">
+                  <Tag className="w-4 h-4 text-muted-foreground/70" />
                   Categoria
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                  className="w-full px-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10 
                     transition-all outline-none"
                 >
                   {categories.map((cat) => (
@@ -243,15 +243,15 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground/90 mb-2">
+                  <AlertCircle className="w-4 h-4 text-muted-foreground/70" />
                   Prioridade
                 </label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                  className="w-full px-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10 
                     transition-all outline-none"
                 >
                   {priorities.map((p) => (
@@ -265,7 +265,7 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
 
             {/* Assunto */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground/90 mb-2">
                 Assunto
               </label>
               <input
@@ -273,16 +273,16 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Ex: Dúvida sobre certificado"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                className="w-full px-4 py-3 border border-border rounded-xl
+                  focus:border-primary focus:ring-4 focus:ring-primary/10 
                   transition-all outline-none"
               />
             </div>
 
             {/* Mensagem */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                <MessageSquare className="w-4 h-4 text-gray-400" />
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground/90 mb-2">
+                <MessageSquare className="w-4 h-4 text-muted-foreground/70" />
                 Mensagem inicial
               </label>
               <textarea
@@ -290,8 +290,8 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Descreva o motivo do contato..."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                className="w-full px-4 py-3 border border-border rounded-xl
+                  focus:border-primary focus:ring-4 focus:ring-primary/10 
                   transition-all outline-none resize-none"
               />
             </div>
@@ -308,8 +308,8 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 
-                  hover:bg-gray-200 rounded-xl transition-colors"
+                className="flex-1 px-4 py-3 text-sm font-medium text-foreground/90 bg-muted 
+                  hover:bg-muted-foreground/20 rounded-xl transition-colors"
               >
                 Cancelar
               </button>
@@ -317,7 +317,7 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Create
                 type="submit"
                 disabled={loading}
                 className="flex-1 px-4 py-3 text-sm font-medium text-white 
-                  bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
+                  bg-gradient-to-r from-primary to-primary/80 rounded-xl
                   hover:shadow-lg hover:shadow-[#2A658F]/30 transition-all
                   disabled:opacity-50 disabled:cursor-not-allowed"
               >

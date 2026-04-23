@@ -82,7 +82,7 @@ const levelConfig: Record<string, { label: string; color: string; bg: string; ba
 
 const trendConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   worsening: { label: 'Piorando', color: 'text-red-600', bg: 'bg-red-50', icon: ArrowUpRight },
-  stable: { label: 'Estável', color: 'text-gray-500', bg: 'bg-gray-50', icon: Minus },
+  stable: { label: 'Estável', color: 'text-muted-foreground', bg: 'bg-muted/50', icon: Minus },
   improving: { label: 'Melhorando', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: ArrowDownRight },
 };
 
@@ -142,8 +142,8 @@ export default function StudentRiskDetail() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
-          <div className="h-64 bg-gray-100 rounded-2xl"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
+          <div className="h-64 bg-muted rounded-2xl"></div>
         </div>
       </AppLayout>
     );
@@ -153,7 +153,7 @@ export default function StudentRiskDetail() {
     return (
       <AppLayout>
         <div className="text-center py-20">
-          <p className="text-gray-500">Score não encontrado. Recalcule o risco.</p>
+          <p className="text-muted-foreground">Score não encontrado. Recalcule o risco.</p>
         </div>
       </AppLayout>
     );
@@ -171,7 +171,7 @@ export default function StudentRiskDetail() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/risk')}
-              className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all"
+              className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -179,14 +179,14 @@ export default function StudentRiskDetail() {
               <Avatar name={risk.student_name} size="lg" />
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-semibold text-[#27273D]">{risk.student_name}</h1>
+                  <h1 className="text-2xl font-semibold text-foreground">{risk.student_name}</h1>
                   {risk.abandonment_status === 'abandoned' && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-800 text-white">
                       <UserX className="w-3 h-3" /> Abandono
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span>{risk.student_email}</span>
                   {risk.student_phone && <span>· {risk.student_phone}</span>}
                 </div>
@@ -195,18 +195,18 @@ export default function StudentRiskDetail() {
           </div>
 
           <div className="flex items-center gap-2">
-            <a href={`mailto:${risk.student_email}`} className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all">
+            <a href={`mailto:${risk.student_email}`} className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
               <Mail className="w-5 h-5" />
             </a>
             {risk.student_phone && (
-              <a href={`tel:${risk.student_phone}`} className="p-2 text-gray-400 hover:text-[#2A658F] hover:bg-[#E2ECF4] rounded-lg transition-all">
+              <a href={`tel:${risk.student_phone}`} className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-primary/10 rounded-lg transition-all">
                 <Phone className="w-5 h-5" />
               </a>
             )}
             <button
               onClick={handleRecalculate}
               disabled={recalculating}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2A658F] text-white text-sm font-medium rounded-xl
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl
                 hover:bg-[#1E4F73] transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
@@ -218,8 +218,8 @@ export default function StudentRiskDetail() {
         {/* Score + Trend Card */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Score principal */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-medium text-gray-500 mb-4">Score de Risco</h2>
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">Score de Risco</h2>
             <div className="flex items-center gap-6">
               <div className="relative">
                 <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
@@ -234,7 +234,7 @@ export default function StudentRiskDetail() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[#27273D]">{risk.score.toFixed(0)}</span>
+                  <span className="text-2xl font-bold text-foreground">{risk.score.toFixed(0)}</span>
                 </div>
               </div>
               <div>
@@ -248,7 +248,7 @@ export default function StudentRiskDetail() {
                     {risk.trend_delta !== 0 && ` (${risk.trend_delta > 0 ? '+' : ''}${risk.trend_delta.toFixed(1)})`}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-muted-foreground/70 mt-2">
                   Calculado em {new Date(risk.calculated_at).toLocaleDateString('pt-BR')}
                 </p>
               </div>
@@ -256,8 +256,8 @@ export default function StudentRiskDetail() {
           </div>
 
           {/* Tendências por indicador */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-medium text-gray-500 mb-4">Tendências</h2>
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">Tendências</h2>
             <div className="space-y-4">
               {[
                 { key: 'attendance', label: 'Presença', value: risk.trends.attendance },
@@ -268,7 +268,7 @@ export default function StudentRiskDetail() {
                 const TIcon = t.icon;
                 return (
                   <div key={item.key} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{item.label}</span>
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${t.bg} ${t.color}`}>
                       <TIcon className="w-3 h-3" />
                       {t.label}
@@ -280,26 +280,26 @@ export default function StudentRiskDetail() {
           </div>
 
           {/* Presença */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-medium text-gray-500 mb-4">Presença</h2>
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">Presença</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.rate}%</p>
-                <p className="text-xs text-gray-500">Taxa de faltas</p>
+                <p className="text-2xl font-semibold text-foreground">{risk.attendance_info.rate}%</p>
+                <p className="text-xs text-muted-foreground">Taxa de faltas</p>
               </div>
               <div>
-                <p className={`text-2xl font-semibold ${risk.attendance_info.consecutive_absences >= 8 ? 'text-red-600' : risk.attendance_info.consecutive_absences >= 3 ? 'text-amber-600' : 'text-[#27273D]'}`}>
+                <p className={`text-2xl font-semibold ${risk.attendance_info.consecutive_absences >= 8 ? 'text-red-600' : risk.attendance_info.consecutive_absences >= 3 ? 'text-amber-600' : 'text-foreground'}`}>
                   {risk.attendance_info.consecutive_absences}
                 </p>
-                <p className="text-xs text-gray-500">Faltas consecutivas</p>
+                <p className="text-xs text-muted-foreground">Faltas consecutivas</p>
               </div>
               <div>
-                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.absences}</p>
-                <p className="text-xs text-gray-500">Total de faltas</p>
+                <p className="text-2xl font-semibold text-foreground">{risk.attendance_info.absences}</p>
+                <p className="text-xs text-muted-foreground">Total de faltas</p>
               </div>
               <div>
-                <p className="text-2xl font-semibold text-[#27273D]">{risk.attendance_info.total}</p>
-                <p className="text-xs text-gray-500">Total de sessões</p>
+                <p className="text-2xl font-semibold text-foreground">{risk.attendance_info.total}</p>
+                <p className="text-xs text-muted-foreground">Total de sessões</p>
               </div>
             </div>
             {risk.attendance_info.consecutive_absences >= 8 && (
@@ -314,8 +314,8 @@ export default function StudentRiskDetail() {
         </div>
 
         {/* Componentes do Score */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 className="text-sm font-medium text-gray-500 mb-6">Componentes do Score</h2>
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <h2 className="text-sm font-medium text-muted-foreground mb-6">Componentes do Score</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.entries(risk.components).map(([key, value]) => {
               const comp = componentConfig[key];
@@ -327,15 +327,15 @@ export default function StudentRiskDetail() {
                 <div key={key} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-700">{comp.label}</span>
+                      <Icon className="w-4 h-4 text-muted-foreground/70" />
+                      <span className="text-sm font-medium text-foreground/90">{comp.label}</span>
                     </div>
-                    <span className="text-sm font-semibold text-[#27273D]">{value.toFixed(0)}</span>
+                    <span className="text-sm font-semibold text-foreground">{value.toFixed(0)}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${value}%` }} />
                   </div>
-                  <p className="text-xs text-gray-400">{comp.description}</p>
+                  <p className="text-xs text-muted-foreground/70">{comp.description}</p>
                 </div>
               );
             })}
@@ -343,8 +343,8 @@ export default function StudentRiskDetail() {
         </div>
 
         {/* Fatores */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 className="text-sm font-medium text-gray-500 mb-4">Fatores de Risco</h2>
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">Fatores de Risco</h2>
           <div className="flex flex-wrap gap-2">
             {risk.factors.map((factor, idx) => {
               const isWarning = factor.includes('Inadimplente') || factor.includes('faltas consecutivas') || factor.includes('piora') || factor.includes('Sem acessar');
@@ -352,7 +352,7 @@ export default function StudentRiskDetail() {
                 <span
                   key={idx}
                   className={`px-3 py-1.5 text-sm rounded-lg ${
-                    isWarning ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-50 text-gray-600 border border-gray-100'
+                    isWarning ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-muted/50 text-muted-foreground border border-border'
                   }`}
                 >
                   {factor}
@@ -364,15 +364,15 @@ export default function StudentRiskDetail() {
 
         {/* Histórico (se houver) */}
         {history.length > 1 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-sm font-medium text-gray-500 mb-4">Histórico Semanal</h2>
+          <div className="bg-card rounded-2xl border border-border p-6">
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">Histórico Semanal</h2>
             <div className="space-y-3">
               {history.map((h, idx) => (
                 <div key={idx} className="flex items-center gap-4">
-                  <span className="text-xs text-gray-400 w-24 shrink-0">
+                  <span className="text-xs text-muted-foreground/70 w-24 shrink-0">
                     {new Date(h.period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </span>
-                  <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         h.score >= 75 ? 'bg-red-500' : h.score >= 50 ? 'bg-orange-500' : h.score >= 25 ? 'bg-amber-500' : 'bg-emerald-500'
@@ -380,7 +380,7 @@ export default function StudentRiskDetail() {
                       style={{ width: `${h.score}%` }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-10 text-right">{h.score.toFixed(0)}</span>
+                  <span className="text-sm font-medium text-foreground/90 w-10 text-right">{h.score.toFixed(0)}</span>
                 </div>
               ))}
             </div>

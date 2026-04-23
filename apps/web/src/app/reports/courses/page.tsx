@@ -71,7 +71,7 @@ export default function CoursesReportPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-muted-foreground/70 animate-spin" />
         </div>
       </AppLayout>
     );
@@ -86,39 +86,39 @@ export default function CoursesReportPage() {
         <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <button
             onClick={() => router.push('/reports')}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-2"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors mb-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Relatórios
           </button>
           <p className="text-sm font-medium text-purple-600 mb-1">Visão Acadêmica</p>
-          <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Desempenho por Curso</h1>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Desempenho por Curso</h1>
         </div>
 
         {/* KPI Cards */}
         <div className={`grid grid-cols-2 sm:grid-cols-3 gap-4 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '100ms' }}>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
               <GraduationCap className="w-5 h-5 text-purple-600" />
             </div>
-            <p className="text-3xl font-bold text-[#27273D]">{data.summary.total_courses}</p>
-            <p className="text-sm text-gray-500">Cursos</p>
+            <p className="text-3xl font-bold text-foreground">{data.summary.total_courses}</p>
+            <p className="text-sm text-muted-foreground">Cursos</p>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
               <Users className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-3xl font-bold text-[#27273D]">{data.summary.total_students.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Alunos matriculados</p>
+            <p className="text-3xl font-bold text-foreground">{data.summary.total_students.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Alunos matriculados</p>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
             </div>
             <p className="text-3xl font-bold text-emerald-600">{data.summary.avg_progress}%</p>
-            <p className="text-sm text-gray-500">Progresso médio geral</p>
+            <p className="text-sm text-muted-foreground">Progresso médio geral</p>
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export default function CoursesReportPage() {
         <div className={`flex gap-2 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '200ms' }}>
-          <span className="text-sm text-gray-500 py-1.5">Ordenar por:</span>
+          <span className="text-sm text-muted-foreground py-1.5">Ordenar por:</span>
           {[
             { key: 'total', label: 'Alunos' },
             { key: 'progress', label: 'Progresso' },
@@ -138,8 +138,8 @@ export default function CoursesReportPage() {
               onClick={() => setSortBy(opt.key as any)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 sortBy === opt.key
-                  ? 'bg-[#2A658F] text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-muted-foreground border border-border hover:bg-muted/50'
               }`}
             >
               {opt.label}
@@ -161,7 +161,7 @@ export default function CoursesReportPage() {
               : course.moodle.avg_progress >= 40 ? 'bg-amber-500' : 'bg-red-500';
 
             return (
-              <div key={idx} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow">
+              <div key={idx} className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-sm transition-shadow">
                 {/* Main Row */}
                 <button
                   onClick={() => setExpandedCourse(isExpanded ? null : idx)}
@@ -169,25 +169,25 @@ export default function CoursesReportPage() {
                 >
                   {/* Nome */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[#27273D] truncate" title={course.course}>
+                    <p className="font-semibold text-foreground truncate" title={course.course}>
                       {course.course}
                     </p>
-                    <p className="text-sm text-gray-500">{course.total} alunos</p>
+                    <p className="text-sm text-muted-foreground">{course.total} alunos</p>
                   </div>
 
                   {/* Progresso */}
                   <div className="hidden sm:flex flex-col items-center w-24">
                     <p className={`text-lg font-bold ${progressColor}`}>{course.moodle.avg_progress}%</p>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1">
+                    <div className="w-full h-1.5 bg-muted rounded-full mt-1">
                       <div className={`h-full ${progressBg} rounded-full`} style={{ width: `${course.moodle.avg_progress}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">Progresso</p>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">Progresso</p>
                   </div>
 
                   {/* Nota */}
                   <div className="hidden md:flex flex-col items-center w-20">
-                    <p className="text-lg font-bold text-[#27273D]">{course.moodle.avg_grade || '-'}</p>
-                    <p className="text-xs text-gray-400">Nota média</p>
+                    <p className="text-lg font-bold text-foreground">{course.moodle.avg_grade || '-'}</p>
+                    <p className="text-xs text-muted-foreground/70">Nota média</p>
                   </div>
 
                   {/* Risco Alto */}
@@ -195,7 +195,7 @@ export default function CoursesReportPage() {
                     <p className={`text-lg font-bold ${course.risk.high > 10 ? 'text-red-600' : course.risk.high > 5 ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {course.risk.high}
                     </p>
-                    <p className="text-xs text-gray-400">Risco alto</p>
+                    <p className="text-xs text-muted-foreground/70">Risco alto</p>
                   </div>
 
                   {/* Saúde Financeira */}
@@ -203,18 +203,18 @@ export default function CoursesReportPage() {
                     <p className={`text-lg font-bold ${course.financial.health_rate >= 50 ? 'text-emerald-600' : course.financial.health_rate >= 25 ? 'text-amber-600' : 'text-red-600'}`}>
                       {course.financial.health_rate}%
                     </p>
-                    <p className="text-xs text-gray-400">Saúde fin.</p>
+                    <p className="text-xs text-muted-foreground/70">Saúde fin.</p>
                   </div>
 
                   {/* Expand */}
-                  <div className="text-gray-400">
+                  <div className="text-muted-foreground/70">
                     {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                   </div>
                 </button>
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="px-6 pb-5 border-t border-gray-100 pt-4">
+                  <div className="px-6 pb-5 border-t border-border pt-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {/* Moodle */}
                       <div className="bg-blue-50 rounded-xl p-4">
@@ -270,7 +270,7 @@ export default function CoursesReportPage() {
                             <span className="font-semibold text-amber-900">{course.financial.health_rate}%</span>
                           </div>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden flex mt-3 bg-gray-200">
+                        <div className="h-2 rounded-full overflow-hidden flex mt-3 bg-muted-foreground/20">
                           <div className="bg-emerald-500 h-full" style={{ width: `${course.financial.health_rate}%` }} />
                           <div className="bg-amber-500 h-full" style={{ width: `${(course.financial.pendentes / course.total * 100)}%` }} />
                           <div className="bg-red-500 h-full" style={{ width: `${(course.financial.inadimplentes / course.total * 100)}%` }} />
@@ -301,7 +301,7 @@ export default function CoursesReportPage() {
                             <span className="font-semibold text-red-900">{highRiskPct}%</span>
                           </div>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden flex mt-3 bg-gray-200">
+                        <div className="h-2 rounded-full overflow-hidden flex mt-3 bg-muted-foreground/20">
                           <div className="bg-emerald-500 h-full" style={{ width: `${totalRisk ? course.risk.low / totalRisk * 100 : 0}%` }} />
                           <div className="bg-amber-500 h-full" style={{ width: `${totalRisk ? course.risk.medium / totalRisk * 100 : 0}%` }} />
                           <div className="bg-red-500 h-full" style={{ width: `${totalRisk ? course.risk.high / totalRisk * 100 : 0}%` }} />
@@ -330,7 +330,7 @@ export default function CoursesReportPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden mt-3 bg-gray-200">
+                        <div className="h-2 rounded-full overflow-hidden mt-3 bg-muted-foreground/20">
                           <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${course.total ? course.docs_ok / course.total * 100 : 0}%` }} />
                         </div>
                       </div>

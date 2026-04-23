@@ -187,12 +187,12 @@ export default function NewJourneyPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-          <button onClick={() => router.push('/automations')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4">
+          <button onClick={() => router.push('/automations')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4">
             <ArrowLeft className="w-4 h-4" />
             Voltar para Automações
           </button>
           <p className="text-sm font-medium text-indigo-600 mb-1">Nova Régua</p>
-          <h1 className="text-2xl font-semibold text-[#27273D] tracking-tight">Criar Régua de Jornada</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Criar Régua de Jornada</h1>
         </div>
 
         {/* Wizard Steps */}
@@ -202,10 +202,10 @@ export default function NewJourneyPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 step === s.n ? 'bg-indigo-600 text-white shadow-md'
                 : step > s.n ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-white text-gray-500 border border-gray-200'
+                : 'bg-card text-muted-foreground border border-border'
               }`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                step === s.n ? 'bg-white/20 text-white' : step > s.n ? 'bg-emerald-200 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                step === s.n ? 'bg-card/20 text-white' : step > s.n ? 'bg-emerald-200 text-emerald-700' : 'bg-muted text-muted-foreground'
               }`}>
                 {step > s.n ? <CheckCircle2 className="w-4 h-4" /> : s.n}
               </span>
@@ -216,28 +216,28 @@ export default function NewJourneyPage() {
 
         {/* Step 1 - Config */}
         {step === 1 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-[#27273D]">Configuração da Régua</h2>
+          <div className="bg-card rounded-2xl border border-border p-6 space-y-5">
+            <h2 className="text-lg font-semibold text-foreground">Configuração da Régua</h2>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome da régua *</label>
+              <label className="text-sm font-medium text-foreground/90 mb-1.5 block">Nome da régua *</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Onboarding - Matrícula Nova"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                className="w-full px-4 py-3 border border-border rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Descrição (opcional)</label>
+              <label className="text-sm font-medium text-foreground/90 mb-1.5 block">Descrição (opcional)</label>
               <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                className="w-full px-4 py-3 border border-border rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Gatilho — O que inicia a régua?</label>
+              <label className="text-sm font-medium text-foreground/90 mb-2 block">Gatilho — O que inicia a régua?</label>
               <div className="grid grid-cols-2 gap-3">
                 {triggerOptions.map((t) => (
                   <button key={t.key} onClick={() => setTriggerType(t.key)}
                     className={`p-3 rounded-xl border text-sm font-medium transition-all text-left ${
-                      triggerType === t.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      triggerType === t.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}>
                     {t.label}
                   </button>
@@ -246,12 +246,12 @@ export default function NewJourneyPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Canal de envio</label>
+              <label className="text-sm font-medium text-foreground/90 mb-2 block">Canal de envio</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {channelOptions.map((ch) => (
                   <button key={ch.key} onClick={() => setChannel(ch.key)}
                     className={`p-3 rounded-xl border text-sm font-medium transition-all ${
-                      channel === ch.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      channel === ch.key ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}>
                     {ch.label}
                   </button>
@@ -260,12 +260,12 @@ export default function NewJourneyPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Quando o aluno responder...</label>
+              <label className="text-sm font-medium text-foreground/90 mb-2 block">Quando o aluno responder...</label>
               <div className="space-y-2">
                 {replyOptions.map((r) => (
                   <button key={r.key} onClick={() => setOnReply(r.key)}
                     className={`w-full p-3 rounded-xl border text-sm font-medium transition-all text-left ${
-                      onReply === r.key ? 'bg-indigo-50 text-indigo-700 border-indigo-300' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      onReply === r.key ? 'bg-indigo-50 text-indigo-700 border-indigo-300' : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}>
                     {r.label}
                   </button>
@@ -286,7 +286,7 @@ export default function NewJourneyPage() {
         {step === 2 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-[#27273D]">Timeline de Mensagens</h2>
+              <h2 className="text-lg font-semibold text-foreground">Timeline de Mensagens</h2>
               <button onClick={addStep}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
                 <Plus className="w-4 h-4" /> Adicionar Step
@@ -301,21 +301,21 @@ export default function NewJourneyPage() {
                 <div key={idx} className="relative pl-14 pb-6">
                   {/* Timeline dot */}
                   <div className={`absolute left-4 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold
-                    ${idx === 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-indigo-300 text-indigo-600'}`}>
+                    ${idx === 0 ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-card border-indigo-300 text-indigo-600'}`}>
                     {idx + 1}
                   </div>
 
-                  <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+                  <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <h3 className="font-medium text-[#27273D]">Step {idx + 1}</h3>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                        <h3 className="font-medium text-foreground">Step {idx + 1}</h3>
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <Clock className="w-3.5 h-3.5" />
                           {idx === 0 ? 'Imediato' : `${s.delay_days}d ${s.delay_hours}h após step anterior`}
                         </div>
                       </div>
                       {steps.length > 1 && (
-                        <button onClick={() => removeStep(idx)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+                        <button onClick={() => removeStep(idx)} className="p-1.5 text-muted-foreground/70 hover:text-red-500 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -323,22 +323,22 @@ export default function NewJourneyPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Título do step</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Título do step</label>
                         <input type="text" value={s.title} onChange={(e) => updateStep(idx, 'title', e.target.value)}
                           placeholder="Ex: Boas-vindas"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
                       </div>
                       {idx > 0 && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-xs font-medium text-gray-500 mb-1 block">Dias depois</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Dias depois</label>
                             <input type="number" min="0" value={s.delay_days} onChange={(e) => updateStep(idx, 'delay_days', Number(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-500 mb-1 block">Horas</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Horas</label>
                             <input type="number" min="0" max="23" value={s.delay_hours} onChange={(e) => updateStep(idx, 'delay_hours', Number(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
                           </div>
                         </div>
                       )}
@@ -346,15 +346,15 @@ export default function NewJourneyPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Template Meta *</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Template Meta *</label>
                         <input type="text" value={s.template_name} onChange={(e) => updateStep(idx, 'template_name', e.target.value)}
                           placeholder="nome_do_template"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Idioma</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Idioma</label>
                         <select value={s.template_language} onChange={(e) => updateStep(idx, 'template_language', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none">
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none">
                           <option value="pt_BR">Português (BR)</option>
                           <option value="en_US">English (US)</option>
                           <option value="en">English</option>
@@ -365,18 +365,18 @@ export default function NewJourneyPage() {
                     {/* Params */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-gray-500">Parâmetros</label>
+                        <label className="text-xs font-medium text-muted-foreground">Parâmetros</label>
                         <button onClick={() => addParam(idx)} className="text-xs text-indigo-600 hover:underline">+ Param</button>
                       </div>
-                      <p className="text-[11px] text-gray-400 mb-2">
+                      <p className="text-[11px] text-muted-foreground/70 mb-2">
                         Variáveis: {'{{primeiro_nome}}'} {'{{nome}}'} {'{{curso}}'} {'{{email}}'}
                       </p>
                       {s.template_params.map((p, pIdx) => (
                         <div key={pIdx} className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-gray-400 w-12">{`{{${pIdx + 1}}}`}</span>
+                          <span className="text-xs text-muted-foreground/70 w-12">{`{{${pIdx + 1}}}`}</span>
                           <input type="text" value={p} onChange={(e) => updateParam(idx, pIdx, e.target.value)}
                             placeholder="{{primeiro_nome}}"
-                            className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                            className="flex-1 px-2 py-1.5 border border-border rounded-lg text-sm focus:border-indigo-500 outline-none" />
                           <button onClick={() => removeParam(idx, pIdx)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
                         </div>
                       ))}
@@ -385,22 +385,22 @@ export default function NewJourneyPage() {
                     {/* Buttons */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                           <MousePointerClick className="w-3.5 h-3.5" /> Botões interativos
                         </label>
                         <button onClick={() => addButton(idx)} className="text-xs text-indigo-600 hover:underline">+ Botão</button>
                       </div>
                       {s.buttons.length === 0 ? (
-                        <p className="text-xs text-gray-400 italic">Sem botões (mensagem simples)</p>
+                        <p className="text-xs text-muted-foreground/70 italic">Sem botões (mensagem simples)</p>
                       ) : (
                         <div className="space-y-2">
                           {s.buttons.map((btn, bIdx) => (
-                            <div key={bIdx} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                            <div key={bIdx} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
                               <input type="text" value={btn.text} onChange={(e) => updateButton(idx, bIdx, 'text', e.target.value)}
                                 placeholder="Texto do botão"
-                                className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 outline-none" />
+                                className="flex-1 px-2 py-1.5 border border-border rounded-lg text-sm focus:border-indigo-500 outline-none" />
                               <select value={btn.action} onChange={(e) => updateButton(idx, bIdx, 'action', e.target.value)}
-                                className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:border-indigo-500 outline-none">
+                                className="px-2 py-1.5 border border-border rounded-lg text-xs focus:border-indigo-500 outline-none">
                                 {buttonActions.map((a) => (
                                   <option key={a.key} value={a.key}>{a.label}</option>
                                 ))}
@@ -417,7 +417,7 @@ export default function NewJourneyPage() {
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(1)} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
+              <button onClick={() => setStep(1)} className="px-6 py-2.5 text-sm font-medium text-foreground/90 bg-muted rounded-xl hover:bg-muted-foreground/20 transition-all">
                 ← Voltar
               </button>
               <button onClick={() => setStep(3)} className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all">
@@ -457,8 +457,8 @@ export default function NewJourneyPage() {
             </div>
 
             {/* Timeline Preview */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h3 className="font-medium text-[#27273D] mb-4">Timeline</h3>
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <h3 className="font-medium text-foreground mb-4">Timeline</h3>
               <div className="relative">
                 <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-indigo-100"></div>
                 {steps.map((s, idx) => (
@@ -470,13 +470,13 @@ export default function NewJourneyPage() {
                       <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
                         {idx === 0 ? 'Dia 0' : `Dia ${s.delay_days}`}
                       </span>
-                      <span className="text-sm font-medium text-gray-800">{s.title || s.template_name}</span>
-                      <span className="text-xs text-gray-400">{s.template_name}</span>
+                      <span className="text-sm font-medium text-foreground">{s.title || s.template_name}</span>
+                      <span className="text-xs text-muted-foreground/70">{s.template_name}</span>
                     </div>
                     {s.buttons.length > 0 && (
                       <div className="flex gap-2 mt-1 ml-0">
                         {s.buttons.map((btn, bIdx) => (
-                          <span key={bIdx} className="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
+                          <span key={bIdx} className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
                             {btn.text} → {btn.action}
                           </span>
                         ))}
@@ -488,7 +488,7 @@ export default function NewJourneyPage() {
             </div>
 
             <div className="flex justify-between">
-              <button onClick={() => setStep(2)} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
+              <button onClick={() => setStep(2)} className="px-6 py-2.5 text-sm font-medium text-foreground/90 bg-muted rounded-xl hover:bg-muted-foreground/20 transition-all">
                 ← Mensagens
               </button>
               <button onClick={handleSave} disabled={saving}

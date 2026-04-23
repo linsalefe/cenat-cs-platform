@@ -235,9 +235,9 @@ export default function AutomationDetailPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-100 rounded-lg w-64"></div>
-          <div className="h-48 bg-gray-100 rounded-2xl"></div>
-          <div className="h-64 bg-gray-100 rounded-2xl"></div>
+          <div className="h-8 bg-muted rounded-lg w-64"></div>
+          <div className="h-48 bg-muted rounded-2xl"></div>
+          <div className="h-64 bg-muted rounded-2xl"></div>
         </div>
       </AppLayout>
     );
@@ -248,7 +248,7 @@ export default function AutomationDetailPage() {
   const action = actionLabels[automation.action_type] || {
     label: automation.action_type,
     icon: Zap,
-    color: 'text-gray-600',
+    color: 'text-muted-foreground',
   };
   const ActionIcon = action.icon;
 
@@ -268,7 +268,7 @@ export default function AutomationDetailPage() {
         >
           <button
             onClick={() => router.push('/automations')}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para automações
@@ -279,18 +279,18 @@ export default function AutomationDetailPage() {
               <div
                 className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                   automation.is_active
-                    ? 'bg-gradient-to-br from-[#2A658F] to-[#3d7ba8]'
-                    : 'bg-gray-200'
+                    ? 'bg-gradient-to-br from-primary to-primary/80'
+                    : 'bg-muted-foreground/20'
                 }`}
               >
-                <Zap className={`w-6 h-6 ${automation.is_active ? 'text-white' : 'text-gray-500'}`} />
+                <Zap className={`w-6 h-6 ${automation.is_active ? 'text-white' : 'text-muted-foreground'}`} />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-[#27273D] tracking-tight">
+                <h1 className="text-2xl font-semibold text-foreground tracking-tight">
                   {automation.name}
                 </h1>
                 {automation.description && (
-                  <p className="text-sm text-gray-500 mt-0.5">{automation.description}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{automation.description}</p>
                 )}
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function AutomationDetailPage() {
                 <>
                   <button
                     onClick={() => setEditing(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-foreground/90 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all"
                   >
                     <Edit className="w-4 h-4" />
                     Editar
@@ -332,7 +332,7 @@ export default function AutomationDetailPage() {
                 <>
                   <button
                     onClick={cancelEdit}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-foreground/90 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all"
                   >
                     <X className="w-4 h-4" />
                     Cancelar
@@ -340,7 +340,7 @@ export default function AutomationDetailPage() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#2A658F] hover:bg-[#1e4f72] rounded-xl transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-[#1e4f72] rounded-xl transition-all"
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Salvar
@@ -358,36 +358,36 @@ export default function AutomationDetailPage() {
           }`}
           style={{ transitionDelay: '100ms' }}
         >
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mb-2">
               <History className="w-5 h-5 text-slate-600" />
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{logStats.total}</p>
-            <p className="text-sm text-gray-500">Total de execuções</p>
+            <p className="text-2xl font-semibold text-foreground">{logStats.total}</p>
+            <p className="text-sm text-muted-foreground">Total de execuções</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{logStats.success}</p>
-            <p className="text-sm text-gray-500">Sucesso</p>
+            <p className="text-2xl font-semibold text-foreground">{logStats.success}</p>
+            <p className="text-sm text-muted-foreground">Sucesso</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-2">
               <XCircle className="w-5 h-5 text-red-600" />
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{logStats.failed}</p>
-            <p className="text-sm text-gray-500">Falhas</p>
+            <p className="text-2xl font-semibold text-foreground">{logStats.failed}</p>
+            <p className="text-sm text-muted-foreground">Falhas</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
-            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center mb-2">
-              <AlertCircle className="w-5 h-5 text-gray-500" />
+          <div className="bg-card rounded-2xl p-5 border border-border">
+            <div className="w-10 h-10 bg-muted/50 rounded-xl flex items-center justify-center mb-2">
+              <AlertCircle className="w-5 h-5 text-muted-foreground" />
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{logStats.skipped}</p>
-            <p className="text-sm text-gray-500">Ignorados</p>
+            <p className="text-2xl font-semibold text-foreground">{logStats.skipped}</p>
+            <p className="text-sm text-muted-foreground">Ignorados</p>
           </div>
         </div>
 
@@ -399,57 +399,57 @@ export default function AutomationDetailPage() {
           style={{ transitionDelay: '200ms' }}
         >
           {/* Detalhes */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-[#27273D]">Configuração</h2>
+          <div className="bg-card rounded-2xl border border-border p-6 space-y-5">
+            <h2 className="text-lg font-semibold text-foreground">Configuração</h2>
 
             {editing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                  <label className="block text-sm font-medium text-foreground/90 mb-1">Nome</label>
                   <input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                    className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <label className="block text-sm font-medium text-foreground/90 mb-1">Descrição</label>
                   <input
                     type="text"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                    className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Config. do Gatilho (JSON)</label>
+                  <label className="block text-sm font-medium text-foreground/90 mb-1">Config. do Gatilho (JSON)</label>
                   <textarea
                     value={formTriggerConfig}
                     onChange={(e) => setFormTriggerConfig(e.target.value)}
                     rows={4}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-mono focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                    className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm font-mono focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Config. da Ação (JSON)</label>
+                  <label className="block text-sm font-medium text-foreground/90 mb-1">Config. da Ação (JSON)</label>
                   <textarea
                     value={formActionConfig}
                     onChange={(e) => setFormActionConfig(e.target.value)}
                     rows={4}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-mono focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 transition-all outline-none"
+                    className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-sm font-mono focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                   />
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                  <span className="text-sm text-gray-500">Status</span>
+                  <span className="text-sm text-muted-foreground">Status</span>
                   <span
                     className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full ${
                       automation.is_active
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                        : 'bg-muted text-muted-foreground border border-border'
                     }`}
                   >
                     <div
@@ -462,14 +462,14 @@ export default function AutomationDetailPage() {
                 </div>
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                  <span className="text-sm text-gray-500">Gatilho</span>
-                  <span className="text-sm font-medium text-[#27273D]">
+                  <span className="text-sm text-muted-foreground">Gatilho</span>
+                  <span className="text-sm font-medium text-foreground">
                     {triggerLabels[automation.trigger_type] || automation.trigger_type}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                  <span className="text-sm text-gray-500">Ação</span>
+                  <span className="text-sm text-muted-foreground">Ação</span>
                   <span className={`flex items-center gap-1.5 text-sm font-medium ${action.color}`}>
                     <ActionIcon className="w-4 h-4" />
                     {action.label}
@@ -478,7 +478,7 @@ export default function AutomationDetailPage() {
 
                 {journey && (
                   <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                    <span className="text-sm text-gray-500">Fase da Jornada</span>
+                    <span className="text-sm text-muted-foreground">Fase da Jornada</span>
                     <span
                       className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full ${journey.bg} ${journey.color}`}
                     >
@@ -489,13 +489,13 @@ export default function AutomationDetailPage() {
                 )}
 
                 <div className="flex items-center justify-between py-3 border-b border-gray-50">
-                  <span className="text-sm text-gray-500">Criada em</span>
-                  <span className="text-sm text-gray-700">{formatDate(automation.created_at)}</span>
+                  <span className="text-sm text-muted-foreground">Criada em</span>
+                  <span className="text-sm text-foreground/90">{formatDate(automation.created_at)}</span>
                 </div>
 
                 <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-500">Atualizada em</span>
-                  <span className="text-sm text-gray-700">{formatDate(automation.updated_at)}</span>
+                  <span className="text-sm text-muted-foreground">Atualizada em</span>
+                  <span className="text-sm text-foreground/90">{formatDate(automation.updated_at)}</span>
                 </div>
               </div>
             )}
@@ -503,16 +503,16 @@ export default function AutomationDetailPage() {
 
           {/* Configs JSON */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h3 className="text-sm font-semibold text-[#27273D] mb-3">Configuração do Gatilho</h3>
-              <pre className="bg-gray-50 rounded-xl p-4 text-xs font-mono text-gray-700 overflow-x-auto">
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Configuração do Gatilho</h3>
+              <pre className="bg-muted/50 rounded-xl p-4 text-xs font-mono text-foreground/90 overflow-x-auto">
                 {JSON.stringify(automation.trigger_config, null, 2)}
               </pre>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h3 className="text-sm font-semibold text-[#27273D] mb-3">Configuração da Ação</h3>
-              <pre className="bg-gray-50 rounded-xl p-4 text-xs font-mono text-gray-700 overflow-x-auto">
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Configuração da Ação</h3>
+              <pre className="bg-muted/50 rounded-xl p-4 text-xs font-mono text-foreground/90 overflow-x-auto">
                 {JSON.stringify(automation.action_config, null, 2)}
               </pre>
             </div>
@@ -521,35 +521,35 @@ export default function AutomationDetailPage() {
 
         {/* Logs */}
         <div
-          className={`bg-white rounded-2xl border border-gray-100 transition-all duration-700 ease-out ${
+          className={`bg-card rounded-2xl border border-border transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '300ms' }}
         >
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-[#27273D] flex items-center gap-2">
-              <History className="w-5 h-5 text-gray-400" />
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <History className="w-5 h-5 text-muted-foreground/70" />
               Histórico de Execuções
             </h2>
           </div>
 
           {loadingLogs ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-muted-foreground/70 animate-spin" />
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <History className="w-7 h-7 text-gray-400" />
+              <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                <History className="w-7 h-7 text-muted-foreground/70" />
               </div>
-              <p className="text-sm font-medium text-gray-900">Nenhuma execução registrada</p>
-              <p className="text-xs text-gray-500 mt-1">Os logs aparecerão aqui após a primeira execução</p>
+              <p className="text-sm font-medium text-foreground">Nenhuma execução registrada</p>
+              <p className="text-xs text-muted-foreground mt-1">Os logs aparecerão aqui após a primeira execução</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     <th className="px-6 py-3">Data</th>
                     <th className="px-6 py-3">Aluno ID</th>
                     <th className="px-6 py-3">Ação</th>
@@ -559,15 +559,15 @@ export default function AutomationDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3.5 text-sm text-gray-700">
+                    <tr key={log.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-3.5 text-sm text-foreground/90">
                         {formatDate(log.executed_at)}
                       </td>
-                      <td className="px-6 py-3.5 text-sm text-gray-700">
+                      <td className="px-6 py-3.5 text-sm text-foreground/90">
                         #{log.student_id}
                       </td>
                       <td className="px-6 py-3.5">
-                        <span className={`flex items-center gap-1.5 text-sm font-medium ${(actionLabels[log.action_type] || { color: 'text-gray-600' }).color}`}>
+                        <span className={`flex items-center gap-1.5 text-sm font-medium ${(actionLabels[log.action_type] || { color: 'text-muted-foreground' }).color}`}>
                           {(actionLabels[log.action_type] || { label: log.action_type }).label}
                         </span>
                       </td>
@@ -578,7 +578,7 @@ export default function AutomationDetailPage() {
                               ? 'bg-emerald-50 text-emerald-700'
                               : log.status === 'failed'
                               ? 'bg-red-50 text-red-700'
-                              : 'bg-gray-100 text-gray-600'
+                              : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           {log.status === 'success' && <CheckCircle2 className="w-3 h-3" />}
@@ -587,7 +587,7 @@ export default function AutomationDetailPage() {
                           {log.status === 'success' ? 'Sucesso' : log.status === 'failed' ? 'Falha' : 'Ignorado'}
                         </span>
                       </td>
-                      <td className="px-6 py-3.5 text-xs text-gray-500 max-w-xs truncate">
+                      <td className="px-6 py-3.5 text-xs text-muted-foreground max-w-xs truncate">
                         {log.details ? JSON.stringify(log.details).slice(0, 80) : '-'}
                       </td>
                     </tr>

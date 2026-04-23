@@ -50,7 +50,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
   in_progress: { label: 'Em Andamento', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', icon: Timer },
   waiting_student: { label: 'Aguardando Aluno', color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', icon: Clock },
   resolved: { label: 'Resolvido', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', icon: CheckCircle2 },
-  closed: { label: 'Fechado', color: 'text-gray-600', bg: 'bg-gray-100 border-gray-200', icon: XCircle },
+  closed: { label: 'Fechado', color: 'text-muted-foreground', bg: 'bg-muted border-border', icon: XCircle },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -62,7 +62,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const priorityConfig: Record<string, { label: string; color: string; bg: string }> = {
-  low: { label: 'Baixa', color: 'text-gray-600', bg: 'bg-gray-100' },
+  low: { label: 'Baixa', color: 'text-muted-foreground', bg: 'bg-muted' },
   medium: { label: 'Média', color: 'text-amber-600', bg: 'bg-amber-50' },
   high: { label: 'Alta', color: 'text-orange-600', bg: 'bg-orange-50' },
   urgent: { label: 'Urgente', color: 'text-red-600', bg: 'bg-red-50' },
@@ -189,10 +189,10 @@ export default function TicketDetailPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-96 bg-gray-100 rounded-2xl"></div>
-            <div className="h-96 bg-gray-100 rounded-2xl"></div>
+            <div className="lg:col-span-2 h-96 bg-muted rounded-2xl"></div>
+            <div className="h-96 bg-muted rounded-2xl"></div>
           </div>
         </div>
       </AppLayout>
@@ -203,7 +203,7 @@ export default function TicketDetailPage() {
     return (
       <AppLayout>
         <div className="text-center py-12">
-          <p className="text-gray-500">Ticket não encontrado</p>
+          <p className="text-muted-foreground">Ticket não encontrado</p>
         </div>
       </AppLayout>
     );
@@ -224,7 +224,7 @@ export default function TicketDetailPage() {
         >
           <button
             onClick={() => router.push('/tickets')}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] mb-4 transition-colors"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para tickets
@@ -233,7 +233,7 @@ export default function TicketDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-semibold text-[#27273D]">{ticket.protocol}</h1>
+                <h1 className="text-2xl font-semibold text-foreground">{ticket.protocol}</h1>
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border ${status.bg} ${status.color}`}>
                   <StatusIcon className="w-3.5 h-3.5" />
                   {status.label}
@@ -245,15 +245,15 @@ export default function TicketDetailPage() {
                   </span>
                 )}
               </div>
-              <p className="text-gray-600">{ticket.subject}</p>
+              <p className="text-muted-foreground">{ticket.subject}</p>
             </div>
 
             {!ticket.assigned_to && (
               <button
                 onClick={handleAssignToMe}
                 disabled={updating}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#2A658F] text-white rounded-xl
-                  hover:bg-[#1a4a6e] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl
+                  hover:bg-primary transition-colors disabled:opacity-50"
               >
                 <UserCheck className="w-4 h-4" />
                 Assumir ticket
@@ -266,18 +266,18 @@ export default function TicketDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Chat */}
           <div
-            className={`lg:col-span-2 bg-white rounded-2xl border border-gray-100 flex flex-col h-[600px]
+            className={`lg:col-span-2 bg-card rounded-2xl border border-border flex flex-col h-[600px]
               transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '100ms' }}
           >
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-[#2A658F]" />
-                <h2 className="font-semibold text-[#27273D]">Conversação</h2>
-                <span className="text-sm text-gray-400">({ticket.messages.length} mensagens)</span>
+                <MessageSquare className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-foreground">Conversação</h2>
+                <span className="text-sm text-muted-foreground/70">({ticket.messages.length} mensagens)</span>
               </div>
             </div>
 
@@ -299,13 +299,13 @@ export default function TicketDetailPage() {
                         <div
                           className={`rounded-2xl px-4 py-3 ${
                             isStudent
-                              ? 'bg-gray-100 text-gray-800 rounded-tl-md'
-                              : 'bg-[#2A658F] text-white rounded-tr-md'
+                              ? 'bg-muted text-foreground rounded-tl-md'
+                              : 'bg-primary text-white rounded-tr-md'
                           }`}
                         >
                           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                         </div>
-                        <p className={`text-xs text-gray-400 mt-1 ${isStudent ? 'text-left' : 'text-right'}`}>
+                        <p className={`text-xs text-muted-foreground/70 mt-1 ${isStudent ? 'text-left' : 'text-right'}`}>
                           {isStudent ? ticket.student.name : (msg.sender_user?.name || 'Você')} • {formatMessageTime(msg.created_at)}
                         </p>
                       </div>
@@ -318,21 +318,21 @@ export default function TicketDetailPage() {
 
             {/* Input */}
             {!['resolved', 'closed'].includes(ticket.status) && (
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-border">
                 <div className="flex gap-3">
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Digite sua mensagem..."
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
-                      focus:bg-white focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                    className="flex-1 px-4 py-3 bg-muted/50 border border-border rounded-xl
+                      focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10
                       transition-all duration-200 outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || sending}
-                    className="px-4 py-3 bg-[#2A658F] text-white rounded-xl hover:bg-[#1a4a6e]
+                    className="px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary
                       transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className={`w-5 h-5 ${sending ? 'animate-pulse' : ''}`} />
@@ -350,13 +350,13 @@ export default function TicketDetailPage() {
             style={{ transitionDelay: '200ms' }}
           >
             {/* Student Info */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Aluno</h3>
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Aluno</h3>
               <div className="flex items-center gap-3 mb-4">
                 <Avatar name={ticket.student.name} size="lg" />
                 <div>
-                  <p className="font-semibold text-[#27273D]">{ticket.student.name}</p>
-                  <p className="text-sm text-gray-500">{ticket.student.email}</p>
+                  <p className="font-semibold text-foreground">{ticket.student.name}</p>
+                  <p className="text-sm text-muted-foreground">{ticket.student.email}</p>
                 </div>
               </div>
               {ticket.student.phone && (
@@ -373,20 +373,20 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Ticket Info */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Detalhes</h3>
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Detalhes</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
                     <Tag className="w-4 h-4" />
                     Categoria
                   </span>
-                  <span className="text-sm font-medium text-[#27273D]">
+                  <span className="text-sm font-medium text-foreground">
                     {categoryLabels[ticket.category] || ticket.category}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
                     Prioridade
                   </span>
@@ -395,36 +395,36 @@ export default function TicketDetailPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     Criado em
                   </span>
-                  <span className="text-sm text-[#27273D]">{formatDate(ticket.created_at)}</span>
+                  <span className="text-sm text-foreground">{formatDate(ticket.created_at)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     SLA
                   </span>
-                  <span className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-[#27273D]'}`}>
+                  <span className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-foreground'}`}>
                     {formatDate(ticket.sla_deadline)}
                   </span>
                 </div>
                 {ticket.assigned_to && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
                       <User className="w-4 h-4" />
                       Atribuído
                     </span>
-                    <span className="text-sm font-medium text-[#27273D]">{ticket.assigned_to.name}</span>
+                    <span className="text-sm font-medium text-foreground">{ticket.assigned_to.name}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Alterar Status</h3>
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Alterar Status</h3>
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(statusConfig).map(([key, config]) => {
                   const Icon = config.icon;
@@ -438,7 +438,7 @@ export default function TicketDetailPage() {
                         border transition-all duration-200 disabled:cursor-not-allowed
                         ${isActive 
                           ? `${config.bg} ${config.color} border-current` 
-                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
                         }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
