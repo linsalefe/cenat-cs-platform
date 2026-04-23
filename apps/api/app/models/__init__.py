@@ -13,3 +13,4 @@ from app.models.feedback import Feedback, FeedbackType, FeedbackTrigger
 from app.models.automation import Automation, AutomationLog
 from app.models.conversation import Conversation, ConversationMessage
 from app.models.journey import JourneyRule, JourneyStep, StudentJourney
+from app.models.workflow import Workflow

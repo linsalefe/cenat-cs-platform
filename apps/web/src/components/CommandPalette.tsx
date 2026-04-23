@@ -27,6 +27,7 @@ import {
   Shield,
   FileText,
   Zap,
+  Workflow as WorkflowIcon,
   LogOut,
 } from 'lucide-react';
 
@@ -71,6 +72,7 @@ export default function CommandPalette() {
     { label: 'Disparos', href: '/broadcasts', icon: Send, module: 'broadcasts', group: 'Comunicação' },
     { label: 'Novo Disparo', href: '/broadcasts/new', icon: Send, module: 'broadcasts', group: 'Comunicação' },
     { label: 'Automações', href: '/automations', icon: Zap, module: 'automations', group: 'Comunicação' },
+    { label: 'Workflows', href: '/workflows', icon: WorkflowIcon, module: 'workflows', group: 'Comunicação' },
     { label: 'Métricas', href: '/metrics', icon: BarChart3, module: 'reports', group: 'Gestão' },
     { label: 'Relatórios', href: '/reports', icon: FileText, module: 'reports', group: 'Gestão' },
     { label: 'Usuários', href: '/users', icon: Shield, module: 'users', group: 'Configuração' },

@@ -23,6 +23,7 @@ import {
   FileText,
   Search,
   Zap,
+  Workflow,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -87,6 +88,7 @@ const menuSections: MenuSection[] = [
     items: [
       { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
       { href: '/automations', label: 'Automações', icon: Zap, module: 'automations' },
+      { href: '/workflows', label: 'Workflows', icon: Workflow, module: 'workflows' },
     ],
   },
   {
