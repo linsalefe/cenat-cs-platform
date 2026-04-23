@@ -11,6 +11,7 @@ const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
     reports: ['read', 'export'],
     financial: ['read', 'update', 'sync'],
     users: ['read', 'create', 'update', 'delete'],
+    workflows: ['read', 'create', 'update', 'delete'],
   },
   gestor: {
     dashboard: ['read'],
@@ -22,6 +23,7 @@ const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
     reports: ['read', 'export'],
     financial: ['read', 'update', 'sync'],
     users: [],
+    workflows: ['read', 'create', 'update'],
   },
   atendente: {
     dashboard: ['read'],
@@ -33,6 +35,7 @@ const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
     reports: [],
     financial: [],
     users: [],
+    workflows: [],
   },
   visualizador: {
     dashboard: ['read'],
@@ -44,6 +47,7 @@ const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
     reports: ['read'],
     financial: ['read'],
     users: [],
+    workflows: ['read'],
   },
 };
 

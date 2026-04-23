@@ -43,6 +43,8 @@ const pageTitles: Record<string, string> = {
   '/automations': 'Automações',
   '/automations/new': 'Nova Automação',
   '/automations/journeys': 'Jornadas',
+  '/workflows': 'Workflows',
+  '/workflows/[id]': 'Editor de Workflow',
   '/users': 'Usuários',
 };
 
