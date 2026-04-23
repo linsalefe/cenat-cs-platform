@@ -9,6 +9,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import AppSidebar from './Sidebar';
 import NotificationBell from './NotificationBell';
 import CommandPalette from './CommandPalette';
@@ -84,7 +85,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const pageTitle = getPageTitle(pathname);
 
   return (
-    <SidebarProvider>
+    <TooltipProvider delayDuration={0}>
+      <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
         {/* Topbar */}
@@ -107,5 +109,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <CommandPalette />
       </SidebarInset>
     </SidebarProvider>
+    </TooltipProvider>
   );
 }
