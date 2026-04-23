@@ -49,7 +49,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       {/* Painel Esquerdo - Branding */}
       <div 
-        className={`hidden lg:flex lg:w-[55%] bg-gradient-to-br from-[#27273D] via-[#2A658F] to-[#1a4a6e] 
+        className={`hidden lg:flex lg:w-[55%] bg-gradient-to-br from-primary via-[#2A658F] to-primary/90 
           relative overflow-hidden transition-all duration-700 ${
           mounted ? 'opacity-100' : 'opacity-0'
         }`}
@@ -63,9 +63,9 @@ export default function LoginPage() {
         />
 
         {/* Círculos decorativos */}
-        <div className="absolute -top-20 -left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-[#2A658F]/30 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-white/5 rounded-full blur-2xl" />
+        <div className="absolute -top-20 -left-20 w-96 h-96 bg-card/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-primary/30 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-card/5 rounded-full blur-2xl" />
 
         {/* Conteúdo */}
         <div className="relative z-10 flex flex-col justify-center px-16 w-full">
@@ -84,8 +84,8 @@ export default function LoginPage() {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className={`bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10
-                  hover:bg-white/15 transition-all duration-300 hover:-translate-y-1
+                className={`bg-card/10 backdrop-blur-sm rounded-xl p-4 border border-white/10
+                  hover:bg-card/15 transition-all duration-300 hover:-translate-y-1
                   ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                 style={{ transitionDelay: `${300 + index * 100}ms` }}
               >
@@ -100,38 +100,38 @@ export default function LoginPage() {
 
       {/* Painel Direito - Form */}
       <div 
-        className={`w-full lg:w-[45%] flex items-center justify-center p-8 bg-[#E2ECF4]
+        className={`w-full lg:w-[45%] flex items-center justify-center p-8 bg-primary/10
           transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}
       >
         <div className="w-full max-w-md">
           {/* Logo mobile */}
           <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold text-[#27273D]">CENAT</h1>
-            <p className="text-[#2A658F]">Sistema de Retenção</p>
+            <h1 className="text-3xl font-bold text-foreground">CENAT</h1>
+            <p className="text-primary">Sistema de Retenção</p>
           </div>
 
           <div 
-            className={`bg-white rounded-2xl shadow-xl p-8 transition-all duration-500 delay-300 ${
+            className={`bg-card rounded-2xl shadow-xl p-8 transition-all duration-500 delay-300 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-[#27273D]">Bem-vindo de volta</h2>
-              <p className="text-gray-500 mt-1">Faça login para continuar</p>
+              <h2 className="text-2xl font-bold text-foreground">Bem-vindo de volta</h2>
+              <p className="text-muted-foreground mt-1">Faça login para continuar</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-foreground/90 mb-1.5">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl
-                      focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                    className="w-full pl-11 pr-4 py-3 border-2 border-border rounded-xl
+                      focus:border-primary focus:ring-4 focus:ring-primary/10 
                       transition-all duration-200 outline-none"
                     placeholder="seu@email.com"
                     required
@@ -141,15 +141,15 @@ export default function LoginPage() {
 
               {/* Senha */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Senha</label>
+                <label className="block text-sm font-medium text-foreground/90 mb-1.5">Senha</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl
-                      focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10 
+                    className="w-full pl-11 pr-12 py-3 border-2 border-border rounded-xl
+                      focus:border-primary focus:ring-4 focus:ring-primary/10 
                       transition-all duration-200 outline-none"
                     placeholder="••••••••"
                     required
@@ -157,8 +157,8 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 
-                      hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 
+                      hover:text-muted-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -176,7 +176,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="relative w-full py-3 bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] 
+                className="relative w-full py-3 bg-gradient-to-r from-primary to-primary/80 
                   text-white font-semibold rounded-xl shadow-lg shadow-[#2A658F]/30
                   hover:shadow-xl hover:shadow-[#2A658F]/40 hover:-translate-y-0.5
                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
@@ -203,7 +203,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <p className="text-center text-gray-500 text-sm mt-6">
+          <p className="text-center text-muted-foreground text-sm mt-6">
             CENAT © {new Date().getFullYear()} - Todos os direitos reservados
           </p>
         </div>

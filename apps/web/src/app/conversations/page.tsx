@@ -54,7 +54,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   open: { label: 'Aberto', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-100' },
   in_progress: { label: 'Em Atendimento', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-100' },
   resolved: { label: 'Resolvido', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-100' },
-  closed: { label: 'Fechado', color: 'text-gray-600', bg: 'bg-gray-100 border-gray-200' },
+  closed: { label: 'Fechado', color: 'text-muted-foreground', bg: 'bg-muted border-border' },
 };
 
 export default function ConversationsPage() {
@@ -246,8 +246,8 @@ export default function ConversationsPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
-          <div className="h-[calc(100vh-180px)] bg-gray-100 rounded-2xl"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
+          <div className="h-[calc(100vh-180px)] bg-muted rounded-2xl"></div>
         </div>
       </AppLayout>
     );
@@ -263,8 +263,8 @@ export default function ConversationsPage() {
         {/* Header */}
         <div className="flex items-end justify-between mb-6">
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Atendimento</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">
+            <p className="text-sm font-medium text-primary mb-1">Atendimento</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">
               Conversas
               {totalUnread > 0 && (
                 <span className="ml-3 inline-flex items-center justify-center px-2.5 py-0.5 text-sm font-semibold text-white bg-red-500 rounded-full">
@@ -277,18 +277,18 @@ export default function ConversationsPage() {
 
         {/* Main Container */}
         <div
-          className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+          className="bg-card rounded-2xl border border-border overflow-hidden"
           style={{ height: 'calc(100vh - 200px)' }}
         >
           <div className="flex h-full">
             {/* Sidebar - Lista de Conversas */}
             <div
-              className={`w-full md:w-96 border-r border-gray-100 flex flex-col ${
+              className={`w-full md:w-96 border-r border-border flex flex-col ${
                 showMobileChat ? 'hidden md:flex' : 'flex'
               }`}
             >
               {/* Channel Tabs */}
-              <div className="flex border-b border-gray-100">
+              <div className="flex border-b border-border">
                 {[
                   { key: 'all', label: 'Todos' },
                   { key: 'cs', label: '💬 CS' },
@@ -299,8 +299,8 @@ export default function ConversationsPage() {
                     onClick={() => { setChannelFilter(ch.key); setSelectedConversation(null); }}
                     className={`flex-1 px-3 py-3 text-xs font-semibold transition-all border-b-2 ${
                       channelFilter === ch.key
-                        ? 'text-[#2A658F] border-[#2A658F] bg-[#E2ECF4]/30'
-                        : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                        ? 'text-primary border-primary bg-primary/10/30'
+                        : 'text-muted-foreground border-transparent hover:text-foreground/90 hover:bg-muted/50'
                     }`}
                   >
                     {ch.label}
@@ -309,16 +309,16 @@ export default function ConversationsPage() {
               </div>
 
               {/* Search & Filters */}
-              <div className="p-4 border-b border-gray-100 space-y-3">
+              <div className="p-4 border-b border-border space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                   <input
                     type="text"
                     placeholder="Buscar conversa..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                      focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                    className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-xl text-sm
+                      focus:border-primary focus:ring-4 focus:ring-primary/10
                       transition-all duration-200 outline-none"
                   />
                 </div>
@@ -329,8 +329,8 @@ export default function ConversationsPage() {
                       onClick={() => setStatusFilter(s)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                         statusFilter === s
-                          ? 'bg-[#2A658F] text-white'
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                          ? 'bg-primary text-white'
+                          : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                       }`}
                     >
                       {s === 'all' ? 'Todos' : statusConfig[s]?.label || s}
@@ -343,11 +343,11 @@ export default function ConversationsPage() {
               <div className="flex-1 overflow-y-auto">
                 {filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                    <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                      <MessageCircle className="w-7 h-7 text-gray-400" />
+                    <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
+                      <MessageCircle className="w-7 h-7 text-muted-foreground/70" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900">Nenhuma conversa</p>
-                    <p className="text-xs text-gray-500 mt-1">As conversas aparecerão aqui quando receberem mensagens</p>
+                    <p className="text-sm font-medium text-foreground">Nenhuma conversa</p>
+                    <p className="text-xs text-muted-foreground mt-1">As conversas aparecerão aqui quando receberem mensagens</p>
                   </div>
                 ) : (
                   filteredConversations.map((conversation) => (
@@ -357,8 +357,8 @@ export default function ConversationsPage() {
                       className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-all duration-200 border-b border-gray-50
                         ${
                           selectedConversation?.id === conversation.id
-                            ? 'bg-[#E2ECF4] border-l-2 border-l-[#2A658F]'
-                            : 'hover:bg-gray-50'
+                            ? 'bg-primary/10 border-l-2 border-l-[#2A658F]'
+                            : 'hover:bg-muted/50'
                         }
                         ${conversation.unread_count > 0 ? 'bg-blue-50/30' : ''}
                       `}
@@ -374,25 +374,25 @@ export default function ConversationsPage() {
                         <div className="flex items-center justify-between">
                           <h3
                             className={`text-sm truncate ${
-                              conversation.unread_count > 0 ? 'font-semibold text-[#27273D]' : 'font-medium text-gray-700'
+                              conversation.unread_count > 0 ? 'font-semibold text-foreground' : 'font-medium text-foreground/90'
                             }`}
                           >
                             {conversation.contact_name || formatPhone(conversation.contact_phone)}
                           </h3>
-                          <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                          <span className="text-xs text-muted-foreground/70 ml-2 flex-shrink-0">
                             {conversation.last_message_at ? formatDate(conversation.last_message_at) : ''}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
                           <p
                             className={`text-xs truncate ${
-                              conversation.unread_count > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'
+                              conversation.unread_count > 0 ? 'text-foreground/90 font-medium' : 'text-muted-foreground'
                             }`}
                           >
                             {conversation.last_message_preview || 'Sem mensagens'}
                           </p>
                           {conversation.unread_count > 0 && (
-                            <span className="ml-2 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-[#2A658F] rounded-full">
+                            <span className="ml-2 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-primary rounded-full">
                               {conversation.unread_count}
                             </span>
                           )}
@@ -413,22 +413,22 @@ export default function ConversationsPage() {
               {selectedConversation ? (
                 <>
                   {/* Chat Header */}
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setShowMobileChat(false)}
-                        className="md:hidden p-1 hover:bg-gray-100 rounded-lg"
+                        className="md:hidden p-1 hover:bg-muted rounded-lg"
                       >
-                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                        <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                       </button>
                       <Avatar name={selectedConversation.contact_name || selectedConversation.contact_phone} size="md" />
                       <div>
-                        <h2 className="font-semibold text-[#27273D]">
+                        <h2 className="font-semibold text-foreground">
                           {selectedConversation.contact_name || formatPhone(selectedConversation.contact_phone)}
                         </h2>
                         <div className="flex items-center gap-2">
-                          <Phone className="w-3 h-3 text-gray-400" />
-                          <span className="text-xs text-gray-500">{formatPhone(selectedConversation.contact_phone)}</span>
+                          <Phone className="w-3 h-3 text-muted-foreground/70" />
+                          <span className="text-xs text-muted-foreground">{formatPhone(selectedConversation.contact_phone)}</span>
                           <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full border ${statusConfig[selectedConversation.status]?.bg} ${statusConfig[selectedConversation.status]?.color}`}>
                             {statusConfig[selectedConversation.status]?.label}
                           </span>
@@ -440,7 +440,7 @@ export default function ConversationsPage() {
                       {!selectedConversation.assigned_to_id && (
                         <button
                           onClick={assignToMe}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#2A658F] bg-[#E2ECF4] hover:bg-[#CCE4F4] rounded-lg transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 rounded-lg transition-colors"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
                           Assumir
@@ -462,12 +462,12 @@ export default function ConversationsPage() {
                   <div className="flex-1 overflow-y-auto px-6 py-4 bg-[#f0f2f5]">
                     {loadingMessages ? (
                       <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                        <Loader2 className="w-6 h-6 text-muted-foreground/70 animate-spin" />
                       </div>
                     ) : messages.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center">
-                        <MessageCircle className="w-12 h-12 text-gray-300 mb-3" />
-                        <p className="text-sm text-gray-500">Nenhuma mensagem ainda</p>
+                        <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                        <p className="text-sm text-muted-foreground">Nenhuma mensagem ainda</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -481,7 +481,7 @@ export default function ConversationsPage() {
                             <div key={msg.id}>
                               {showDate && (
                                 <div className="flex justify-center my-4">
-                                  <span className="px-3 py-1 text-[11px] font-medium text-gray-500 bg-white rounded-lg shadow-sm">
+                                  <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-card rounded-lg shadow-sm">
                                     {formatDate(msg.created_at)}
                                   </span>
                                 </div>
@@ -491,21 +491,21 @@ export default function ConversationsPage() {
                                   className={`max-w-[70%] px-3.5 py-2 rounded-2xl shadow-sm ${
                                     isOutbound
                                       ? 'bg-[#d9fdd3] rounded-tr-md'
-                                      : 'bg-white rounded-tl-md'
+                                      : 'bg-card rounded-tl-md'
                                   }`}
                                 >
                                   {isOutbound && msg.sender_type === 'agent' && (
-                                    <p className="text-[10px] font-semibold text-[#2A658F] mb-0.5">
+                                    <p className="text-[10px] font-semibold text-primary mb-0.5">
                                       {(msg.sender_type as string) === 'bot' ? '🤖 Bot' : 'Atendente'}
                                     </p>
                                   )}
-                                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{msg.content}</p>
+                                  <p className="text-sm text-foreground whitespace-pre-wrap break-words">{msg.content}</p>
                                   <div className={`flex items-center gap-1 mt-1 ${isOutbound ? 'justify-end' : ''}`}>
-                                    <span className="text-[10px] text-gray-500">{formatTime(msg.created_at)}</span>
+                                    <span className="text-[10px] text-muted-foreground">{formatTime(msg.created_at)}</span>
                                     {isOutbound && (
                                       <CheckCheck
                                         className={`w-3.5 h-3.5 ${
-                                          msg.status === 'sending' ? 'text-gray-400' : 'text-blue-500'
+                                          msg.status === 'sending' ? 'text-muted-foreground/70' : 'text-blue-500'
                                         }`}
                                       />
                                     )}
@@ -521,7 +521,7 @@ export default function ConversationsPage() {
                   </div>
 
                   {/* Input */}
-                  <div className="px-4 py-3 bg-[#f0f2f5] border-t border-gray-200">
+                  <div className="px-4 py-3 bg-[#f0f2f5] border-t border-border">
                     <div className="flex items-center gap-3">
                       <input
                         ref={inputRef}
@@ -531,8 +531,8 @@ export default function ConversationsPage() {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         disabled={sending}
-                        className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm
-                          focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                        className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-sm
+                          focus:border-primary focus:ring-4 focus:ring-primary/10
                           transition-all duration-200 outline-none
                           disabled:opacity-50 disabled:cursor-not-allowed"
                       />
@@ -540,7 +540,7 @@ export default function ConversationsPage() {
                         onClick={sendMessage}
                         disabled={!newMessage.trim() || sending}
                         className="flex items-center justify-center w-11 h-11 rounded-xl
-                          bg-[#2A658F] text-white hover:bg-[#1e4f72]
+                          bg-primary text-white hover:bg-[#1e4f72]
                           transition-all duration-200
                           disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -556,11 +556,11 @@ export default function ConversationsPage() {
               ) : (
                 /* Empty State */
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#f0f2f5]">
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                    <MessageCircle className="w-10 h-10 text-gray-300" />
+                  <div className="w-20 h-20 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
+                    <MessageCircle className="w-10 h-10 text-muted-foreground/50" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Multiatendimento WhatsApp</h3>
-                  <p className="text-sm text-gray-500 max-w-sm">
+                  <h3 className="text-xl font-semibold text-foreground/90 mb-2">Multiatendimento WhatsApp</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
                     Selecione uma conversa ao lado para visualizar e responder as mensagens dos alunos.
                   </p>
                 </div>

@@ -44,7 +44,7 @@ interface AutomationType {
 }
 
 const journeyPhases = [
-  { key: 'all', label: 'Todas', icon: Zap, color: 'text-gray-600', bg: 'bg-gray-50' },
+  { key: 'all', label: 'Todas', icon: Zap, color: 'text-muted-foreground', bg: 'bg-muted/50' },
   { key: 'onboarding', label: 'Onboarding', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
   { key: 'first_classes', label: 'Primeiras Aulas', icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   { key: 'mid_course', label: 'Meio de Curso', icon: Activity, color: 'text-amber-600', bg: 'bg-amber-50' },
@@ -154,15 +154,15 @@ export default function AutomationsPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-100 rounded-lg w-48"></div>
+          <div className="h-8 bg-muted rounded-lg w-48"></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-100 rounded-2xl"></div>
+              <div key={i} className="h-24 bg-muted rounded-2xl"></div>
             ))}
           </div>
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-100 rounded-xl"></div>
+              <div key={i} className="h-24 bg-muted rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -180,8 +180,8 @@ export default function AutomationsPage() {
           }`}
         >
           <div>
-            <p className="text-sm font-medium text-[#2A658F] mb-1">Réguas de Comunicação</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Automações</h1>
+            <p className="text-sm font-medium text-primary mb-1">Réguas de Comunicação</p>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Automações</h1>
           </div>
 
           {/* 2) Botão substituído */}
@@ -200,7 +200,7 @@ export default function AutomationsPage() {
               <button
                 onClick={() => router.push('/automations/new')}
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white
-                  bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
+                  bg-gradient-to-r from-primary to-primary/80 rounded-xl
                   hover:shadow-lg hover:shadow-[#2A658F]/30 hover:-translate-y-0.5
                   transition-all duration-200"
               >
@@ -212,13 +212,13 @@ export default function AutomationsPage() {
         </div>
 
         {/* 3) Tabs adicionadas antes dos Stats */}
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 bg-muted p-1 rounded-xl w-fit">
           <button
             onClick={() => setActiveTab('automations')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'automations'
-                ? 'bg-white text-[#27273D] shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground/90'
             }`}
           >
             <Zap className="w-4 h-4" />
@@ -228,8 +228,8 @@ export default function AutomationsPage() {
             onClick={() => setActiveTab('journeys')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'journeys'
-                ? 'bg-white text-[#27273D] shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground/90'
             }`}
           >
             <GitBranch className="w-4 h-4" />
@@ -248,28 +248,28 @@ export default function AutomationsPage() {
               }`}
               style={{ transitionDelay: '100ms' }}
             >
-              <div className="bg-white rounded-2xl p-5 border border-gray-100">
+              <div className="bg-card rounded-2xl p-5 border border-border">
                 <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
                   <Zap className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-2xl font-semibold text-[#27273D]">{automations.length}</p>
-                <p className="text-sm text-gray-500">Total de automações</p>
+                <p className="text-2xl font-semibold text-foreground">{automations.length}</p>
+                <p className="text-sm text-muted-foreground">Total de automações</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-5 border border-gray-100">
+              <div className="bg-card rounded-2xl p-5 border border-border">
                 <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
                   <Power className="w-5 h-5 text-emerald-600" />
                 </div>
-                <p className="text-2xl font-semibold text-[#27273D]">{activeCount}</p>
-                <p className="text-sm text-gray-500">Ativas</p>
+                <p className="text-2xl font-semibold text-foreground">{activeCount}</p>
+                <p className="text-sm text-muted-foreground">Ativas</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-5 border border-gray-100">
+              <div className="bg-card rounded-2xl p-5 border border-border">
                 <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3">
                   <AlertCircle className="w-5 h-5 text-amber-600" />
                 </div>
-                <p className="text-2xl font-semibold text-[#27273D]">{automations.length - activeCount}</p>
-                <p className="text-sm text-gray-500">Inativas</p>
+                <p className="text-2xl font-semibold text-foreground">{automations.length - activeCount}</p>
+                <p className="text-sm text-muted-foreground">Inativas</p>
               </div>
             </div>
 
@@ -289,8 +289,8 @@ export default function AutomationsPage() {
                     onClick={() => setPhaseFilter(phase.key)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all
                       ${isSelected
-                        ? 'bg-[#2A658F] text-white shadow-md'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-card text-muted-foreground border border-border hover:border-border'
                       }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -308,14 +308,14 @@ export default function AutomationsPage() {
               style={{ transitionDelay: '200ms' }}
             >
               <div className="relative max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="text"
                   placeholder="Buscar automação..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                  className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10
                     transition-all duration-200 outline-none"
                 />
               </div>
@@ -329,16 +329,16 @@ export default function AutomationsPage() {
               style={{ transitionDelay: '300ms' }}
             >
               {filtered.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-8 h-8 text-gray-400" />
+                <div className="bg-card rounded-2xl border border-border p-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Zap className="w-8 h-8 text-muted-foreground/70" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhuma automação</h3>
-                  <p className="text-gray-500 mb-4">Crie sua primeira régua de comunicação</p>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Nenhuma automação</h3>
+                  <p className="text-muted-foreground mb-4">Crie sua primeira régua de comunicação</p>
                   <button
                     onClick={() => router.push('/automations/new')}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#2A658F]
-                      bg-[#E2ECF4] hover:bg-[#CCE4F4] rounded-lg transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary
+                      bg-primary/10 hover:bg-primary/15 rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     Criar automação
@@ -349,7 +349,7 @@ export default function AutomationsPage() {
                   const action = actionLabels[automation.action_type] || {
                     label: automation.action_type,
                     icon: Zap,
-                    color: 'text-gray-600',
+                    color: 'text-muted-foreground',
                   };
                   const ActionIcon = action.icon;
                   const phase = journeyPhases.find((p) => p.key === automation.journey_phase);
@@ -358,14 +358,14 @@ export default function AutomationsPage() {
                     <div
                       key={automation.id}
                       onClick={() => router.push(`/automations/${automation.id}`)}
-                      className={`group bg-white rounded-xl border p-5 cursor-pointer
-                        hover:shadow-lg hover:shadow-gray-100/50 transition-all duration-300
-                        ${automation.is_active ? 'border-gray-100 hover:border-gray-200' : 'border-gray-100 opacity-60'}`}
+                      className={`group bg-card rounded-xl border p-5 cursor-pointer
+                        hover:shadow-lg hover:shadow-foreground/5/50 transition-all duration-300
+                        ${automation.is_active ? 'border-border hover:border-border' : 'border-border opacity-60'}`}
                     >
                       <div className="flex items-center gap-4">
                         {/* Icon */}
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          automation.is_active ? 'bg-gradient-to-br from-[#2A658F] to-[#3d7ba8]' : 'bg-gray-200'
+                          automation.is_active ? 'bg-gradient-to-br from-primary to-primary/80' : 'bg-muted-foreground/20'
                         }`}>
                           <Zap className="w-6 h-6 text-white" />
                         </div>
@@ -373,7 +373,7 @@ export default function AutomationsPage() {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors">
+                            <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
                               {automation.name}
                             </h3>
                             {phase && (
@@ -382,19 +382,19 @@ export default function AutomationsPage() {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-sm text-gray-500">
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
                               {getTriggerDescription(automation)}
                             </span>
-                            <span className="text-gray-300">→</span>
+                            <span className="text-muted-foreground/50">→</span>
                             <span className={`flex items-center gap-1 ${action.color}`}>
                               <ActionIcon className="w-3.5 h-3.5" />
                               {action.label}
                             </span>
                           </div>
                           {automation.description && (
-                            <p className="text-xs text-gray-400 mt-1 line-clamp-1">{automation.description}</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-1">{automation.description}</p>
                           )}
                         </div>
 
@@ -405,7 +405,7 @@ export default function AutomationsPage() {
                             className={`p-2 rounded-lg transition-colors ${
                               automation.is_active
                                 ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                : 'bg-muted text-muted-foreground/70 hover:bg-muted-foreground/20'
                             }`}
                             title={automation.is_active ? 'Desativar' : 'Ativar'}
                           >
@@ -413,12 +413,12 @@ export default function AutomationsPage() {
                           </button>
                           <button
                             onClick={(e) => deleteAutomation(automation.id, e)}
-                            className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            className="p-2 rounded-lg text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 transition-colors"
                             title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
-                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#2A658F] transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
                         </div>
                       </div>
                     </div>
@@ -428,7 +428,7 @@ export default function AutomationsPage() {
             </div>
 
             {filtered.length > 0 && (
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 {filtered.length} automação(ões)
               </p>
             )}

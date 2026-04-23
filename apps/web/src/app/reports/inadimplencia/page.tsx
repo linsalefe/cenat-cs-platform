@@ -75,7 +75,7 @@ export default function InadimplenciaPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-muted-foreground/70 animate-spin" />
         </div>
       </AppLayout>
     );
@@ -93,13 +93,13 @@ export default function InadimplenciaPage() {
           <div>
             <button
               onClick={() => router.push('/reports')}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-2"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
               Relatórios
             </button>
             <p className="text-sm font-medium text-red-600 mb-1">Relatório Financeiro</p>
-            <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Inadimplência por Curso</h1>
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight">Inadimplência por Curso</h1>
           </div>
           <div className="flex gap-2">
             <button
@@ -127,48 +127,48 @@ export default function InadimplenciaPage() {
         <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '100ms' }}>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3">
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
             <p className="text-3xl font-bold text-red-600">{data.summary.total_inadimplente}</p>
-            <p className="text-sm text-gray-500">Inadimplentes</p>
+            <p className="text-sm text-muted-foreground">Inadimplentes</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mb-3">
               <Users className="w-5 h-5 text-amber-600" />
             </div>
             <p className="text-3xl font-bold text-amber-600">{data.summary.total_pendente}</p>
-            <p className="text-sm text-gray-500">Pendentes</p>
+            <p className="text-sm text-muted-foreground">Pendentes</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3">
               <DollarSign className="w-5 h-5 text-red-600" />
             </div>
             <p className="text-3xl font-bold text-red-600">{formatCurrency(data.summary.total_overdue)}</p>
-            <p className="text-sm text-gray-500">Valor em atraso</p>
+            <p className="text-sm text-muted-foreground">Valor em atraso</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-gray-100">
+          <div className="bg-card rounded-2xl p-5 border border-border">
             <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center mb-3">
               <TrendingDown className="w-5 h-5 text-red-600" />
             </div>
             <p className="text-3xl font-bold text-red-600">{data.summary.inadimplencia_rate}%</p>
-            <p className="text-sm text-gray-500">Taxa de inadimplência</p>
+            <p className="text-sm text-muted-foreground">Taxa de inadimplência</p>
           </div>
         </div>
 
         {/* Tabela por Curso */}
-        <div className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+        <div className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '200ms' }}>
-          <h3 className="font-semibold text-[#27273D] mb-4">Inadimplência por Curso</h3>
+          <h3 className="font-semibold text-foreground mb-4">Inadimplência por Curso</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase border-b border-border">
                   <th className="px-3 py-3">Curso</th>
                   <th className="px-3 py-3 text-center">Alunos</th>
                   <th className="px-3 py-3 text-center">Inadimpl.</th>
@@ -190,9 +190,9 @@ export default function InadimplenciaPage() {
                     : course.inadimplencia_rate >= 15 ? 'bg-amber-50' : 'bg-emerald-50';
 
                   return (
-                    <tr key={idx} className="hover:bg-gray-50">
+                    <tr key={idx} className="hover:bg-muted/50">
                       <td className="px-3 py-3">
-                        <p className="font-medium text-gray-800 line-clamp-1 max-w-xs" title={course.course}>
+                        <p className="font-medium text-foreground line-clamp-1 max-w-xs" title={course.course}>
                           {course.course}
                         </p>
                       </td>
@@ -206,12 +206,12 @@ export default function InadimplenciaPage() {
                       <td className="px-3 py-3 text-right font-medium text-red-600">
                         {course.total_overdue > 0 ? formatCurrency(course.total_overdue) : '-'}
                       </td>
-                      <td className="px-3 py-3 text-right text-gray-600">
+                      <td className="px-3 py-3 text-right text-muted-foreground">
                         {course.max_overdue > 0 ? formatCurrency(course.max_overdue) : '-'}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                             <div className={`h-full ${riskColor} rounded-full`} style={{ width: `${Math.min(course.inadimplencia_rate, 100)}%` }} />
                           </div>
                           <span className={`text-xs font-medium ${riskTextColor}`}>{riskLabel}</span>
@@ -226,17 +226,17 @@ export default function InadimplenciaPage() {
         </div>
 
         {/* Top Devedores */}
-        <div className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+        <div className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
           mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`} style={{ transitionDelay: '300ms' }}>
-          <h3 className="font-semibold text-[#27273D] mb-4 flex items-center gap-2">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             Top 10 — Maiores Valores em Atraso
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase border-b border-border">
                   <th className="px-3 py-3">#</th>
                   <th className="px-3 py-3">Aluno</th>
                   <th className="px-3 py-3">Curso</th>
@@ -246,31 +246,31 @@ export default function InadimplenciaPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {data.top_debtors.map((debtor, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
+                  <tr key={idx} className="hover:bg-muted/50">
                     <td className="px-3 py-3">
                       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                        idx < 3 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        idx < 3 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'
                       }`}>
                         {idx + 1}
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <p className="font-medium text-gray-800">{debtor.name}</p>
+                      <p className="font-medium text-foreground">{debtor.name}</p>
                     </td>
                     <td className="px-3 py-3">
-                      <p className="text-gray-600 line-clamp-1 max-w-xs" title={debtor.course}>
+                      <p className="text-muted-foreground line-clamp-1 max-w-xs" title={debtor.course}>
                         {debtor.course}
                       </p>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         {debtor.phone && (
-                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Phone className="w-3 h-3" />
                             {debtor.phone}
                           </span>
                         )}
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Mail className="w-3 h-3" />
                           {debtor.email}
                         </span>

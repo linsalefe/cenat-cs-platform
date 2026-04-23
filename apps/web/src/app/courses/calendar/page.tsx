@@ -90,15 +90,15 @@ export default function CalendarPage() {
     return (
       <AppLayout>
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-100 rounded-lg w-64"></div>
+          <div className="h-8 bg-muted rounded-lg w-64"></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-100 rounded-2xl"></div>
+              <div key={i} className="h-24 bg-muted rounded-2xl"></div>
             ))}
           </div>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-xl"></div>
+              <div key={i} className="h-20 bg-muted rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -117,13 +117,13 @@ export default function CalendarPage() {
         >
           <button
             onClick={() => router.push('/courses')}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para Cursos
           </button>
-          <p className="text-sm font-medium text-[#2A658F] mb-1">Acadêmico</p>
-          <h1 className="text-3xl font-semibold text-[#27273D] tracking-tight">Calendário de Entregas</h1>
+          <p className="text-sm font-medium text-primary mb-1">Acadêmico</p>
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Calendário de Entregas</h1>
         </div>
 
         {/* Stats */}
@@ -135,8 +135,8 @@ export default function CalendarPage() {
         >
           <button
             onClick={() => setFilter('upcoming')}
-            className={`bg-white rounded-2xl p-5 border text-left transition-all duration-300
-              ${filter === 'upcoming' ? 'border-emerald-400 shadow-lg shadow-emerald-100' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border text-left transition-all duration-300
+              ${filter === 'upcoming' ? 'border-emerald-400 shadow-lg shadow-emerald-100' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
@@ -144,14 +144,14 @@ export default function CalendarPage() {
               </div>
               {filter === 'upcoming' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{upcoming.length}</p>
-            <p className="text-sm text-gray-500">Próximas entregas</p>
+            <p className="text-2xl font-semibold text-foreground">{upcoming.length}</p>
+            <p className="text-sm text-muted-foreground">Próximas entregas</p>
           </button>
 
           <button
             onClick={() => setFilter('overdue')}
-            className={`bg-white rounded-2xl p-5 border text-left transition-all duration-300
-              ${filter === 'overdue' ? 'border-red-400 shadow-lg shadow-red-100' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border text-left transition-all duration-300
+              ${filter === 'overdue' ? 'border-red-400 shadow-lg shadow-red-100' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
@@ -159,23 +159,23 @@ export default function CalendarPage() {
               </div>
               {filter === 'overdue' && <div className="w-2 h-2 bg-red-500 rounded-full" />}
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{overdue.length}</p>
-            <p className="text-sm text-gray-500">Vencidas (últimos 30d)</p>
+            <p className="text-2xl font-semibold text-foreground">{overdue.length}</p>
+            <p className="text-sm text-muted-foreground">Vencidas (últimos 30d)</p>
           </button>
 
           <button
             onClick={() => setFilter('all')}
-            className={`bg-white rounded-2xl p-5 border text-left transition-all duration-300
-              ${filter === 'all' ? 'border-[#2A658F] shadow-lg shadow-blue-100' : 'border-gray-100 hover:border-gray-200'}`}
+            className={`bg-card rounded-2xl p-5 border text-left transition-all duration-300
+              ${filter === 'all' ? 'border-primary shadow-lg shadow-blue-100' : 'border-border hover:border-border'}`}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <FileText className="w-5 h-5 text-blue-600" />
               </div>
-              {filter === 'all' && <div className="w-2 h-2 bg-[#2A658F] rounded-full" />}
+              {filter === 'all' && <div className="w-2 h-2 bg-primary rounded-full" />}
             </div>
-            <p className="text-2xl font-semibold text-[#27273D]">{assignments.length}</p>
-            <p className="text-sm text-gray-500">Total de atividades</p>
+            <p className="text-2xl font-semibold text-foreground">{assignments.length}</p>
+            <p className="text-sm text-muted-foreground">Total de atividades</p>
           </button>
         </div>
 
@@ -187,17 +187,17 @@ export default function CalendarPage() {
           style={{ transitionDelay: '200ms' }}
         >
           {filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-gray-400" />
+            <div className="bg-card rounded-2xl border border-border p-12 text-center">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-muted-foreground/70" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Nenhuma atividade</h3>
-              <p className="text-gray-500">Não há atividades neste filtro</p>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Nenhuma atividade</h3>
+              <p className="text-muted-foreground">Não há atividades neste filtro</p>
             </div>
           ) : (
             Object.entries(grouped).map(([month, items]) => (
               <div key={month} className="mb-8">
-                <h3 className="text-sm font-semibold text-[#2A658F] uppercase tracking-wider mb-3 capitalize">
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-3 capitalize">
                   {month}
                 </h3>
                 <div className="space-y-2">
@@ -210,12 +210,12 @@ export default function CalendarPage() {
                       <div
                         key={`${a.id}-${a.course_id}`}
                         onClick={() => router.push(`/courses/${a.course_id}`)}
-                        className={`group bg-white rounded-xl border p-4 cursor-pointer
-                          hover:shadow-lg hover:shadow-gray-100/50 transition-all duration-300
+                        className={`group bg-card rounded-xl border p-4 cursor-pointer
+                          hover:shadow-lg hover:shadow-foreground/5/50 transition-all duration-300
                           ${isOverdue ? 'border-red-200 hover:border-red-300' :
                             isToday ? 'border-amber-200 hover:border-amber-300' :
                             isSoon ? 'border-blue-200 hover:border-blue-300' :
-                            'border-gray-100 hover:border-gray-200'}`}
+                            'border-border hover:border-border'}`}
                       >
                         <div className="flex items-center gap-4">
                           {/* Date badge */}
@@ -223,27 +223,27 @@ export default function CalendarPage() {
                             ${isOverdue ? 'bg-red-50' :
                               isToday ? 'bg-amber-50' :
                               isSoon ? 'bg-blue-50' :
-                              'bg-gray-50'}`}
+                              'bg-muted/50'}`}
                           >
                             <span className={`text-lg font-bold leading-none
                               ${isOverdue ? 'text-red-600' :
                                 isToday ? 'text-amber-600' :
                                 isSoon ? 'text-blue-600' :
-                                'text-gray-600'}`}
+                                'text-muted-foreground'}`}
                             >
                               {new Date(a.duedate).getDate()}
                             </span>
-                            <span className="text-[10px] text-gray-500 uppercase mt-0.5">
+                            <span className="text-[10px] text-muted-foreground uppercase mt-0.5">
                               {new Date(a.duedate).toLocaleDateString('pt-BR', { month: 'short' })}
                             </span>
                           </div>
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-[#27273D] group-hover:text-[#2A658F] transition-colors">
+                            <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">
                               {a.name}
                             </h4>
-                            <p className="text-sm text-gray-500 line-clamp-1 mt-0.5">
+                            <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
                               {a.course_name}
                             </p>
                           </div>
@@ -253,7 +253,7 @@ export default function CalendarPage() {
                             ${isOverdue ? 'bg-red-50 text-red-600' :
                               isToday ? 'bg-amber-50 text-amber-600' :
                               isSoon ? 'bg-blue-50 text-blue-600' :
-                              'bg-gray-100 text-gray-600'}`}
+                              'bg-muted text-muted-foreground'}`}
                           >
                             {isOverdue ? `${Math.abs(a.days_remaining)}d atrasado` :
                              isToday ? 'Hoje' :

@@ -291,49 +291,49 @@ export default function NewAutomationPage() {
         >
           <button
             onClick={() => router.push('/automations')}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para Automações
           </button>
-          <p className="text-sm font-medium text-[#2A658F] mb-1">Nova Régua</p>
-          <h1 className="text-2xl font-semibold text-[#27273D] tracking-tight">Criar Automação</h1>
+          <p className="text-sm font-medium text-primary mb-1">Nova Régua</p>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Criar Automação</h1>
         </div>
 
         {/* Step 1: Info */}
         <div
-          className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+          className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '100ms' }}
         >
-          <h2 className="text-sm font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-            <span className="w-6 h-6 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-xs">1</span>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">1</span>
             Informações
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Nome da automação</label>
+              <label className="text-sm font-medium text-foreground/90 mb-1.5 block">Nome da automação</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Boas-vindas ao aluno"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                className="w-full px-4 py-3 border border-border rounded-xl
+                  focus:border-primary focus:ring-4 focus:ring-primary/10
                   transition-all outline-none"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Descrição (opcional)</label>
+              <label className="text-sm font-medium text-foreground/90 mb-1.5 block">Descrição (opcional)</label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Breve descrição do objetivo"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                  focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                className="w-full px-4 py-3 border border-border rounded-xl
+                  focus:border-primary focus:ring-4 focus:ring-primary/10
                   transition-all outline-none"
               />
             </div>
@@ -342,13 +342,13 @@ export default function NewAutomationPage() {
 
         {/* Step 2: Journey Phase */}
         <div
-          className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+          className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '150ms' }}
         >
-          <h2 className="text-sm font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-            <span className="w-6 h-6 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-xs">2</span>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">2</span>
             Fase da Jornada
           </h2>
 
@@ -363,7 +363,7 @@ export default function NewAutomationPage() {
                   className={`flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all
                     ${isSelected
                       ? `${phase.color} border-current shadow-sm`
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -376,13 +376,13 @@ export default function NewAutomationPage() {
 
         {/* Step 3: Trigger */}
         <div
-          className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+          className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '200ms' }}
         >
-          <h2 className="text-sm font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-            <span className="w-6 h-6 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-xs">3</span>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">3</span>
             Gatilho — Quando disparar?
           </h2>
 
@@ -398,17 +398,17 @@ export default function NewAutomationPage() {
                     }}
                     className={`w-full text-left p-4 rounded-xl border transition-all
                       ${isSelected
-                        ? 'border-[#2A658F] bg-[#E2ECF4]/30 shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-primary bg-primary/10/30 shadow-sm'
+                        : 'border-border hover:border-border'
                       }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Clock className={`w-5 h-5 ${isSelected ? 'text-[#2A658F]' : 'text-gray-400'}`} />
+                      <Clock className={`w-5 h-5 ${isSelected ? 'text-primary' : 'text-muted-foreground/70'}`} />
                       <div>
-                        <p className={`font-medium text-sm ${isSelected ? 'text-[#2A658F]' : 'text-gray-700'}`}>
+                        <p className={`font-medium text-sm ${isSelected ? 'text-primary' : 'text-foreground/90'}`}>
                           {trigger.label}
                         </p>
-                        <p className="text-xs text-gray-500">{trigger.description}</p>
+                        <p className="text-xs text-muted-foreground">{trigger.description}</p>
                       </div>
                     </div>
                   </button>
@@ -417,7 +417,7 @@ export default function NewAutomationPage() {
                     <div className="mt-3 ml-8 flex gap-3">
                       {trigger.fields.map((field) => (
                         <div key={field.key} className="flex-1">
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">{field.label}</label>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">{field.label}</label>
                           <input
                             type={field.type}
                             value={triggerConfig[field.key] || ''}
@@ -428,8 +428,8 @@ export default function NewAutomationPage() {
                               }))
                             }
                             placeholder={field.placeholder}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                              focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                            className="w-full px-3 py-2 border border-border rounded-lg text-sm
+                              focus:border-primary focus:ring-4 focus:ring-primary/10
                               transition-all outline-none"
                           />
                         </div>
@@ -444,13 +444,13 @@ export default function NewAutomationPage() {
 
         {/* Step 4: Action */}
         <div
-          className={`bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-700 ease-out ${
+          className={`bg-card rounded-2xl border border-border p-6 transition-all duration-700 ease-out ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
           style={{ transitionDelay: '250ms' }}
         >
-          <h2 className="text-sm font-semibold text-[#27273D] mb-4 flex items-center gap-2">
-            <span className="w-6 h-6 bg-[#2A658F] text-white rounded-full flex items-center justify-center text-xs">4</span>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">4</span>
             Ação — O que fazer?
           </h2>
 
@@ -465,7 +465,7 @@ export default function NewAutomationPage() {
                   className={`flex items-center gap-3 p-4 rounded-xl border text-sm font-medium transition-all
                     ${isSelected
                       ? `${action.color} border-current shadow-sm`
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -480,14 +480,14 @@ export default function NewAutomationPage() {
             <div className="space-y-4">
               {/* Modo de envio */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Modo de envio</label>
+                <label className="text-sm font-medium text-foreground/90 mb-2 block">Modo de envio</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setActionConfig((prev) => ({ ...prev, wa_mode: 'template', template: '' }))}
                     className={`p-3 rounded-xl border text-sm font-medium transition-all ${
                       (actionConfig.wa_mode || 'text') === 'template'
                         ? 'bg-green-50 text-green-600 border-green-300 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                        : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}
                   >
                     �� Template Meta (aprovado)
@@ -497,7 +497,7 @@ export default function NewAutomationPage() {
                     className={`p-3 rounded-xl border text-sm font-medium transition-all ${
                       (actionConfig.wa_mode || 'text') === 'text'
                         ? 'bg-green-50 text-green-600 border-green-300 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                        : 'bg-card text-muted-foreground border-border hover:border-border'
                     }`}
                   >
                     💬 Texto livre (janela 24h)
@@ -509,7 +509,7 @@ export default function NewAutomationPage() {
               {actionConfig.wa_mode === 'template' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Template aprovado</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Template aprovado</label>
                     <select
                       value={actionConfig.wa_template_name || ''}
                       onChange={(e) => {
@@ -520,8 +520,8 @@ export default function NewAutomationPage() {
                           wa_template_params: tmpl ? tmpl.params.map((p) => p.default) : [],
                         }));
                       }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm
-                        focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                      className="w-full px-3 py-2 border border-border rounded-xl text-sm
+                        focus:border-primary focus:ring-4 focus:ring-primary/10
                         transition-all outline-none"
                     >
                       <option value="">Selecione um template...</option>
@@ -536,10 +536,10 @@ export default function NewAutomationPage() {
                     if (!tmpl) return null;
                     return (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-gray-500">Parâmetros do template:</p>
+                        <p className="text-xs font-medium text-muted-foreground">Parâmetros do template:</p>
                         {tmpl.params.map((param, idx) => (
                           <div key={idx}>
-                            <label className="text-xs text-gray-500 mb-1 block">
+                            <label className="text-xs text-muted-foreground mb-1 block">
                               {'{{' + (idx + 1) + '}} — ' + param.label}
                             </label>
                             <input
@@ -551,21 +551,21 @@ export default function NewAutomationPage() {
                                 setActionConfig((prev) => ({ ...prev, wa_template_params: params }));
                               }}
                               placeholder={param.placeholder}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                                focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                              className="w-full px-3 py-2 border border-border rounded-lg text-sm
+                                focus:border-primary focus:ring-4 focus:ring-primary/10
                                 transition-all outline-none"
                             />
                           </div>
                         ))}
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-muted-foreground/70 mt-1">
                           Use variáveis como {'{name}'}, {'{course}'}, {'{days}'} para preencher automaticamente.
                         </p>
 
                         {/* Preview */}
                         <div className="mt-4 p-4 bg-[#e5ddd5] rounded-xl">
-                          <p className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Prévia da mensagem</p>
-                          <div className="bg-white rounded-lg p-3 shadow-sm max-w-sm">
-                            <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">
+                          <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Prévia da mensagem</p>
+                          <div className="bg-card rounded-lg p-3 shadow-sm max-w-sm">
+                            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
                               {(() => {
                                 let preview = tmpl.preview || '';
                                 const params = actionConfig.wa_template_params || [];
@@ -592,7 +592,7 @@ export default function NewAutomationPage() {
                     Para iniciar conversa, use um template aprovado.
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    <label className="text-sm font-medium text-foreground/90 mb-1.5 block">
                       Template da mensagem
                     </label>
                     <textarea
@@ -600,20 +600,20 @@ export default function NewAutomationPage() {
                       onChange={(e) => setActionConfig((prev) => ({ ...prev, template: e.target.value }))}
                       placeholder="Olá {name}, tudo bem? ..."
                       rows={5}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                        focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                      className="w-full px-4 py-3 border border-border rounded-xl
+                        focus:border-primary focus:ring-4 focus:ring-primary/10
                         transition-all outline-none resize-none text-sm"
                     />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-2">Variáveis disponíveis (clique para inserir):</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Variáveis disponíveis (clique para inserir):</p>
                     <div className="flex flex-wrap gap-2">
                       {templateVars.map((v) => (
                         <button
                           key={v.var}
                           onClick={() => insertVariable(v.var)}
-                          className="px-3 py-1.5 text-xs font-mono bg-gray-50 text-gray-700 border border-gray-200
-                            rounded-lg hover:bg-[#E2ECF4] hover:text-[#2A658F] hover:border-[#2A658F]/30 transition-colors"
+                          className="px-3 py-1.5 text-xs font-mono bg-muted/50 text-foreground/90 border border-border
+                            rounded-lg hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                           title={v.desc}
                         >
                           {v.var}
@@ -630,7 +630,7 @@ export default function NewAutomationPage() {
           {actionType === 'send_email' && (
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                <label className="text-sm font-medium text-foreground/90 mb-1.5 block">
                   Template da mensagem
                 </label>
                 <textarea
@@ -638,20 +638,20 @@ export default function NewAutomationPage() {
                   onChange={(e) => setActionConfig((prev) => ({ ...prev, template: e.target.value }))}
                   placeholder="Olá {name}, tudo bem? ..."
                   rows={5}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                  className="w-full px-4 py-3 border border-border rounded-xl
+                    focus:border-primary focus:ring-4 focus:ring-primary/10
                     transition-all outline-none resize-none text-sm"
                 />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Variáveis disponíveis (clique para inserir):</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Variáveis disponíveis (clique para inserir):</p>
                 <div className="flex flex-wrap gap-2">
                   {templateVars.map((v) => (
                     <button
                       key={v.var}
                       onClick={() => insertVariable(v.var)}
-                      className="px-3 py-1.5 text-xs font-mono bg-gray-50 text-gray-700 border border-gray-200
-                        rounded-lg hover:bg-[#E2ECF4] hover:text-[#2A658F] hover:border-[#2A658F]/30 transition-colors"
+                      className="px-3 py-1.5 text-xs font-mono bg-muted/50 text-foreground/90 border border-border
+                        rounded-lg hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                       title={v.desc}
                     >
                       {v.var}
@@ -667,12 +667,12 @@ export default function NewAutomationPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Categoria</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Categoria</label>
                   <select
                     value={actionConfig.category || 'academic'}
                     onChange={(e) => setActionConfig((prev) => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                      focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm
+                      focus:border-primary focus:ring-4 focus:ring-primary/10
                       transition-all outline-none"
                   >
                     <option value="academic">Acadêmico</option>
@@ -682,12 +682,12 @@ export default function NewAutomationPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Prioridade</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Prioridade</label>
                   <select
                     value={actionConfig.priority || 'medium'}
                     onChange={(e) => setActionConfig((prev) => ({ ...prev, priority: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                      focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm
+                      focus:border-primary focus:ring-4 focus:ring-primary/10
                       transition-all outline-none"
                   >
                     <option value="low">Baixa</option>
@@ -698,14 +698,14 @@ export default function NewAutomationPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Assunto do ticket</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Assunto do ticket</label>
                 <input
                   type="text"
                   value={actionConfig.subject || ''}
                   onChange={(e) => setActionConfig((prev) => ({ ...prev, subject: e.target.value }))}
                   placeholder="Ex: Aluno {name} sem acesso há {days} dias"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm
-                    focus:border-[#2A658F] focus:ring-4 focus:ring-[#2A658F]/10
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm
+                    focus:border-primary focus:ring-4 focus:ring-primary/10
                     transition-all outline-none"
                 />
               </div>
@@ -716,7 +716,7 @@ export default function NewAutomationPage() {
         {/* Preview */}
         {triggerType && actionType && (
           <div
-            className={`bg-gradient-to-r from-[#27273D] to-[#2A658F] rounded-2xl p-6 text-white transition-all duration-700 ease-out ${
+            className={`bg-gradient-to-r from-primary to-[#2A658F] rounded-2xl p-6 text-white transition-all duration-700 ease-out ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: '300ms' }}
@@ -752,8 +752,8 @@ export default function NewAutomationPage() {
         <div className="flex gap-3">
           <button
             onClick={() => router.push('/automations')}
-            className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100
-              hover:bg-gray-200 rounded-xl transition-colors"
+            className="flex-1 px-4 py-3 text-sm font-medium text-foreground/90 bg-muted
+              hover:bg-muted-foreground/20 rounded-xl transition-colors"
           >
             Cancelar
           </button>
@@ -761,7 +761,7 @@ export default function NewAutomationPage() {
             onClick={handleSave}
             disabled={saving}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white
-              bg-gradient-to-r from-[#2A658F] to-[#3d7ba8] rounded-xl
+              bg-gradient-to-r from-primary to-primary/80 rounded-xl
               hover:shadow-lg hover:shadow-[#2A658F]/30 transition-all
               disabled:opacity-50 disabled:cursor-not-allowed"
           >

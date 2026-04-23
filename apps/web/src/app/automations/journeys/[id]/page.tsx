@@ -83,7 +83,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
   active: { label: 'Ativo', color: 'bg-blue-50 text-blue-700', icon: RefreshCw },
   paused: { label: 'Pausado', color: 'bg-amber-50 text-amber-700', icon: PauseCircle },
   completed: { label: 'Concluído', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
-  stopped: { label: 'Parado', color: 'bg-gray-100 text-gray-600', icon: XCircle },
+  stopped: { label: 'Parado', color: 'bg-muted text-muted-foreground', icon: XCircle },
   failed: { label: 'Falhou', color: 'bg-red-50 text-red-700', icon: XCircle },
 };
 
@@ -157,7 +157,7 @@ export default function JourneyDetailPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-muted-foreground/70 animate-spin" />
         </div>
       </AppLayout>
     );
@@ -174,7 +174,7 @@ export default function JourneyDetailPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className={`transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-          <button onClick={() => router.push('/automations')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2A658F] transition-colors mb-4">
+          <button onClick={() => router.push('/automations')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-4">
             <ArrowLeft className="w-4 h-4" />
             Voltar para Automações
           </button>
@@ -182,13 +182,13 @@ export default function JourneyDetailPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                journey.is_active ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gray-200'
+                journey.is_active ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-muted-foreground/20'
               }`}>
                 <GitBranch className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-[#27273D] tracking-tight">{journey.name}</h1>
-                {journey.description && <p className="text-sm text-gray-500 mt-0.5">{journey.description}</p>}
+                <h1 className="text-2xl font-semibold text-foreground tracking-tight">{journey.name}</h1>
+                {journey.description && <p className="text-sm text-muted-foreground mt-0.5">{journey.description}</p>}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -201,10 +201,10 @@ export default function JourneyDetailPage() {
                 <Power className="w-4 h-4" />
                 {journey.is_active ? 'Desativar' : 'Ativar'}
               </button>
-              <button onClick={deleteJourney} className="p-2 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+              <button onClick={deleteJourney} className="p-2 rounded-xl text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 transition-colors">
                 <Trash2 className="w-5 h-5" />
               </button>
-              <button onClick={loadJourney} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors">
+              <button onClick={loadJourney} className="p-2 rounded-xl text-muted-foreground/70 hover:bg-muted transition-colors">
                 <RefreshCw className="w-5 h-5" />
               </button>
             </div>
@@ -213,59 +213,59 @@ export default function JourneyDetailPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+          <div className="bg-card rounded-2xl p-4 border border-border text-center">
             <p className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block mb-2 ${
-              journey.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+              journey.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-muted text-muted-foreground'
             }`}>
               {journey.is_active ? 'Ativa' : 'Inativa'}
             </p>
-            <p className="text-sm text-gray-500">Status</p>
+            <p className="text-sm text-muted-foreground">Status</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
-            <p className="text-2xl font-bold text-[#27273D]">{journey.steps.length}</p>
-            <p className="text-sm text-gray-500">Steps</p>
+          <div className="bg-card rounded-2xl p-4 border border-border text-center">
+            <p className="text-2xl font-bold text-foreground">{journey.steps.length}</p>
+            <p className="text-sm text-muted-foreground">Steps</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+          <div className="bg-card rounded-2xl p-4 border border-border text-center">
             <p className="text-2xl font-bold text-blue-600">{activeStudents}</p>
-            <p className="text-sm text-gray-500">Ativos</p>
+            <p className="text-sm text-muted-foreground">Ativos</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+          <div className="bg-card rounded-2xl p-4 border border-border text-center">
             <p className="text-2xl font-bold text-emerald-600">{completedStudents}</p>
-            <p className="text-sm text-gray-500">Concluídos</p>
+            <p className="text-sm text-muted-foreground">Concluídos</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center">
+          <div className="bg-card rounded-2xl p-4 border border-border text-center">
             <p className="text-2xl font-bold text-amber-600">{pausedStudents}</p>
-            <p className="text-sm text-gray-500">Pausados</p>
+            <p className="text-sm text-muted-foreground">Pausados</p>
           </div>
         </div>
 
         {/* Config */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-[#27273D] mb-3">Configuração</h3>
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-3">Configuração</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between py-1.5 border-b border-gray-50">
-                <span className="text-gray-500">Gatilho</span>
+                <span className="text-muted-foreground">Gatilho</span>
                 <span className="font-medium">{triggerLabels[journey.trigger_type] || journey.trigger_type}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-gray-50">
-                <span className="text-gray-500">Canal</span>
+                <span className="text-muted-foreground">Canal</span>
                 <span className="font-medium uppercase">{journey.channel}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-gray-50">
-                <span className="text-gray-500">Ao responder</span>
+                <span className="text-muted-foreground">Ao responder</span>
                 <span className="font-medium">{replyLabels[journey.on_reply] || journey.on_reply}</span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Criada em</span>
+                <span className="text-muted-foreground">Criada em</span>
                 <span className="font-medium">{formatDate(journey.created_at)}</span>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-[#27273D] mb-3">Timeline</h3>
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <h3 className="font-semibold text-foreground mb-3">Timeline</h3>
             <div className="relative">
               <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-indigo-100"></div>
               {journey.steps.map((s, idx) => (
@@ -278,13 +278,13 @@ export default function JourneyDetailPage() {
                       <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
                         {idx === 0 ? 'Dia 0' : `+${s.delay_days}d ${s.delay_hours}h`}
                       </span>
-                      <span className="text-sm font-medium text-gray-800">{s.title || s.template_name}</span>
+                      <span className="text-sm font-medium text-foreground">{s.title || s.template_name}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{s.template_name} ({s.template_language})</p>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">{s.template_name} ({s.template_language})</p>
                     {s.buttons.length > 0 && (
                       <div className="flex gap-1.5 mt-1">
                         {s.buttons.map((btn, bIdx) => (
-                          <span key={bIdx} className="text-[11px] px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
+                          <span key={bIdx} className="text-[11px] px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
                             {btn.text} {actionLabels[btn.action] || btn.action}
                           </span>
                         ))}
@@ -298,25 +298,25 @@ export default function JourneyDetailPage() {
         </div>
 
         {/* Students */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="bg-card rounded-2xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[#27273D] flex items-center gap-2">
-              <Users className="w-5 h-5 text-gray-400" />
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <Users className="w-5 h-5 text-muted-foreground/70" />
               Alunos na Jornada ({journey.students.length})
             </h3>
           </div>
 
           {journey.students.length === 0 ? (
             <div className="text-center py-8">
-              <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500">Nenhum aluno inscrito</p>
-              <p className="text-xs text-gray-400 mt-1">Os alunos serão inscritos automaticamente quando o gatilho for acionado</p>
+              <Users className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
+              <p className="text-muted-foreground">Nenhum aluno inscrito</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Os alunos serão inscritos automaticamente quando o gatilho for acionado</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
+                  <tr className="text-left text-xs font-medium text-muted-foreground uppercase border-b border-border">
                     <th className="px-3 py-2">Aluno</th>
                     <th className="px-3 py-2">Telefone</th>
                     <th className="px-3 py-2">Step Atual</th>
@@ -331,9 +331,9 @@ export default function JourneyDetailPage() {
                     const st = statusConfig[sj.status] || statusConfig.active;
                     const StIcon = st.icon;
                     return (
-                      <tr key={sj.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 font-medium text-gray-800">{sj.student_name}</td>
-                        <td className="px-3 py-2 text-gray-600">{sj.phone}</td>
+                      <tr key={sj.id} className="hover:bg-muted/50">
+                        <td className="px-3 py-2 font-medium text-foreground">{sj.student_name}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{sj.phone}</td>
                         <td className="px-3 py-2">
                           <span className="text-indigo-600 font-medium">{sj.current_step}/{journey.steps.length}</span>
                         </td>
@@ -343,9 +343,9 @@ export default function JourneyDetailPage() {
                             {st.label}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-gray-600">{sj.sent_count}</td>
-                        <td className="px-3 py-2 text-gray-500 text-xs">{sj.last_button_clicked || '-'}</td>
-                        <td className="px-3 py-2 text-xs text-gray-500">{formatDate(sj.next_step_at)}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{sj.sent_count}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">{sj.last_button_clicked || '-'}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(sj.next_step_at)}</td>
                       </tr>
                     );
                   })}
