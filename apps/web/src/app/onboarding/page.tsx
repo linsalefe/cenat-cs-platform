@@ -599,26 +599,19 @@ export default function OnboardingKanbanPage() {
                 <label className="text-xs font-medium text-foreground block mb-1.5">
                   Curso <span className="text-muted-foreground/60">(opcional)</span>
                 </label>
-                {availableCourses.length > 0 ? (
-                  <select
-                    value={newCourse}
-                    onChange={(e) => setNewCourse(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  >
-                    <option value="">Selecione um curso…</option>
-                    {availableCourses.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={newCourse}
-                    onChange={(e) => setNewCourse(e.target.value)}
-                    placeholder="Nome do curso (lista de cursos indisponível)"
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                  />
-                )}
+                <input
+                  type="text"
+                  value={newCourse}
+                  onChange={(e) => setNewCourse(e.target.value)}
+                  placeholder="Digite o nome do curso"
+                  list="courses-suggestions"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                />
+                <datalist id="courses-suggestions">
+                  {availableCourses.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
               </div>
             </div>
 

@@ -181,18 +181,21 @@ export default function OnboardingPage() {
               Curso
             </label>
             {courses.length > 0 ? (
-              <select
+              <input
+                type="text"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
+                placeholder="Digite o nome do seu curso"
+                list="public-courses-suggestions"
                 className="w-full px-4 py-3 border border-border rounded-xl
                   focus:border-primary focus:ring-4 focus:ring-primary/10
                   transition-all outline-none text-sm"
-              >
-                <option value="">Selecione o curso...</option>
+              />
+              <datalist id="public-courses-suggestions">
                 {courses.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c} />
                 ))}
-              </select>
+              </datalist>
             ) : (
               <input
                 type="text"
