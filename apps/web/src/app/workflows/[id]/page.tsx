@@ -39,6 +39,8 @@ import {
   Play,
   Pause,
   Loader2,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
