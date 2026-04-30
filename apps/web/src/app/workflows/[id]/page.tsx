@@ -73,6 +73,39 @@ function WorkflowEditor() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
+
+  // Atalhos de teclado: +/= zoom in, - zoom out, 0 reset (fitView)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignorar se o foco está em um input/textarea/contenteditable
+      const target = e.target as HTMLElement;
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (!rfInstance) return;
+
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        rfInstance.zoomIn({ duration: 200 });
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        rfInstance.zoomOut({ duration: 200 });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        rfInstance.fitView({ duration: 300, padding: 0.2 });
+      } else if (e.key === 'Escape' && fullScreen) {
+        e.preventDefault();
+        setFullScreen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [rfInstance, fullScreen]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -357,7 +390,7 @@ function WorkflowEditor() {
               onToggleCollapsed={() => setLibraryCollapsed((v) => !v)}
             />
 
-            <div className="flex-1 relative" ref={reactFlowWrapper}>
+            <div className={fullScreen ? "fixed inset-0 z-50 bg-background" : "flex-1 relative"} ref={reactFlowWrapper}>
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -371,6 +404,8 @@ function WorkflowEditor() {
                 onPaneClick={() => setSelectedNodeId(null)}
                 nodeTypes={nodeTypes}
                 fitView
+                minZoom={0.3}
+                maxZoom={2}
                 className="bg-background"
                 defaultEdgeOptions={{
                   style: { stroke: 'var(--primary)', strokeWidth: 2 },
@@ -379,6 +414,15 @@ function WorkflowEditor() {
               >
                 <Background gap={16} size={1} />
                 <Controls />
+                <button
+                  type="button"
+                  onClick={() => setFullScreen((v) => !v)}
+                  className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-sm"
+                  title={fullScreen ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+                >
+                  {fullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  <span>{fullScreen ? 'Sair' : 'Tela cheia'}</span>
+                </button>
                 <MiniMap
                   nodeColor="var(--primary)"
                   maskColor="rgba(0,0,0,0.05)"
