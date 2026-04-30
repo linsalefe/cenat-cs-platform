@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String
+from sqlalchemy import Column, DateTime, Float, Integer, JSON, String
 
 from app.db.base import Base
 
@@ -29,5 +29,6 @@ class Student(Base):
     abandonment_status = Column(String(20), nullable=True)  # active, at_risk, abandoned
     onboarding_status = Column(String(50), nullable=True, default=None)
     risk_trend = Column(String(20), default='stable')  # improving, stable, worsening
+    custom_fields = Column(JSON, nullable=True, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
