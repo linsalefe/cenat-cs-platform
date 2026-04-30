@@ -413,8 +413,17 @@ export default function OnboardingKanbanPage() {
       setNewPhone('');
       setNewCourse('');
     } catch (e) {
-      const err = e as { response?: { data?: { detail?: string } } };
-      toast.error(err?.response?.data?.detail || 'Erro ao criar aluno');
+      const err = e as { response?: { status?: number; data?: { detail?: string } } };
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      if (status === 409) {
+        toast.error(detail || 'Já existe aluno com esse email');
+      } else if (status === 400) {
+        toast.error(typeof detail === 'string' ? detail : 'Dados inválidos — confira nome, email e telefone');
+      } else {
+        toast.error(detail || 'Erro ao criar aluno — tente novamente');
+      }
+      console.error('[Novo aluno]', status, detail);
     } finally {
       setCreating(false);
     }
