@@ -19,6 +19,9 @@ import {
   Plus,
   MessageCircle,
   Eye,
+  Upload,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -48,7 +51,7 @@ interface CourseOption {
   count: number;
 }
 
-type SendMode = 'all' | 'course' | 'individual';
+type SendMode = 'all' | 'course' | 'individual' | 'csv';
 
 const statusStyles: Record<string, { label: string; color: string; icon: any }> = {
   APPROVED: { label: 'Aprovado', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
@@ -107,9 +110,129 @@ export default function NewBroadcastPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // CSV
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvPreview, setCsvPreview] = useState<{
+    headers: string[];
+    rows: string[][];
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    phoneColumnIdx: number;
+    nameColumnIdx: number | null;
+    error: string | null;
+  } | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
   useEffect(() => { if (user) { loadTemplates(); loadCourses(); loadChannels(); } }, [user]);
+
+  /* ─── CSV helpers ─── */
+
+  const PHONE_ALIASES_NORM = ['numero', 'telefone', 'phone', 'whatsapp', 'celular'];
+  const NAME_ALIASES_NORM = ['nome', 'name'];
+
+  const normalizeHeader = (h: string): string => {
+    if (!h) return '';
+    return h
+      .trim()
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\s\-.]+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+  };
+
+  const parseCsvClient = async (file: File) => {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setCsvPreview({
+        headers: [], rows: [], totalRows: 0, validRows: 0, invalidRows: 0,
+        phoneColumnIdx: -1, nameColumnIdx: null,
+        error: 'Não foi possível ler o arquivo',
+      });
+      return;
+    }
+
+    // BOM
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+    const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(l => l.length > 0);
+    if (lines.length < 2) {
+      setCsvPreview({
+        headers: [], rows: [], totalRows: 0, validRows: 0, invalidRows: 0,
+        phoneColumnIdx: -1, nameColumnIdx: null,
+        error: 'CSV precisa ter cabeçalho e ao menos 1 linha de dados',
+      });
+      return;
+    }
+
+    // Sniff: ; vence , se aparecer mais vezes no header
+    const headerLine = lines[0];
+    const commaCount = (headerLine.match(/,/g) || []).length;
+    const semiCount = (headerLine.match(/;/g) || []).length;
+    const delim = semiCount > commaCount ? ';' : ',';
+
+    const headers = headerLine.split(delim).map(h => h.trim());
+    const headersNorm = headers.map(normalizeHeader);
+
+    const phoneColumnIdx = headersNorm.findIndex(h => PHONE_ALIASES_NORM.includes(h));
+    const nameColumnIdx = headersNorm.findIndex(h => NAME_ALIASES_NORM.includes(h));
+
+    if (phoneColumnIdx === -1) {
+      setCsvPreview({
+        headers, rows: [], totalRows: lines.length - 1, validRows: 0, invalidRows: 0,
+        phoneColumnIdx: -1, nameColumnIdx: null,
+        error: `Nenhuma coluna de telefone. Use uma destas no cabeçalho: ${PHONE_ALIASES_NORM.join(', ')}`,
+      });
+      return;
+    }
+
+    const dataLines = lines.slice(1);
+    if (dataLines.length > 5000) {
+      setCsvPreview({
+        headers, rows: [], totalRows: dataLines.length, validRows: 0, invalidRows: 0,
+        phoneColumnIdx, nameColumnIdx: nameColumnIdx === -1 ? null : nameColumnIdx,
+        error: `CSV excede o limite de 5000 linhas (${dataLines.length} encontradas)`,
+      });
+      return;
+    }
+
+    const rows = dataLines.map(l => l.split(delim).map(c => c.trim()));
+    let validRows = 0;
+    for (const r of rows) {
+      const raw = r[phoneColumnIdx] || '';
+      const digits = raw.replace(/\D+/g, '');
+      if (digits.length >= 8) validRows++;
+    }
+
+    setCsvPreview({
+      headers,
+      rows: rows.slice(0, 5),
+      totalRows: rows.length,
+      validRows,
+      invalidRows: rows.length - validRows,
+      phoneColumnIdx,
+      nameColumnIdx: nameColumnIdx === -1 ? null : nameColumnIdx,
+      error: null,
+    });
+  };
+
+  const handleCsvSelect = (file: File | null) => {
+    setCsvFile(file);
+    setCsvPreview(null);
+    setShowPreview(false);
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Arquivo maior que 5 MB');
+        setCsvFile(null);
+        return;
+      }
+      parseCsvClient(file);
+    }
+  };
 
   const loadTemplates = async () => {
     try {
@@ -215,6 +338,40 @@ export default function NewBroadcastPage() {
     if (tpl.status !== 'APPROVED') { toast.error('Só é possível enviar templates aprovados'); return; }
     if (sendMode === 'individual' && selectedStudents.length === 0) { toast.error('Selecione pelo menos um aluno'); return; }
     if (sendMode === 'course' && !selectedCourseId) { toast.error('Selecione um curso'); return; }
+    if (sendMode === 'csv' && (!csvFile || !csvPreview || csvPreview.error || csvPreview.validRows === 0)) {
+      toast.error('Selecione um CSV válido antes de disparar');
+      return;
+    }
+
+    // Branch CSV — usa endpoint próprio (multipart)
+    if (sendMode === 'csv' && csvFile && csvPreview) {
+      const templateParams: string[] = [];
+      for (let i = 1; i <= tpl.param_count; i++) {
+        templateParams.push(variableMap[i] || '{{primeiro_nome}}');
+      }
+      const broadcastName = `${tpl.name} — CSV (${csvFile.name})`;
+
+      if (!confirm(`Disparar para ${csvPreview.validRows} destinatário(s) válido(s)? (${csvPreview.invalidRows} sem telefone serão pulados)`)) return;
+
+      setSaving(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', csvFile);
+        fd.append('name', broadcastName);
+        fd.append('channel', selectedChannel);
+        fd.append('template_name', tpl.name);
+        fd.append('template_language', tpl.language);
+        fd.append('template_params', JSON.stringify(templateParams));
+
+        const res = await api.post('/broadcasts/upload-csv', fd);
+        await api.post(`/broadcasts/${res.data.id}/send`);
+        toast.success(`Disparo iniciado! ${res.data.valid_recipients} destinatário(s) receberão.`);
+        router.push(`/broadcasts/${res.data.id}`);
+      } catch (error: any) {
+        toast.error(error.response?.data?.detail || 'Erro ao enviar CSV');
+      } finally { setSaving(false); }
+      return;
+    }
 
     const courseName = sendMode === 'course' ? courses.find(c => c.id === selectedCourseId)?.name || '' : '';
     const confirmMsg = sendMode === 'individual'
@@ -265,7 +422,8 @@ export default function NewBroadcastPage() {
   const canPreview = selectedTemplate && selectedTpl?.status === 'APPROVED' && (
     sendMode === 'all' ||
     (sendMode === 'course' && selectedCourseId) ||
-    (sendMode === 'individual' && selectedStudents.length > 0)
+    (sendMode === 'individual' && selectedStudents.length > 0) ||
+    (sendMode === 'csv' && csvFile !== null && csvPreview !== null && csvPreview.error === null && csvPreview.validRows > 0)
   );
 
   if (authLoading) return null;
@@ -465,11 +623,12 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               {([
                 { key: 'all' as SendMode, label: 'Todos os alunos', icon: Users, desc: 'Enviar para todos' },
                 { key: 'course' as SendMode, label: 'Por curso', icon: GraduationCap, desc: 'Filtrar por curso' },
                 { key: 'individual' as SendMode, label: 'Individual', icon: User, desc: 'Escolher alunos' },
+                { key: 'csv' as SendMode, label: 'Upload CSV', icon: Upload, desc: 'Subir lista própria' },
               ]).map((mode) => {
                 const Icon = mode.icon;
                 const isSelected = sendMode === mode.key;
@@ -564,7 +723,98 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            {sendMode !== 'individual' && (
+            {sendMode === 'csv' && (
+              <div className="mb-4 space-y-4">
+                {/* Drop zone */}
+                {!csvFile ? (
+                  <label className="block cursor-pointer">
+                    <div className="border-2 border-dashed border-border hover:border-primary/50 rounded-2xl px-6 py-10 text-center transition-colors bg-muted/30 hover:bg-primary/5">
+                      <Upload className="w-8 h-8 mx-auto text-muted-foreground/70 mb-3" />
+                      <p className="text-sm font-medium text-foreground">Clique para selecionar um CSV</p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-1">
+                        Aceita .csv com colunas <code>numero, nome, curso</code> (e outras livres). Até 5 MB / 5000 linhas.
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".csv,.txt,text/csv"
+                      className="hidden"
+                      onChange={(e) => handleCsvSelect(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                ) : (
+                  <div className="border border-border rounded-xl p-4 bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{csvFile.name}</p>
+                        <p className="text-[11px] text-muted-foreground/70">
+                          {(csvFile.size / 1024).toFixed(1)} KB
+                          {csvPreview && !csvPreview.error && (
+                            <> · {csvPreview.totalRows} linha(s) · <span className="text-emerald-600 font-medium">{csvPreview.validRows} válida(s)</span>
+                            {csvPreview.invalidRows > 0 && <> · <span className="text-amber-600 font-medium">{csvPreview.invalidRows} sem telefone</span></>}</>
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleCsvSelect(null)}
+                        className="p-1.5 text-muted-foreground/70 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                        aria-label="Remover arquivo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Erro de parse */}
+                    {csvPreview?.error && (
+                      <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-700">{csvPreview.error}</p>
+                      </div>
+                    )}
+
+                    {/* Preview das 5 primeiras linhas */}
+                    {csvPreview && !csvPreview.error && csvPreview.rows.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-[11px] font-medium text-muted-foreground mb-2">Prévia (primeiras 5 linhas)</p>
+                        <div className="overflow-x-auto border border-border rounded-lg">
+                          <table className="w-full text-xs">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                {csvPreview.headers.map((h, i) => (
+                                  <th key={i} className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${i === csvPreview.phoneColumnIdx ? 'text-primary' : 'text-foreground'}`}>
+                                    {h}
+                                    {i === csvPreview.phoneColumnIdx && <span className="ml-1 text-[9px] text-primary/70">📱</span>}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvPreview.rows.map((row, ri) => (
+                                <tr key={ri} className={`border-t border-border ${(row[csvPreview.phoneColumnIdx] || '').replace(/\D+/g, '').length < 8 ? 'bg-amber-50/50' : ''}`}>
+                                  {csvPreview.headers.map((_, ci) => (
+                                    <td key={ci} className="px-3 py-1.5 text-foreground/80 whitespace-nowrap truncate max-w-[180px]">
+                                      {row[ci] || <span className="text-muted-foreground/40 italic">vazio</span>}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/70 mt-1.5">
+                          Linhas em <span className="text-amber-700">amarelo</span> serão puladas (sem telefone válido).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {sendMode !== 'individual' && sendMode !== 'csv' && (
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Status financeiro</label>
@@ -594,14 +844,27 @@ export default function NewBroadcastPage() {
               </div>
             )}
 
-            <button
-              onClick={loadPreview}
-              disabled={!canPreview || loadingPreview}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/15 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-              Ver quantos alunos receberão
-            </button>
+            {sendMode === 'csv' ? (
+              <button
+                onClick={handleSend}
+                disabled={!canPreview || saving}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary/80 rounded-xl hover:shadow-lg hover:shadow-[#2A658F]/30 transition-all disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {csvPreview && !csvPreview.error
+                  ? `Disparar para ${csvPreview.validRows} destinatário(s)`
+                  : 'Selecione um CSV válido'}
+              </button>
+            ) : (
+              <button
+                onClick={loadPreview}
+                disabled={!canPreview || loadingPreview}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/15 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                Ver quantos alunos receberão
+              </button>
+            )}
           </div>
         )}
 
