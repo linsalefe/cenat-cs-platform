@@ -12,6 +12,7 @@ import {
   Users,
   AlertTriangle,
   MessageSquare,
+  MessageSquareText,
   MessageCircle,
   DollarSign,
   BarChart3,
@@ -97,6 +98,7 @@ const menuSections: MenuSection[] = [
       { href: '/broadcasts', label: 'Disparos', icon: Send, module: 'broadcasts' },
       { href: '/automations', label: 'Automações', icon: Zap, module: 'automations' },
       { href: '/workflows', label: 'Workflows', icon: Workflow, module: 'workflows' },
+      { href: '/templates', label: 'Templates', icon: MessageSquareText, module: 'workflows' },
     ],
   },
   {
