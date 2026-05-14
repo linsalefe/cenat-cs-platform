@@ -33,9 +33,24 @@ import {
   XCircle,
   Loader2,
   Info,
+  MessageCircle,
+  Link as LinkIcon,
+  Phone,
+  X,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+type ButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+
+interface TemplateButton {
+  type: ButtonType;
+  text: string;
+  url?: string;
+  phone_number?: string;
+}
 
 interface MetaTemplate {
   name: string;
@@ -47,7 +62,9 @@ interface MetaTemplate {
     text?: string;
     format?: string;
     example?: { body_text?: string[][] };
+    buttons?: TemplateButton[];
   }>;
+  buttons?: TemplateButton[];
   id?: string;
   rejected_reason?: string;
 }
@@ -79,6 +96,13 @@ function countVariables(body: string): number {
   return matches ? new Set(matches).size : 0;
 }
 
+function getButtons(t: MetaTemplate): TemplateButton[] {
+  // Preferir o campo top-level (vem do nosso backend), fallback pros components da Meta
+  if (Array.isArray(t.buttons) && t.buttons.length > 0) return t.buttons;
+  const comp = t.components?.find((c) => c.type === 'BUTTONS');
+  return comp?.buttons || [];
+}
+
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<MetaTemplate[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -95,6 +119,10 @@ export default function TemplatesPage() {
   const [cName, setCName] = useState('');
   const [cCategory, setCCategory] = useState<'UTILITY' | 'MARKETING'>('UTILITY');
   const [cBody, setCBody] = useState('');
+  // Botões do template em criação
+  const [cButtonsOpen, setCButtonsOpen] = useState(false);
+  const [cButtonGroup, setCButtonGroup] = useState<'QUICK_REPLY' | 'CTA'>('QUICK_REPLY');
+  const [cButtons, setCButtons] = useState<TemplateButton[]>([]);
 
   const [deleteTarget, setDeleteTarget] = useState<MetaTemplate | null>(null);
 
@@ -170,6 +198,34 @@ export default function TemplatesPage() {
       return;
     }
 
+    // Valida botões antes do POST
+    if (cButtons.length > 0) {
+      const hasQR = cButtons.some((b) => b.type === 'QUICK_REPLY');
+      const hasCTA = cButtons.some((b) => b.type === 'URL' || b.type === 'PHONE_NUMBER');
+      if (hasQR && hasCTA) {
+        toast.error('Não misture resposta rápida com botões de ação no mesmo template');
+        return;
+      }
+      if (hasQR && cButtons.length > 3) {
+        toast.error('Máximo de 3 botões de resposta rápida');
+        return;
+      }
+      if (hasCTA && cButtons.length > 2) {
+        toast.error('Máximo de 2 botões de ação (URL/telefone)');
+        return;
+      }
+      for (const b of cButtons) {
+        if (!b.text.trim()) { toast.error('Cada botão precisa de um texto'); return; }
+        if (b.text.length > 25) { toast.error(`Botão "${b.text}" passa de 25 caracteres`); return; }
+        if (b.type === 'URL' && !(b.url || '').trim()) {
+          toast.error(`Botão URL "${b.text}" precisa de uma URL`); return;
+        }
+        if (b.type === 'PHONE_NUMBER' && !(b.phone_number || '').trim()) {
+          toast.error(`Botão telefone "${b.text}" precisa de um número`); return;
+        }
+      }
+    }
+
     try {
       setCreating(true);
       await api.post('/whatsapp/templates', {
@@ -178,12 +234,16 @@ export default function TemplatesPage() {
         category: cCategory,
         language: 'pt_BR',
         body: cBody,
+        buttons: cButtons.length > 0 ? cButtons : undefined,
       });
       toast.success('Template enviado pra Meta. Aguardando aprovação.');
       setCreateOpen(false);
       setCName('');
       setCBody('');
       setCCategory('UTILITY');
+      setCButtons([]);
+      setCButtonsOpen(false);
+      setCButtonGroup('QUICK_REPLY');
       loadTemplates();
     } catch (e) {
       const err = e as { response?: { data?: { detail?: string } } };
@@ -336,6 +396,15 @@ export default function TemplatesPage() {
                           <span>{vars} variável{vars > 1 ? 'is' : ''}</span>
                         </>
                       )}
+                      {(() => {
+                        const btns = getButtons(t);
+                        return btns.length > 0 ? (
+                          <>
+                            <span>·</span>
+                            <span>{btns.length} botão{btns.length > 1 ? 'ões' : ''}</span>
+                          </>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <Button
@@ -392,6 +461,29 @@ export default function TemplatesPage() {
                     {getBody(selected) || '—'}
                   </div>
                 </div>
+
+                {getButtons(selected).length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Botões</p>
+                    <div className="space-y-1.5">
+                      {getButtons(selected).map((btn, i) => {
+                        const Icon = btn.type === 'QUICK_REPLY' ? MessageCircle : btn.type === 'URL' ? LinkIcon : Phone;
+                        const detail = btn.type === 'URL' ? btn.url : btn.type === 'PHONE_NUMBER' ? btn.phone_number : null;
+                        return (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border border-border">
+                            <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">{btn.text}</p>
+                              {detail && (
+                                <p className="text-[11px] text-muted-foreground truncate font-mono">{detail}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {countVariables(getBody(selected)) > 0 && (
                   <div className="text-xs text-muted-foreground inline-flex items-start gap-2">
@@ -486,6 +578,149 @@ export default function TemplatesPage() {
                 </div>
               </div>
             )}
+
+            {/* Botões (opcional) */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setCButtonsOpen(!cButtonsOpen)}
+                className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-medium hover:bg-muted/50 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  {cButtonsOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  Botões (opcional)
+                  {cButtons.length > 0 && (
+                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      {cButtons.length}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {cButtonGroup === 'QUICK_REPLY' ? 'até 3 respostas rápidas' : 'até 2 ações (URL/telefone)'}
+                </span>
+              </button>
+
+              {cButtonsOpen && (
+                <div className="px-3 py-3 space-y-3 border-t border-border bg-muted/20">
+                  {/* Tipo de botão */}
+                  <div className="flex gap-2">
+                    {([
+                      { v: 'QUICK_REPLY', label: 'Resposta rápida' },
+                      { v: 'CTA', label: 'Ação (URL/Telefone)' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        disabled={cButtons.length > 0 && (
+                          (opt.v === 'QUICK_REPLY' && cButtons.some((b) => b.type !== 'QUICK_REPLY')) ||
+                          (opt.v === 'CTA' && cButtons.some((b) => b.type === 'QUICK_REPLY'))
+                        )}
+                        onClick={() => setCButtonGroup(opt.v)}
+                        className={cn(
+                          'flex-1 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                          cButtonGroup === opt.v
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-card border-border text-muted-foreground hover:text-foreground',
+                          'disabled:opacity-40 disabled:cursor-not-allowed'
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Lista de botões */}
+                  {cButtons.length > 0 && (
+                    <div className="space-y-2">
+                      {cButtons.map((btn, i) => {
+                        const Icon = btn.type === 'QUICK_REPLY' ? MessageCircle : btn.type === 'URL' ? LinkIcon : Phone;
+                        return (
+                          <div key={i} className="flex items-start gap-2 p-2 bg-card border border-border rounded-md">
+                            <Icon className="w-4 h-4 text-primary mt-2 flex-shrink-0" />
+                            <div className="flex-1 space-y-1.5 min-w-0">
+                              <Input
+                                value={btn.text}
+                                onChange={(e) => setCButtons((arr) => arr.map((b, idx) => idx === i ? { ...b, text: e.target.value } : b))}
+                                placeholder="Texto do botão"
+                                maxLength={25}
+                                className="text-xs h-8"
+                              />
+                              {btn.type === 'URL' && (
+                                <Input
+                                  value={btn.url || ''}
+                                  onChange={(e) => setCButtons((arr) => arr.map((b, idx) => idx === i ? { ...b, url: e.target.value } : b))}
+                                  placeholder="https://..."
+                                  className="text-xs h-8 font-mono"
+                                />
+                              )}
+                              {btn.type === 'PHONE_NUMBER' && (
+                                <Input
+                                  value={btn.phone_number || ''}
+                                  onChange={(e) => setCButtons((arr) => arr.map((b, idx) => idx === i ? { ...b, phone_number: e.target.value } : b))}
+                                  placeholder="+5583999999999"
+                                  className="text-xs h-8 font-mono"
+                                />
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setCButtons((arr) => arr.filter((_, idx) => idx !== i))}
+                              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                              aria-label="Remover botão"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Adicionar botão */}
+                  {(() => {
+                    const limit = cButtonGroup === 'QUICK_REPLY' ? 3 : 2;
+                    const canAdd = cButtons.length < limit;
+                    return (
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-muted-foreground">{cButtons.length}/{limit}</p>
+                        {cButtonGroup === 'QUICK_REPLY' ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={!canAdd}
+                            onClick={() => setCButtons((arr) => [...arr, { type: 'QUICK_REPLY', text: '' }])}
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Resposta rápida
+                          </Button>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={!canAdd}
+                              onClick={() => setCButtons((arr) => [...arr, { type: 'URL', text: '', url: '' }])}
+                            >
+                              <LinkIcon className="w-3.5 h-3.5 mr-1" /> URL
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={!canAdd}
+                              onClick={() => setCButtons((arr) => [...arr, { type: 'PHONE_NUMBER', text: '', phone_number: '' }])}
+                            >
+                              <Phone className="w-3.5 h-3.5 mr-1" /> Telefone
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter>
