@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
+import unicodedata
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -130,6 +132,22 @@ def _first_name(full_name: Optional[str]) -> str:
 
 def _course_name_or_fallback(student: Student) -> str:
     return student.primary_course_name or WHATSAPP_COURSE_FALLBACK
+
+
+def _slugify_button_text(text: Optional[str]) -> str:
+    """Normaliza texto de botão pra slug ASCII estável.
+
+    Usado como sourceHandle das edges do node send_whatsapp_buttons.
+    "Já paguei" -> "ja_paguei"
+    "Não recebi boleto" -> "nao_recebi_boleto"
+    """
+    if not text:
+        return ""
+    s = text.strip().lower()
+    s = unicodedata.normalize("NFKD", s).encode("ASCII", "ignore").decode("ASCII")
+    s = re.sub(r"[\s\-.]+", "_", s)
+    s = re.sub(r"[^a-z0-9_]", "", s)
+    return s
 
 
 # ============================================================
@@ -270,6 +288,102 @@ def _action_send_whatsapp(
     return merged
 
 
+def _action_send_whatsapp_buttons(
+    db: Session, node: dict, student: Student, user_id: Optional[int]
+) -> dict[str, Any]:
+    """Envia template aprovado pela Meta com botões (já anexados ao template).
+
+    NOTA: botões NÃO vão no payload de envio — eles já estão no template aprovado.
+    Esse handler é praticamente idêntico ao _action_send_whatsapp; a diferença
+    é semântica: o engine sabe que esse tipo de ação PAUSA a run em waiting_button
+    pra esperar o clique. Os botões esperados (data.buttons configurados pelo
+    editor) ficam serializados pra mapping com sourceHandle.
+    """
+    data = node.get("data") or {}
+    template = (data.get("template_name") or "").strip()
+    channel = (data.get("channel") or "cs").strip() or "cs"
+    expected_buttons = data.get("buttons") or []
+
+    dry_run = _is_dry_run()
+    first_name = _first_name(student.name)
+    course_name = _course_name_or_fallback(student)
+
+    would_send = {
+        "to_phone": student.phone,
+        "to_name": student.name,
+        "template": template or "(não informado)",
+        "language": "pt_BR",
+        "channel": channel,
+        "params": {"1": first_name, "2": course_name},
+        "expected_buttons": expected_buttons,
+    }
+
+    if not template:
+        return {
+            "status": "error",
+            "action": "send_whatsapp_buttons",
+            "dry_run": dry_run,
+            "error": "template_name não configurado no node",
+            "would_send": would_send,
+        }
+
+    if not student.phone:
+        return {
+            "status": "error",
+            "action": "send_whatsapp_buttons",
+            "dry_run": dry_run,
+            "error": f"aluno {student.id} sem telefone cadastrado",
+            "would_send": would_send,
+        }
+
+    if dry_run:
+        return {
+            "status": "dry_run",
+            "action": "send_whatsapp_buttons",
+            "dry_run": True,
+            "would_send": would_send,
+        }
+
+    components = [
+        {
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": first_name},
+                {"type": "text", "text": course_name},
+            ],
+        }
+    ]
+
+    try:
+        from app.integrations.whatsapp_meta import send_template
+
+        meta_result = asyncio.run(
+            send_template(
+                phone=student.phone,
+                template_name=template,
+                language="pt_BR",
+                components=components,
+                channel_slug=channel,
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "error",
+            "action": "send_whatsapp_buttons",
+            "dry_run": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "would_send": would_send,
+        }
+
+    merged: dict[str, Any] = {
+        "action": "send_whatsapp_buttons",
+        "dry_run": False,
+        "would_send": would_send,
+    }
+    merged.update(meta_result)
+    return merged
+
+
 def _action_create_ticket(
     db: Session, node: dict, student: Student, user_id: Optional[int]
 ) -> dict[str, Any]:
@@ -359,6 +473,7 @@ def _action_set_onboarding_status(
 
 ACTION_HANDLERS = {
     "action.send_whatsapp": _action_send_whatsapp,
+    "action.send_whatsapp_buttons": _action_send_whatsapp_buttons,
     "action.create_ticket": _action_create_ticket,
     "action.assign_user": _action_assign_user,
     "action.set_onboarding_status": _action_set_onboarding_status,
@@ -420,6 +535,7 @@ def _run_loop(
     result: dict[str, Any] = dict(initial_result or {})
     waiting_delay = False
     waiting_reply = False
+    waiting_button = False
 
     run.status = "running"
     db.flush()
@@ -494,6 +610,47 @@ def _run_loop(
                 current_id = None
                 continue
 
+            if node_type == "action.send_whatsapp_buttons":
+                # Dispara o template (que já carrega os botões aprovados pela
+                # Meta) e pausa em waiting_button até o clique ou timeout.
+                handler = ACTION_HANDLERS.get(node_type)
+                if not handler:
+                    raise RuntimeError(
+                        f"Handler não implementado para '{node_type}'."
+                    )
+                action_result = handler(db, node, student, triggered_by_user)
+                send_status = action_result.get("status")
+
+                node_data = node.get("data") or {}
+                try:
+                    wait_days = int(node_data.get("wait_days") or 3)
+                except (TypeError, ValueError):
+                    wait_days = 3
+                if wait_days < 1:
+                    wait_days = 1
+                if wait_days > 30:
+                    wait_days = 30
+                reply_deadline = datetime.utcnow() + timedelta(days=wait_days)
+
+                result[current_id] = {
+                    "kind": "action",
+                    "type": node_type,
+                    **action_result,
+                    "reply_deadline": reply_deadline.isoformat(),
+                }
+
+                if send_status in ("sent", "dry_run"):
+                    run.reply_deadline = reply_deadline
+                    run.reply_received_at = None
+                    waiting_button = True
+                    current_id = None
+                    continue
+                else:
+                    # Erro de envio — segue pela branch "timeout" (fallback)
+                    nxt = _find_next_edge(edges, current_id, source_handle="timeout")
+                    current_id = nxt.get("target") if nxt else None
+                    continue
+
             if node_type.startswith("action."):
                 handler = ACTION_HANDLERS.get(node_type)
                 if not handler:
@@ -525,7 +682,9 @@ def _run_loop(
 
         run.executed_nodes = executed_nodes
         run.result = result
-        if waiting_reply:
+        if waiting_button:
+            run.status = "waiting_button"
+        elif waiting_reply:
             run.status = "waiting_reply"
         elif waiting_delay:
             run.status = "waiting_delay"
@@ -846,6 +1005,156 @@ def timeout_wait_for_reply(db: Session, limit: int = 50) -> dict:
     for run in runs:
         try:
             _resume_from_wait_for_reply(db, run, source_handle="no")
+            resumed += 1
+        except Exception as exc:  # noqa: BLE001
+            errors += 1
+            print(f"❌ Erro ao dar timeout na run {run.id}: {exc}")
+    return {"eligible": len(runs), "resumed": resumed, "errors": errors}
+
+
+# ============================================================
+# F3.C — Wait-for-button helpers
+# ============================================================
+
+def _resume_from_wait_for_button(
+    db: Session,
+    run: WorkflowRun,
+    source_handle: str,
+    clicked_text: Optional[str] = None,
+) -> WorkflowRun:
+    """Retoma run parqueada em waiting_button pela branch escolhida.
+
+    source_handle:
+      - slug de algum botão configurado no node (ex: 'ja_paguei')
+      - 'timeout' → deadline estourado (chamado pelo scheduler)
+    """
+    workflow = (
+        db.query(Workflow).filter(Workflow.id == run.workflow_id).first()
+    )
+    if workflow is None:
+        run.status = "failed"
+        run.error_message = "Workflow não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    student = (
+        db.query(Student).filter(Student.id == run.student_id).first()
+        if run.student_id
+        else None
+    )
+    if student is None:
+        run.status = "failed"
+        run.error_message = "Aluno não existe mais."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    edges = workflow.edges or []
+    executed_nodes = list(run.executed_nodes or [])
+    result = dict(run.result or {})
+
+    if not executed_nodes:
+        run.status = "failed"
+        run.error_message = "Não há nó para retomar (executed_nodes vazio)."
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    last_id = executed_nodes[-1]
+    nxt = _find_next_edge(edges, last_id, source_handle=source_handle)
+    next_id = nxt.get("target") if nxt else None
+
+    if last_id in result:
+        if source_handle == "timeout":
+            result[last_id]["status"] = "timed_out"
+        else:
+            result[last_id]["status"] = "clicked"
+            result[last_id]["clicked_button"] = {
+                "slug": source_handle,
+                "text": clicked_text or source_handle,
+            }
+        result[last_id]["resolved_handle"] = source_handle
+        run.result = result
+
+    if source_handle == "timeout":
+        run.reply_deadline = None
+    else:
+        run.reply_received_at = datetime.utcnow()
+
+    if next_id is None:
+        run.status = "completed"
+        run.finished_at = datetime.utcnow()
+        db.commit()
+        return run
+
+    db.commit()
+    db.refresh(run)
+
+    return _run_loop(
+        db=db,
+        workflow=workflow,
+        student=student,
+        run=run,
+        start_id=next_id,
+        triggered_by_user=run.triggered_by_user,
+        initial_executed=executed_nodes,
+        initial_result=result,
+        count_as_new_run=False,
+    )
+
+
+def resume_on_button_click(
+    db: Session, student_id: int, button_slug: str, clicked_text: Optional[str] = None
+) -> int:
+    """Encontra runs waiting_button daquele aluno e retoma pela branch do botão.
+
+    Chamado pelo webhook quando chega button click (template ou interactive).
+    Retorna quantas runs foram retomadas.
+    """
+    if not button_slug:
+        return 0
+    runs = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.status == "waiting_button",
+            WorkflowRun.student_id == student_id,
+        )
+        .all()
+    )
+    count = 0
+    for run in runs:
+        try:
+            _resume_from_wait_for_button(
+                db, run, source_handle=button_slug, clicked_text=clicked_text
+            )
+            count += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"❌ Erro ao retomar run {run.id} após button click: {exc}")
+    return count
+
+
+def timeout_wait_for_button(db: Session, limit: int = 50) -> dict:
+    """Varre runs waiting_button com deadline expirado e retoma pela branch 'timeout'.
+
+    Chamado pelo scheduler periódico.
+    """
+    now = datetime.utcnow()
+    runs = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.status == "waiting_button",
+            WorkflowRun.reply_deadline.isnot(None),
+            WorkflowRun.reply_deadline <= now,
+        )
+        .limit(limit)
+        .all()
+    )
+    resumed = 0
+    errors = 0
+    for run in runs:
+        try:
+            _resume_from_wait_for_button(db, run, source_handle="timeout")
             resumed += 1
         except Exception as exc:  # noqa: BLE001
             errors += 1

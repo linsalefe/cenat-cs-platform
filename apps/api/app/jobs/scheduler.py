@@ -146,6 +146,24 @@ def timeout_waiting_reply_runs():
         db.close()
 
 
+def timeout_waiting_button_runs():
+    """Varre runs waiting_button com deadline estourado e retoma pela branch 'timeout'."""
+    from app.services import workflow_dispatcher
+
+    db = SessionLocal()
+    try:
+        out = workflow_dispatcher.timeout_waiting_buttons(db)
+        if out["resumed"] > 0 or out["errors"] > 0:
+            print(
+                f"🔘 Timeouts de waiting_button: {out['resumed']}/{out['eligible']} "
+                f"(erros: {out['errors']})"
+            )
+    except Exception as e:
+        print(f"❌ Erro no job de waiting_button timeout: {e}")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Inicia o scheduler com os jobs configurados"""
 
@@ -211,6 +229,15 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    scheduler.add_job(
+        timeout_waiting_button_runs,
+        trigger="interval",
+        minutes=5,
+        id="timeout_waiting_button_runs",
+        name="Timeout de waiting_button (F3.C)",
+        replace_existing=True,
+    )
+
     scheduler.start()
     print("⏰ Scheduler iniciado:")
     print("   - Sync Moodle: 5h diariamente")
@@ -220,6 +247,7 @@ def start_scheduler():
     print("   - Workflows — avaliação de triggers: a cada 15 minutos")
     print("   - Workflows — retomada de delays: a cada 5 minutos")
     print("   - Workflows — timeout de wait_for_reply: a cada 5 minutos")
+    print("   - Workflows — timeout de waiting_button: a cada 5 minutos")
 
 
 def shutdown_scheduler():

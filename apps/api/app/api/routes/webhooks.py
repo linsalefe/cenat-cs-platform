@@ -97,26 +97,48 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     body = "[Localização]"
                 elif msg_type == "sticker":
                     body = "[Figurinha]"
-                elif msg_type == "interactive":
+                # F3.C: rastreia botão clicado pra retomar workflows waiting_button depois
+                clicked_button_text: str = ""
+                clicked_button_legacy_id: str = ""  # pra journey_service legado
+
+                if msg_type == "interactive":
                     interactive = message.get("interactive", {})
                     btn_reply = interactive.get("button_reply", {})
                     if btn_reply:
                         button_id = btn_reply.get("id", "")
                         button_text = btn_reply.get("title", "")
                         body = f"[Botão: {button_text}]"
+                        clicked_button_text = button_text
+                        clicked_button_legacy_id = button_id
 
-                        # Processa clique na régua
+                        # Processa clique na régua (legado, só pra StudentJourney)
                         try:
                             from app.services.journey_service import handle_button_click
                             temp_db = next(get_db())
                             result = handle_button_click(temp_db, normalize_br_phone(from_number), button_id)
                             if result:
-                                print(f"🔘 Botão '{button_text}' processado: {result['action']}")
+                                print(f"🔘 Botão '{button_text}' processado pela régua: {result['action']}")
                             temp_db.close()
                         except Exception as e:
                             print(f"❌ Erro ao processar botão da régua: {e}")
                     else:
                         body = "[Interação]"
+                elif msg_type == "button":
+                    # F3.C: clique em quick-reply de TEMPLATE (não vem como interactive)
+                    button = message.get("button", {})
+                    button_text = button.get("text", "") or button.get("payload", "")
+                    body = f"[Botão: {button_text}]"
+                    clicked_button_text = button_text
+                    clicked_button_legacy_id = button.get("payload", "") or button_text
+                    try:
+                        from app.services.journey_service import handle_button_click
+                        temp_db = next(get_db())
+                        result = handle_button_click(temp_db, normalize_br_phone(from_number), clicked_button_legacy_id)
+                        if result:
+                            print(f"🔘 Botão template '{button_text}' processado pela régua: {result['action']}")
+                        temp_db.close()
+                    except Exception as e:
+                        print(f"❌ Erro ao processar botão template na régua: {e}")
                 elif msg_type == "reaction":
                     continue
                 else:
@@ -164,6 +186,21 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                             print(f"💬 {resumed} workflow run(s) retomada(s) após resposta do aluno {student.id}")
                     except Exception as _exc:  # noqa: BLE001
                         print(f"⚠️ Falha ao retomar workflows após inbound: {_exc}")
+
+                    # F3.C: retoma runs waiting_button se foi clique em botão
+                    if clicked_button_text:
+                        try:
+                            from app.services import workflow_dispatcher
+                            from app.services.workflow_engine import _slugify_button_text
+                            button_slug = _slugify_button_text(clicked_button_text)
+                            if button_slug:
+                                resumed = workflow_dispatcher.handle_student_button_click(
+                                    db, student.id, button_slug, clicked_text=clicked_button_text
+                                )
+                                if resumed > 0:
+                                    print(f"🔘 {resumed} workflow run(s) retomada(s) por clique em '{clicked_button_text}' (slug={button_slug})")
+                        except Exception as _exc:  # noqa: BLE001
+                            print(f"⚠️ Falha ao retomar workflows após button click: {_exc}")
 
                     # Busca ticket aberto do aluno
                     open_ticket = db.query(Ticket).filter(

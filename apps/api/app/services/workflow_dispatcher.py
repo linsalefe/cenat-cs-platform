@@ -335,7 +335,25 @@ def handle_student_replied(db: Session, student_id: int) -> int:
     return workflow_engine.resume_on_reply(db, student_id)
 
 
+def handle_student_button_click(
+    db: Session, student_id: int, button_slug: str, clicked_text: str = ""
+) -> int:
+    """Webhook: retoma runs waiting_button quando o aluno clica num botão.
+
+    button_slug deve estar normalizado (slugify) — o engine compara contra
+    sourceHandle das edges, que o frontend grava como slug.
+    """
+    return workflow_engine.resume_on_button_click(
+        db, student_id, button_slug, clicked_text=clicked_text
+    )
+
+
 def timeout_waiting_replies(db: Session, limit: int = 50) -> dict:
     """Chamado pelo scheduler periódico.
     Retoma runs waiting_reply com deadline estourado pela branch 'no'."""
     return workflow_engine.timeout_wait_for_reply(db, limit=limit)
+
+
+def timeout_waiting_buttons(db: Session, limit: int = 50) -> dict:
+    """Scheduler: dá timeout em runs waiting_button com deadline expirado."""
+    return workflow_engine.timeout_wait_for_button(db, limit=limit)
