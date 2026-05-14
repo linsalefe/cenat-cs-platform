@@ -33,6 +33,15 @@ class Broadcast(Base):
     # Mapeamento dos parâmetros do template
     # Ex: ["{name}", "{course}"] → substituídos por dados do aluno
 
+    # Origem dos destinatários
+    source_type = Column(String(20), nullable=False, default="filters")
+    # "filters" → usa `filters` + query em students
+    # "csv"     → usa `csv_recipients` (lista de dicts)
+
+    csv_recipients = Column(JSON, nullable=False, default=list)
+    # Quando source_type="csv":
+    # [{"phone": "5583999999999", "name": "João", "vars": {"curso": "Pos X", "matricula": "123"}}]
+
     # Status do disparo
     status = Column(String(50), nullable=False, default="draft")
     # draft, sending, completed, partial, failed, cancelled
@@ -56,9 +65,12 @@ class BroadcastLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     broadcast_id = Column(Integer, ForeignKey("broadcasts.id"), nullable=False)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
+    # nullable pra suportar disparo CSV de destinatários fora da base
     student_name = Column(String(255), nullable=True)
     phone = Column(String(20), nullable=True)
+    extra_data = Column(JSON, nullable=False, default=dict)
+    # vars do recipient quando source=csv (curso, matricula, etc)
 
     # Status do envio individual
     status = Column(String(50), nullable=False, default="pending")

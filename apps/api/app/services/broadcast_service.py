@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.broadcast import Broadcast, BroadcastLog
@@ -7,29 +8,53 @@ from app.models.student import Student
 from app.integrations.whatsapp_meta import send_template, format_phone
 
 
-def build_template_components(template_params: list, student: Student) -> list:
-    """Monta os components do template substituindo variáveis do aluno"""
+def _vars_from_student(student: Student) -> dict:
+    """Mapa de variáveis derivado de um Student da base."""
+    name = student.name or ""
+    return {
+        "nome": name,
+        "primeiro_nome": name.split()[0] if name else "",
+        "email": student.email or "",
+        "telefone": student.phone or "",
+        "curso": student.primary_course_name or "sua pós-graduação no CENAT",
+        "status_financeiro": student.financial_status or "",
+    }
+
+
+def _vars_from_csv_recipient(recipient: dict) -> dict:
+    """Mapa de variáveis derivado de um item de csv_recipients."""
+    name = (recipient.get("name") or "").strip()
+    base = {
+        "nome": name,
+        "primeiro_nome": name.split()[0] if name else "",
+        "telefone": recipient.get("phone") or "",
+    }
+    # vars custom do CSV (curso, matricula, etc) sobrescrevem se houver conflito
+    base.update(recipient.get("vars") or {})
+    # Default pra curso ausente (sem essa frase o template fica feio)
+    if not base.get("curso"):
+        base["curso"] = "sua pós-graduação no CENAT"
+    return base
+
+
+def build_template_components(template_params: list, vars_map: dict) -> list:
+    """Monta os components do template substituindo variáveis.
+
+    template_params: lista de placeholders, ex: ["{{primeiro_nome}}", "{{curso}}"]
+    vars_map: dict com chaves sem chaves duplas, ex: {"primeiro_nome": "João", ...}
+    """
     if not template_params:
         return []
 
-    # Mapa de variáveis disponíveis
-    variables = {
-        "{{nome}}": student.name or "",
-        "{{primeiro_nome}}": (student.name or "").split()[0] if student.name else "",
-        "{{email}}": student.email or "",
-        "{{telefone}}": student.phone or "",
-        "{{curso}}": student.primary_course_name or "sua pós-graduação no CENAT",
-        "{{status_financeiro}}": student.financial_status or "",
-    }
-
+    # Garante prefixo/sufixo de chaves: aceita "{{x}}", "{x}", ou só "x"
     parameters = []
     for param in template_params:
-        value = param
-        # Substitui variáveis
-        for var_key, var_value in variables.items():
-            if var_key in str(value):
-                value = str(value).replace(var_key, var_value)
-        parameters.append({"type": "text", "text": str(value)})
+        value = str(param)
+        for var_key, var_value in vars_map.items():
+            for token in (f"{{{{{var_key}}}}}", f"{{{var_key}}}"):
+                if token in value:
+                    value = value.replace(token, str(var_value or ""))
+        parameters.append({"type": "text", "text": value})
 
     if not parameters:
         return []
@@ -55,28 +80,69 @@ async def execute_broadcast(broadcast_id: int, db_factory):
         broadcast.started_at = datetime.utcnow()
         db.commit()
 
-        # Busca alunos com os filtros
-        from app.api.routes.broadcasts import apply_student_filters
-        q = apply_student_filters(db.query(Student), broadcast.filters or {})
-        students = q.all()
+        source_type = (broadcast.source_type or "filters").lower()
 
-        broadcast.total_students = len(students)
-        broadcast.pending_count = len(students)
-        broadcast.sent_count = 0
-        broadcast.failed_count = 0
-        db.commit()
+        if source_type == "csv":
+            recipients = broadcast.csv_recipients or []
+            total = len(recipients)
+            broadcast.total_students = total
+            broadcast.pending_count = total
+            broadcast.sent_count = 0
+            broadcast.failed_count = 0
+            db.commit()
 
-        # Cria logs pendentes
-        for student in students:
-            log = BroadcastLog(
-                broadcast_id=broadcast.id,
-                student_id=student.id,
-                student_name=student.name,
-                phone=student.phone,
-                status="pending",
-            )
-            db.add(log)
-        db.commit()
+            # Cria logs pendentes a partir do CSV (sem FK pra student)
+            for r in recipients:
+                phone_raw = (r.get("phone") or "").strip()
+                name = (r.get("name") or "").strip() or None
+                vars_data = r.get("vars") or {}
+                if not phone_raw:
+                    # Marca falha já no preflight
+                    log = BroadcastLog(
+                        broadcast_id=broadcast.id,
+                        student_id=None,
+                        student_name=name,
+                        phone=None,
+                        extra_data=vars_data,
+                        status="failed",
+                        error="numero ausente",
+                    )
+                    db.add(log)
+                    broadcast.failed_count += 1
+                    broadcast.pending_count -= 1
+                    continue
+                log = BroadcastLog(
+                    broadcast_id=broadcast.id,
+                    student_id=None,
+                    student_name=name,
+                    phone=phone_raw,
+                    extra_data=vars_data,
+                    status="pending",
+                )
+                db.add(log)
+            db.commit()
+        else:
+            # source_type == "filters" (default, compat)
+            from app.api.routes.broadcasts import apply_student_filters
+            q = apply_student_filters(db.query(Student), broadcast.filters or {})
+            students = q.all()
+
+            broadcast.total_students = len(students)
+            broadcast.pending_count = len(students)
+            broadcast.sent_count = 0
+            broadcast.failed_count = 0
+            db.commit()
+
+            for student in students:
+                log = BroadcastLog(
+                    broadcast_id=broadcast.id,
+                    student_id=student.id,
+                    student_name=student.name,
+                    phone=student.phone,
+                    status="pending",
+                )
+                db.add(log)
+            db.commit()
 
         # Envia um por um com rate limiting (1 msg/segundo)
         logs = db.query(BroadcastLog).filter(
@@ -95,11 +161,28 @@ async def execute_broadcast(broadcast_id: int, db_factory):
 
         for log in logs:
             try:
-                # Busca aluno para montar params personalizados
-                student = db.query(Student).filter(Student.id == log.student_id).first()
-                if not student:
+                # Monta vars conforme origem
+                if log.student_id is not None:
+                    student = db.query(Student).filter(Student.id == log.student_id).first()
+                    if not student:
+                        log.status = "failed"
+                        log.error = "Aluno não encontrado"
+                        broadcast.failed_count += 1
+                        broadcast.pending_count -= 1
+                        db.commit()
+                        continue
+                    vars_map = _vars_from_student(student)
+                else:
+                    # CSV: usa o que veio no log
+                    vars_map = _vars_from_csv_recipient({
+                        "name": log.student_name,
+                        "phone": log.phone,
+                        "vars": log.extra_data or {},
+                    })
+
+                if not log.phone:
                     log.status = "failed"
-                    log.error = "Aluno não encontrado"
+                    log.error = "Sem telefone"
                     broadcast.failed_count += 1
                     broadcast.pending_count -= 1
                     db.commit()
@@ -107,7 +190,7 @@ async def execute_broadcast(broadcast_id: int, db_factory):
 
                 phone = format_phone(log.phone)
                 components = build_template_components(
-                    broadcast.template_params or [], student
+                    broadcast.template_params or [], vars_map
                 )
 
                 result = await send_template(
