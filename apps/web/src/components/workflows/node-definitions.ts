@@ -72,6 +72,16 @@ export type FieldSpec =
       multiple?: boolean;
       required?: boolean;
       helpText?: string;
+      /**
+       * Se setado, o RemoteSelect lê o valor de `data[queryFromField]`
+       * e o injeta como query param no endpoint.
+       * Ex: queryFromField='channel' + data.channel='financeiro'
+       *  → GET /whatsapp/templates?channel=financeiro
+       *
+       * Quando o campo dependência muda, o cache é invalidado
+       * automaticamente (chave do cache inclui a query string).
+       */
+      queryFromField?: string;
     }
   | {
       // Read-only: mostra a lista de botões que o template aprovado tem.
@@ -241,16 +251,6 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
     defaultData: { template_name: '', channel: 'cs' },
     fields: [
       {
-        key: 'template_name',
-        type: 'remoteSelect',
-        label: 'Template',
-        endpoint: '/whatsapp/templates',
-        valueKey: 'name',
-        labelKey: 'name',
-        required: true,
-        helpText: 'Apenas templates aprovados pela Meta são listados.',
-      },
-      {
         key: 'channel',
         type: 'select',
         label: 'Canal de envio',
@@ -259,6 +259,18 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
           { value: 'financeiro', label: 'Financeiro (+55 11 93619-1990)' },
         ],
         required: true,
+        helpText: 'Escolha o canal primeiro — só templates desse canal serão listados.',
+      },
+      {
+        key: 'template_name',
+        type: 'remoteSelect',
+        label: 'Template',
+        endpoint: '/whatsapp/templates',
+        valueKey: 'name',
+        labelKey: 'name',
+        required: true,
+        queryFromField: 'channel',
+        helpText: 'Apenas templates aprovados pela Meta do canal escolhido são listados.',
       },
     ],
   },
@@ -424,17 +436,6 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
     },
     fields: [
       {
-        key: 'template_name',
-        type: 'remoteSelect',
-        label: 'Template (com botões)',
-        endpoint: '/whatsapp/templates',
-        valueKey: 'name',
-        labelKey: 'name',
-        required: true,
-        helpText:
-          'Selecione um template que tenha botões aprovados pela Meta. Os botões aparecem automaticamente abaixo.',
-      },
-      {
         key: 'channel',
         type: 'select',
         label: 'Canal de envio',
@@ -443,6 +444,19 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
           { value: 'financeiro', label: 'Financeiro (+55 11 93619-1990)' },
         ],
         required: true,
+        helpText: 'Escolha o canal primeiro — só templates desse canal serão listados.',
+      },
+      {
+        key: 'template_name',
+        type: 'remoteSelect',
+        label: 'Template (com botões)',
+        endpoint: '/whatsapp/templates',
+        valueKey: 'name',
+        labelKey: 'name',
+        required: true,
+        queryFromField: 'channel',
+        helpText:
+          'Selecione um template que tenha botões aprovados pela Meta. Os botões aparecem automaticamente abaixo.',
       },
       {
         key: 'buttons',

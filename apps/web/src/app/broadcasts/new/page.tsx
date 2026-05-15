@@ -125,7 +125,14 @@ export default function NewBroadcastPage() {
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
-  useEffect(() => { if (user) { loadTemplates(); loadCourses(); loadChannels(); } }, [user]);
+  useEffect(() => { if (user) { loadCourses(); loadChannels(); } }, [user]);
+  useEffect(() => {
+    if (user && selectedChannel) {
+      loadTemplates(selectedChannel);
+      setSelectedTemplate('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedChannel]);
 
   /* ─── CSV helpers ─── */
 
@@ -234,9 +241,10 @@ export default function NewBroadcastPage() {
     }
   };
 
-  const loadTemplates = async () => {
+  const loadTemplates = async (channel?: string) => {
     try {
-      const res = await api.get('/whatsapp/templates');
+      const ch = channel || selectedChannel || 'cs';
+      const res = await api.get('/whatsapp/templates', { params: { channel: ch } });
       setTemplates(res.data);
     } catch {
       toast.error('Erro ao carregar templates');
@@ -276,7 +284,7 @@ export default function NewBroadcastPage() {
       setShowCreateForm(false);
       setNewName('');
       setNewBody('');
-      loadTemplates();
+      loadTemplates(selectedChannel);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Erro ao criar template');
     } finally {

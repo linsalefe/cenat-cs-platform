@@ -95,14 +95,35 @@ export default function NodeConfigPanel({
   const colors = COLOR_CLASSES[def.color];
 
   const setField = (key: string, value: unknown) => {
-    // Caso especial: ao trocar template_name num node de botões, popula
-    // data.buttons[] a partir do cache de /whatsapp/templates.
+    // Caso especial 1: trocar CANAL num node de WhatsApp limpa o template
+    // selecionado (pode não existir no novo canal) e os botões (se tiver).
+    if (
+      key === 'channel' &&
+      (node.type === 'action.send_whatsapp' ||
+        node.type === 'action.send_whatsapp_buttons') &&
+      data.channel !== value
+    ) {
+      const next: Record<string, unknown> = { ...data, channel: value, template_name: '' };
+      if (node.type === 'action.send_whatsapp_buttons') {
+        next.buttons = [];
+      }
+      onUpdate(node.id, next);
+      return;
+    }
+
+    // Caso especial 2: ao trocar template_name num node de botões, popula
+    // data.buttons[] a partir do cache de /whatsapp/templates do canal atual.
     if (
       node.type === 'action.send_whatsapp_buttons' &&
       key === 'template_name' &&
       typeof value === 'string'
     ) {
-      const templates = remoteCache.get('/whatsapp/templates') || [];
+      // Chave do cache reflete o canal — mesma lógica do RemoteSelect.
+      const channel = (data.channel as string) || '';
+      const cacheKey = channel
+        ? `/whatsapp/templates?channel=${encodeURIComponent(channel)}`
+        : '/whatsapp/templates';
+      const templates = remoteCache.get(cacheKey) || [];
       const tpl = templates.find((t) => t.name === value);
       const rawButtons = (tpl?.buttons as Array<Record<string, unknown>> | undefined) || [];
       const normalized: TemplateButtonInfo[] = rawButtons.map((b) => {
@@ -160,6 +181,7 @@ export default function NodeConfigPanel({
             key={f.key}
             field={f}
             value={data[f.key]}
+            data={data}
             onChange={(v) => setField(f.key, v)}
           />
         ))}
@@ -190,10 +212,12 @@ export default function NodeConfigPanel({
 function FieldRenderer({
   field,
   value,
+  data,
   onChange,
 }: {
   field: FieldSpec;
   value: unknown;
+  data: Record<string, unknown>;
   onChange: (v: unknown) => void;
 }) {
   const label = (
@@ -283,6 +307,10 @@ function FieldRenderer({
   }
 
   if (field.type === 'remoteSelect') {
+    const queryFromField = field.queryFromField;
+    const queryParamValue = queryFromField
+      ? (data?.[queryFromField] as string | number | undefined)
+      : undefined;
     return (
       <div>
         {label}
@@ -293,6 +321,8 @@ function FieldRenderer({
           multiple={field.multiple}
           value={value}
           onChange={onChange}
+          queryFromField={queryFromField}
+          queryParamValue={queryParamValue}
         />
         {help}
       </div>
@@ -431,6 +461,8 @@ function RemoteSelect({
   multiple,
   value,
   onChange,
+  queryFromField,
+  queryParamValue,
 }: {
   endpoint: string;
   valueKey: string;
@@ -438,14 +470,27 @@ function RemoteSelect({
   multiple?: boolean;
   value: unknown;
   onChange: (v: unknown) => void;
+  queryFromField?: string;
+  queryParamValue?: string | number;
 }) {
   const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
 
+  // Monta endpoint final com query string se necessário.
+  // Ex: '/whatsapp/templates' + queryFromField='channel' + queryParamValue='cs'
+  //  → '/whatsapp/templates?channel=cs'
+  const fullEndpoint = (() => {
+    if (!queryFromField || queryParamValue === undefined || queryParamValue === null || queryParamValue === '') {
+      return endpoint;
+    }
+    const sep = endpoint.includes('?') ? '&' : '?';
+    return `${endpoint}${sep}${queryFromField}=${encodeURIComponent(String(queryParamValue))}`;
+  })();
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetchRemote(endpoint).then((data) => {
+    fetchRemote(fullEndpoint).then((data) => {
       if (alive) {
         setItems(data);
         setLoading(false);
@@ -454,7 +499,7 @@ function RemoteSelect({
     return () => {
       alive = false;
     };
-  }, [endpoint]);
+  }, [fullEndpoint]);
 
   if (loading) {
     return <Skeleton className="h-9 w-full" />;
