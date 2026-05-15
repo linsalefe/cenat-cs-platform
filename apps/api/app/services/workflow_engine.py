@@ -150,6 +150,42 @@ def _slugify_button_text(text: Optional[str]) -> str:
     return s
 
 
+def _within_24h_window(db: Session, student_id: int) -> bool:
+    """True se o aluno enviou mensagem inbound nas últimas 24h.
+
+    A Meta proíbe mensagens livres (texto/mídia) fora dessa janela —
+    obrigatório usar template aprovado. Esse helper detecta antes de enviar
+    pra evitar erro 470 da Cloud API.
+    """
+    from app.models.conversation import (
+        Conversation,
+        ConversationMessage,
+        MessageDirection,
+    )
+
+    convo_ids = [
+        cid for (cid,) in db.query(Conversation.id)
+        .filter(Conversation.student_id == student_id)
+        .all()
+    ]
+    if not convo_ids:
+        return False
+
+    last_inbound = (
+        db.query(ConversationMessage.created_at)
+        .filter(
+            ConversationMessage.conversation_id.in_(convo_ids),
+            ConversationMessage.direction == MessageDirection.INBOUND,
+        )
+        .order_by(ConversationMessage.created_at.desc())
+        .first()
+    )
+    if not last_inbound or not last_inbound[0]:
+        return False
+
+    return (datetime.utcnow() - last_inbound[0]) < timedelta(hours=24)
+
+
 # ============================================================
 # Condition evaluators
 # ============================================================
@@ -384,6 +420,117 @@ def _action_send_whatsapp_buttons(
     return merged
 
 
+def _interpolate_text_vars(text: str, student: Student) -> str:
+    """Substitui {nome}, {primeiro_nome}, {curso}, {telefone} no texto.
+
+    Note o formato `{var}` (chaves simples) — DIFERENTE do `{{N}}` dos
+    templates da Meta. É de propósito: o texto livre é nosso, não passa
+    pela Meta, então usamos sintaxe mais legível.
+    """
+    if not text:
+        return ""
+    name = student.name or ""
+    vars_map = {
+        "nome": name,
+        "primeiro_nome": name.split()[0] if name else "",
+        "curso": _course_name_or_fallback(student),
+        "telefone": student.phone or "",
+    }
+    out = text
+    for key, value in vars_map.items():
+        out = out.replace("{" + key + "}", str(value))
+    return out
+
+
+def _action_send_text(
+    db: Session, node: dict, student: Student, user_id: Optional[int]
+) -> dict[str, Any]:
+    """Envia mensagem livre (texto) dentro da janela 24h.
+
+    Se a janela estiver fechada, NÃO envia — devolve status='out_of_window'
+    para o engine sair pela branch correspondente.
+    """
+    data = node.get("data") or {}
+    raw_message = (data.get("message") or "").strip()
+    channel = (data.get("channel") or "cs").strip() or "cs"
+
+    dry_run = _is_dry_run()
+    interpolated = _interpolate_text_vars(raw_message, student)
+
+    would_send = {
+        "to_phone": student.phone,
+        "to_name": student.name,
+        "channel": channel,
+        "message_raw": raw_message,
+        "message_interpolated": interpolated,
+    }
+
+    if not raw_message:
+        return {
+            "status": "error",
+            "action": "send_text",
+            "dry_run": dry_run,
+            "error": "message vazia no node",
+            "would_send": would_send,
+        }
+
+    if not student.phone:
+        return {
+            "status": "error",
+            "action": "send_text",
+            "dry_run": dry_run,
+            "error": f"aluno {student.id} sem telefone cadastrado",
+            "would_send": would_send,
+        }
+
+    # Anti-Meta-error: confere janela 24h ANTES de enviar
+    in_window = _within_24h_window(db, student.id)
+    if not in_window:
+        return {
+            "status": "out_of_window",
+            "action": "send_text",
+            "dry_run": dry_run,
+            "would_send": would_send,
+            "reason": "Sem mensagem inbound do aluno nas últimas 24h. "
+                     "Envie um template pago primeiro para reabrir a janela.",
+        }
+
+    if dry_run:
+        return {
+            "status": "dry_run",
+            "action": "send_text",
+            "dry_run": True,
+            "would_send": would_send,
+        }
+
+    try:
+        from app.integrations.whatsapp_meta import send_message
+
+        meta_result = asyncio.run(
+            send_message(
+                phone=student.phone,
+                message=interpolated,
+                channel_slug=channel,
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "error",
+            "action": "send_text",
+            "dry_run": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "would_send": would_send,
+        }
+
+    merged: dict[str, Any] = {
+        "action": "send_text",
+        "dry_run": False,
+        "would_send": would_send,
+    }
+    merged.update(meta_result)
+    return merged
+
+
 def _action_create_ticket(
     db: Session, node: dict, student: Student, user_id: Optional[int]
 ) -> dict[str, Any]:
@@ -474,6 +621,7 @@ def _action_set_onboarding_status(
 ACTION_HANDLERS = {
     "action.send_whatsapp": _action_send_whatsapp,
     "action.send_whatsapp_buttons": _action_send_whatsapp_buttons,
+    "action.send_text": _action_send_text,
     "action.create_ticket": _action_create_ticket,
     "action.assign_user": _action_assign_user,
     "action.set_onboarding_status": _action_set_onboarding_status,
@@ -608,6 +756,31 @@ def _run_loop(
                 run.reply_received_at = None
                 waiting_reply = True
                 current_id = None
+                continue
+
+            if node_type == "action.send_text":
+                handler = ACTION_HANDLERS.get(node_type)
+                if not handler:
+                    raise RuntimeError(
+                        f"Handler não implementado para '{node_type}'."
+                    )
+                action_result = handler(db, node, student, triggered_by_user)
+                status = action_result.get("status")
+
+                result[current_id] = {
+                    "kind": "action",
+                    "type": node_type,
+                    **action_result,
+                }
+
+                # Decide a branch:
+                #  - status='out_of_window' → sai pela edge 'out_of_window'
+                #  - qualquer outro (sent/dry_run/error) → sai pela edge 'sent'
+                if status == "out_of_window":
+                    nxt = _find_next_edge(edges, current_id, source_handle="out_of_window")
+                else:
+                    nxt = _find_next_edge(edges, current_id, source_handle="sent")
+                current_id = nxt.get("target") if nxt else None
                 continue
 
             if node_type == "action.send_whatsapp_buttons":

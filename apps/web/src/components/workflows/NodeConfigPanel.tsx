@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Node } from '@xyflow/react';
 import {
   getNodeDef,
@@ -248,6 +248,16 @@ function FieldRenderer({
     );
   }
 
+  if (field.type === 'textarea') {
+    return (
+      <div>
+        {label}
+        <TextareaField field={field} value={value} onChange={onChange} />
+        {help}
+      </div>
+    );
+  }
+
   if (field.type === 'select') {
     return (
       <div>
@@ -334,6 +344,80 @@ function FieldRenderer({
   }
 
   return null;
+}
+
+/* ============================================================
+   TextareaField — textarea multi-linha com chips clicáveis de variáveis
+   ============================================================ */
+
+function TextareaField({
+  field,
+  value,
+  onChange,
+}: {
+  field: Extract<FieldSpec, { type: 'textarea' }>;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const text = (value as string | undefined) ?? '';
+  const maxLen = field.maxLength || 4000;
+
+  const insertToken = (token: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      onChange(text + token);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + token + text.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + token.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  return (
+    <div>
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder}
+        rows={5}
+        maxLength={maxLen}
+        className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-y font-mono"
+      />
+      <div className="flex justify-between items-center mt-1">
+        <p className="text-[10px] text-muted-foreground">
+          {text.length}/{maxLen}
+        </p>
+      </div>
+      {field.variableChips && field.variableChips.length > 0 && (
+        <div className="mt-2">
+          <p className="text-[10px] font-medium text-muted-foreground mb-1">
+            Inserir variável
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {field.variableChips.map((chip) => (
+              <button
+                key={chip.token}
+                type="button"
+                onClick={() => insertToken(chip.token)}
+                title={chip.label}
+                className="inline-flex items-center px-2 py-0.5 rounded border border-border bg-background hover:bg-primary/5 hover:border-primary/40 text-[11px] font-mono text-foreground transition-colors"
+              >
+                {chip.token}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ============================================================

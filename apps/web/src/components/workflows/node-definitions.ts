@@ -15,6 +15,7 @@ import {
   BookOpen,
   Shield,
   Clock,
+  MessagesSquare,
 } from 'lucide-react';
 
 /* ============================================================
@@ -42,6 +43,16 @@ export type FieldSpec =
       placeholder?: string;
       required?: boolean;
       helpText?: string;
+    }
+  | {
+      key: string;
+      type: 'textarea';
+      label: string;
+      placeholder?: string;
+      required?: boolean;
+      helpText?: string;
+      maxLength?: number;
+      variableChips?: Array<{ token: string; label: string }>;
     }
   | {
       key: string;
@@ -319,6 +330,45 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
           { value: 'follow_up', label: 'Follow-up' },
           { value: 'aguardando_doc', label: 'Aguardando documentação' },
           { value: 'concluido', label: 'Concluído' },
+        ],
+        required: true,
+      },
+    ],
+  },
+
+  'action.send_text': {
+    type: 'action.send_text',
+    kind: 'action',
+    label: 'Enviar mensagem livre (24h)',
+    description:
+      'Envia texto livre, sem template, dentro da janela de 24h após o aluno responder. Fora dessa janela, segue pela branch "Janela fechada".',
+    icon: MessagesSquare,
+    color: 'emerald',
+    defaultData: { message: '', channel: 'cs' },
+    fields: [
+      {
+        key: 'message',
+        type: 'textarea',
+        label: 'Mensagem',
+        placeholder: 'Ex: Que ótimo, {primeiro_nome}! Vou te enviar o boleto agora.',
+        required: true,
+        maxLength: 4000,
+        variableChips: [
+          { token: '{primeiro_nome}', label: 'Primeiro nome' },
+          { token: '{nome}', label: 'Nome completo' },
+          { token: '{curso}', label: 'Curso' },
+          { token: '{telefone}', label: 'Telefone' },
+        ],
+        helpText:
+          'Use {primeiro_nome}, {nome}, {curso} pra personalizar. Mensagens livres só funcionam se o aluno respondeu nas últimas 24h.',
+      },
+      {
+        key: 'channel',
+        type: 'select',
+        label: 'Canal de envio',
+        options: [
+          { value: 'cs', label: 'CS (+55 11 93618-0797)' },
+          { value: 'financeiro', label: 'Financeiro (+55 11 93619-1990)' },
         ],
         required: true,
       },

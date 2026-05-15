@@ -4,6 +4,7 @@ import ConditionNode from './ConditionNode';
 import DelayNode from './DelayNode';
 import WaitForReplyNode from './WaitForReplyNode';
 import SendWhatsAppButtonsNode from './SendWhatsAppButtonsNode';
+import SendTextNode from './SendTextNode';
 import { NODE_DEFINITIONS } from '../node-definitions';
 
 /* Mapeia cada tipo registrado para seu componente de render.
@@ -11,7 +12,8 @@ import { NODE_DEFINITIONS } from '../node-definitions';
 
    Exceções:
    - action.wait_for_reply: 2 handles fixos (Respondeu / Não respondeu)
-   - action.send_whatsapp_buttons: N+1 handles dinâmicos (1 por botão + timeout) */
+   - action.send_whatsapp_buttons: N+1 handles dinâmicos (1 por botão + timeout)
+   - action.send_text: 2 handles fixos (Enviou / Janela fechada) */
 export const nodeTypes = Object.fromEntries(
   Object.values(NODE_DEFINITIONS).map((def) => {
     let component;
@@ -19,6 +21,8 @@ export const nodeTypes = Object.fromEntries(
       component = WaitForReplyNode;
     } else if (def.type === 'action.send_whatsapp_buttons') {
       component = SendWhatsAppButtonsNode;
+    } else if (def.type === 'action.send_text') {
+      component = SendTextNode;
     } else if (def.kind === 'trigger') {
       component = TriggerNode;
     } else if (def.kind === 'action') {
@@ -39,4 +43,5 @@ export {
   DelayNode,
   WaitForReplyNode,
   SendWhatsAppButtonsNode,
+  SendTextNode,
 };
