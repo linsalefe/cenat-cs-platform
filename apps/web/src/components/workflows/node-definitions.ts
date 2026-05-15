@@ -61,6 +61,14 @@ export type FieldSpec =
       multiple?: boolean;
       required?: boolean;
       helpText?: string;
+    }
+  | {
+      // Read-only: mostra a lista de botões que o template aprovado tem.
+      // Não é editável — populado automaticamente ao selecionar o template.
+      key: string;
+      type: 'buttonsList';
+      label: string;
+      helpText?: string;
     };
 
 export interface NodeDefinition {
@@ -339,6 +347,62 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
     ],
   },
 
+  'action.send_whatsapp_buttons': {
+    type: 'action.send_whatsapp_buttons',
+    kind: 'action',
+    label: 'Enviar WhatsApp com botões',
+    description:
+      'Dispara um template com botões aprovado pela Meta e pausa o fluxo até o aluno clicar ou o prazo estourar.',
+    icon: MessageCircleReply,
+    color: 'emerald',
+    defaultData: {
+      template_name: '',
+      channel: 'cs',
+      wait_days: 3,
+      buttons: [],
+    },
+    fields: [
+      {
+        key: 'template_name',
+        type: 'remoteSelect',
+        label: 'Template (com botões)',
+        endpoint: '/whatsapp/templates',
+        valueKey: 'name',
+        labelKey: 'name',
+        required: true,
+        helpText:
+          'Selecione um template que tenha botões aprovados pela Meta. Os botões aparecem automaticamente abaixo.',
+      },
+      {
+        key: 'channel',
+        type: 'select',
+        label: 'Canal de envio',
+        options: [
+          { value: 'cs', label: 'CS (+55 11 93618-0797)' },
+          { value: 'financeiro', label: 'Financeiro (+55 11 93619-1990)' },
+        ],
+        required: true,
+      },
+      {
+        key: 'buttons',
+        type: 'buttonsList',
+        label: 'Botões do template',
+        helpText:
+          'Cada botão vira uma branch de saída. Pra alterar os textos, edite o template em /templates.',
+      },
+      {
+        key: 'wait_days',
+        type: 'number',
+        label: 'Dias para aguardar clique',
+        min: 1,
+        max: 30,
+        step: 1,
+        required: true,
+        helpText: 'Se ninguém clicar em até esse prazo, segue pela branch "Timeout".',
+      },
+    ],
+  },
+
   /* ---------- CONDITIONS ---------- */
   'condition.course_is': {
     type: 'condition.course_is',
@@ -504,6 +568,29 @@ export function getNodeDef(type: string): NodeDefinition | undefined {
 
 export function listNodeDefinitionsByKind(kind: NodeKind): NodeDefinition[] {
   return Object.values(NODE_DEFINITIONS).filter((d) => d.kind === kind);
+}
+
+/** Tipo carregado nos `data.buttons[]` do node send_whatsapp_buttons. */
+export interface TemplateButtonInfo {
+  text: string;
+  slug: string;
+  type?: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | string;
+}
+
+/** Normaliza texto de botão pra slug ASCII estável.
+ *  ESPELHA exatamente o `_slugify_button_text` do backend (workflow_engine.py).
+ *  "Já paguei"        -> "ja_paguei"
+ *  "Não recebi boleto" -> "nao_recebi_boleto"
+ */
+export function slugifyButtonText(text: string): string {
+  if (!text) return '';
+  return text
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\s\-.]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
 }
 
 /** Verifica se a data atual do node atende aos campos required. */

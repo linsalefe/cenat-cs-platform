@@ -6,7 +6,9 @@ import {
   getNodeDef,
   NODE_DEFINITIONS,
   COLOR_CLASSES,
+  slugifyButtonText,
   type FieldSpec,
+  type TemplateButtonInfo,
 } from './node-definitions';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -20,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trash2, X, Info, Check } from 'lucide-react';
+import { Trash2, X, Info, Check, MessageCircle, Link as LinkIcon, Phone } from 'lucide-react';
 
 interface NodeConfigPanelProps {
   node: Node | null;
@@ -93,6 +95,28 @@ export default function NodeConfigPanel({
   const colors = COLOR_CLASSES[def.color];
 
   const setField = (key: string, value: unknown) => {
+    // Caso especial: ao trocar template_name num node de botões, popula
+    // data.buttons[] a partir do cache de /whatsapp/templates.
+    if (
+      node.type === 'action.send_whatsapp_buttons' &&
+      key === 'template_name' &&
+      typeof value === 'string'
+    ) {
+      const templates = remoteCache.get('/whatsapp/templates') || [];
+      const tpl = templates.find((t) => t.name === value);
+      const rawButtons = (tpl?.buttons as Array<Record<string, unknown>> | undefined) || [];
+      const normalized: TemplateButtonInfo[] = rawButtons.map((b) => {
+        const text = String(b.text ?? '');
+        return {
+          text,
+          slug: slugifyButtonText(text),
+          type: typeof b.type === 'string' ? b.type : undefined,
+        };
+      });
+      onUpdate(node.id, { ...data, template_name: value, buttons: normalized });
+      return;
+    }
+
     onUpdate(node.id, { ...data, [key]: value });
   };
 
@@ -260,6 +284,50 @@ function FieldRenderer({
           value={value}
           onChange={onChange}
         />
+        {help}
+      </div>
+    );
+  }
+
+  if (field.type === 'buttonsList') {
+    const buttons: TemplateButtonInfo[] = Array.isArray(value)
+      ? (value as TemplateButtonInfo[])
+      : [];
+    return (
+      <div>
+        {label}
+        {buttons.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic py-2 px-3 rounded-lg bg-muted/40 border border-dashed border-border">
+            Nenhum botão. Selecione um template que tenha botões aprovados pela Meta.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {buttons.map((btn, i) => {
+              const Icon =
+                btn.type === 'URL'
+                  ? LinkIcon
+                  : btn.type === 'PHONE_NUMBER'
+                  ? Phone
+                  : MessageCircle;
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-2.5 py-1.5 bg-muted/40 rounded-md border border-border"
+                >
+                  <Icon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {btn.text}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-mono truncate">
+                      {btn.slug}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {help}
       </div>
     );
