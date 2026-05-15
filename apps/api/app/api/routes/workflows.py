@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal, Any
 
 from app.core.deps import get_current_user, get_db
+from app.db.session import SessionLocal
 from app.models.workflow import Workflow
 from app.models.workflow_run import WorkflowRun
+from app.models.workflow_dispatch_batch import WorkflowDispatchBatch
 from app.models.student import Student
-from app.services import workflow_engine
+from app.services import workflow_engine, workflow_dispatcher
+from app.api.routes.broadcasts import _parse_csv_bytes
 
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -208,6 +211,135 @@ def trigger_workflow(
         "resume_at": run.resume_at,
         "started_at": run.started_at,
         "finished_at": run.finished_at,
+    }
+
+
+# ============================================================
+# F3.E — Dispatch CSV (batch + polling)
+# ============================================================
+
+
+def _process_batch_with_own_session(batch_id: int, csv_recipients: list[dict]) -> None:
+    """Wrapper chamado pelo BackgroundTasks que cria sua própria session.
+
+    BackgroundTasks executa após o response — a session original do request
+    já está fechada. Precisamos abrir uma nova.
+    """
+    db = SessionLocal()
+    try:
+        workflow_dispatcher._run_csv_batch(db, batch_id, csv_recipients)
+    finally:
+        db.close()
+
+
+@router.post("/{workflow_id}/dispatch-csv")
+async def dispatch_workflow_csv(
+    workflow_id: int,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Dispara o workflow pra uma lista de alunos via CSV (multipart).
+
+    Cria um WorkflowDispatchBatch em background. Resposta retorna imediatamente
+    com o batch_id pra polling de progresso via GET /workflows/dispatch-batches/{id}.
+
+    CSV: mesmo formato do /broadcasts/upload-csv — coluna `numero/telefone/phone`
+    obrigatória, outras colunas são livres mas IGNORADAS (variáveis vêm do Student).
+    """
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise HTTPException(404, "Workflow não encontrado")
+    if workflow.status != "active":
+        raise HTTPException(
+            400,
+            f"Workflow precisa estar ativo pra disparar. Status atual: '{workflow.status}'."
+        )
+
+    fname = (file.filename or "").lower()
+    if not (fname.endswith(".csv") or fname.endswith(".txt")):
+        raise HTTPException(400, "Arquivo precisa ter extensão .csv")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "Arquivo vazio")
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Arquivo maior que 5 MB")
+
+    try:
+        recipients = _parse_csv_bytes(content)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    if not recipients:
+        raise HTTPException(400, "CSV não tem linhas de dados")
+
+    try:
+        batch = workflow_dispatcher.start_csv_dispatch(
+            db=db,
+            workflow_id=workflow_id,
+            csv_recipients=recipients,
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    background_tasks.add_task(_process_batch_with_own_session, batch.id, recipients)
+
+    return {
+        "batch_id": batch.id,
+        "workflow_id": workflow_id,
+        "status": batch.status,
+        "total_recipients": batch.total_recipients,
+        "skipped_no_phone_preflight": batch.skipped_no_phone,
+        "message": (
+            f"Dispatch iniciado em background pra {batch.total_recipients} destinatário(s). "
+            "Acompanhe o progresso em /workflows/dispatch-batches/{batch_id}."
+        ),
+    }
+
+
+@router.get("/dispatch-batches/{batch_id}")
+def get_dispatch_batch(
+    batch_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Retorna estado atual do batch (pra polling do frontend)."""
+    batch = (
+        db.query(WorkflowDispatchBatch)
+        .filter(WorkflowDispatchBatch.id == batch_id)
+        .first()
+    )
+    if not batch:
+        raise HTTPException(404, "Batch não encontrado")
+
+    processed = (
+        batch.dispatched
+        + batch.skipped_active
+        + batch.skipped_no_student
+        + batch.skipped_no_phone
+        + batch.failed
+    )
+    total = batch.total_recipients or 0
+    progress = (processed / total * 100.0) if total > 0 else 0.0
+
+    return {
+        "id": batch.id,
+        "workflow_id": batch.workflow_id,
+        "status": batch.status,
+        "total_recipients": batch.total_recipients,
+        "dispatched": batch.dispatched,
+        "skipped_active": batch.skipped_active,
+        "skipped_no_student": batch.skipped_no_student,
+        "skipped_no_phone": batch.skipped_no_phone,
+        "failed": batch.failed,
+        "processed": processed,
+        "progress_pct": round(progress, 1),
+        "error_message": batch.error_message,
+        "created_at": batch.created_at,
+        "finished_at": batch.finished_at,
     }
 
 

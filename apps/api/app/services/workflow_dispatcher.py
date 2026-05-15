@@ -26,9 +26,11 @@ from sqlalchemy.orm import Session
 
 from app.models.workflow import Workflow
 from app.models.workflow_run import WorkflowRun
+from app.models.workflow_dispatch_batch import WorkflowDispatchBatch
 from app.models.student import Student
 from app.models.feedback import Feedback, FeedbackType
 from app.services import workflow_engine
+from app.integrations.whatsapp_meta import normalize_br_phone
 
 
 DEDUP_WINDOW_HOURS = 24
@@ -357,3 +359,164 @@ def timeout_waiting_replies(db: Session, limit: int = 50) -> dict:
 def timeout_waiting_buttons(db: Session, limit: int = 50) -> dict:
     """Scheduler: dá timeout em runs waiting_button com deadline expirado."""
     return workflow_engine.timeout_wait_for_button(db, limit=limit)
+
+
+# ============================================================
+# F3.E — Dispatch manual via CSV
+# ============================================================
+
+ACTIVE_RUN_STATUSES = (
+    "running",
+    "waiting_reply",
+    "waiting_button",
+    "waiting_delay",
+)
+
+
+def _student_by_phone(db: Session, phone_raw: str) -> Optional[Student]:
+    """Acha Student pelo telefone. Tolerante a formato.
+
+    Estratégia: normaliza pelo helper já usado pelo webhook (mesma lógica
+    que casa inbound do WhatsApp), depois compara pelos últimos 9 dígitos
+    (suficiente pra distinguir mesmo se 55/DDD estão inconsistentes).
+    """
+    if not phone_raw:
+        return None
+    try:
+        normalized = normalize_br_phone(phone_raw)
+    except Exception:  # noqa: BLE001
+        normalized = "".join(c for c in phone_raw if c.isdigit())
+    if not normalized:
+        return None
+    last9 = normalized[-9:]
+    return (
+        db.query(Student)
+        .filter(Student.phone.isnot(None), Student.phone.ilike(f"%{last9}%"))
+        .first()
+    )
+
+
+def _has_active_run(db: Session, workflow_id: int, student_id: int) -> bool:
+    """Aluno já está em régua ativa nesse workflow?"""
+    found = (
+        db.query(WorkflowRun.id)
+        .filter(
+            WorkflowRun.workflow_id == workflow_id,
+            WorkflowRun.student_id == student_id,
+            WorkflowRun.status.in_(ACTIVE_RUN_STATUSES),
+        )
+        .first()
+    )
+    return found is not None
+
+
+def start_csv_dispatch(
+    db: Session,
+    workflow_id: int,
+    csv_recipients: list[dict],
+    user_id: Optional[int],
+) -> WorkflowDispatchBatch:
+    """Cria um batch em status='queued' e retorna pra resposta HTTP.
+
+    O processamento real fica pro `_run_csv_batch` chamado via BackgroundTasks.
+    """
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+    if not workflow:
+        raise ValueError(f"Workflow {workflow_id} não encontrado")
+    if workflow.status != "active":
+        raise ValueError(
+            f"Workflow {workflow_id} não está ativo (status='{workflow.status}'). "
+            "Ative o workflow antes de disparar."
+        )
+
+    sem_phone = sum(1 for r in csv_recipients if not (r.get("phone") or "").strip())
+
+    batch = WorkflowDispatchBatch(
+        workflow_id=workflow_id,
+        total_recipients=len(csv_recipients),
+        skipped_no_phone=sem_phone,
+        status="queued",
+        created_by=user_id,
+    )
+    db.add(batch)
+    db.commit()
+    db.refresh(batch)
+    return batch
+
+
+def _run_csv_batch(
+    db: Session,
+    batch_id: int,
+    csv_recipients: list[dict],
+) -> None:
+    """Worker em background: itera recipients e cria runs."""
+    batch = (
+        db.query(WorkflowDispatchBatch)
+        .filter(WorkflowDispatchBatch.id == batch_id)
+        .first()
+    )
+    if not batch:
+        print(f"❌ Batch {batch_id} sumiu antes do processamento")
+        return
+
+    workflow = (
+        db.query(Workflow).filter(Workflow.id == batch.workflow_id).first()
+    )
+    if not workflow:
+        batch.status = "failed"
+        batch.error_message = "Workflow desapareceu antes do dispatch."
+        batch.finished_at = datetime.utcnow()
+        db.commit()
+        return
+
+    batch.status = "running"
+    db.commit()
+
+    for recipient in csv_recipients:
+        phone_raw = (recipient.get("phone") or "").strip()
+        if not phone_raw:
+            continue
+
+        try:
+            student = _student_by_phone(db, phone_raw)
+            if not student:
+                batch.skipped_no_student += 1
+                db.commit()
+                continue
+
+            if _has_active_run(db, workflow.id, student.id):
+                batch.skipped_active += 1
+                db.commit()
+                continue
+
+            workflow_engine.execute_workflow(
+                db=db,
+                workflow=workflow,
+                student=student,
+                trigger_node_id=None,
+                triggered_by="manual_csv",
+                triggered_by_user=batch.created_by,
+            )
+            batch.dispatched += 1
+            db.commit()
+        except Exception as exc:  # noqa: BLE001
+            batch.failed += 1
+            print(
+                f"❌ Falha ao disparar batch={batch.id} phone={phone_raw!r}: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            db.commit()
+
+    batch.status = "completed"
+    batch.finished_at = datetime.utcnow()
+    db.commit()
+    print(
+        f"✅ Batch {batch.id} completo. "
+        f"dispatched={batch.dispatched} skipped_active={batch.skipped_active} "
+        f"skipped_no_student={batch.skipped_no_student} "
+        f"skipped_no_phone={batch.skipped_no_phone} failed={batch.failed}"
+    )
