@@ -41,6 +41,7 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
+  Send,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,7 @@ import NodeConfigPanel, {
 } from '@/components/workflows/NodeConfigPanel';
 import { nodeTypes } from '@/components/workflows/nodes';
 import { validateNodeData } from '@/components/workflows/node-definitions';
+import DispatchDrawer from '@/components/workflows/DispatchDrawer';
 
 interface Workflow {
   id: number;
@@ -76,6 +78,7 @@ function WorkflowEditor() {
   const [name, setName] = useState('');
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
 
   // Atalhos de teclado: +/= zoom in, - zoom out, 0 reset (fitView)
   useEffect(() => {
@@ -304,6 +307,11 @@ function WorkflowEditor() {
     );
   }
 
+  const hasManualTrigger = useMemo(
+    () => nodes.some((n) => n.type === 'trigger.manual_dispatch'),
+    [nodes]
+  );
+
   if (!workflow) return null;
 
   const isActive = workflow.status === 'active';
@@ -355,6 +363,17 @@ function WorkflowEditor() {
             )}
 
             <div className="ml-auto flex items-center gap-2">
+              {isActive && hasManualTrigger && (
+                <Button
+                  size="sm"
+                  onClick={() => setDispatchOpen(true)}
+                  className="bg-violet-600 hover:bg-violet-700 text-white"
+                  title="Disparar este workflow pra uma lista de alunos"
+                >
+                  <Send className="w-4 h-4 mr-1" />
+                  Disparar agora
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -457,6 +476,13 @@ function WorkflowEditor() {
           </div>
         </Card>
       </div>
+
+      <DispatchDrawer
+        open={dispatchOpen}
+        workflowId={id}
+        workflowName={name || workflow.name}
+        onClose={() => setDispatchOpen(false)}
+      />
     </AppLayout>
   );
 }

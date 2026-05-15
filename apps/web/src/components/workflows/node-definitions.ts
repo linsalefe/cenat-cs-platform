@@ -219,6 +219,17 @@ export const NODE_DEFINITIONS: Record<string, NodeDefinition> = {
     fields: [],
   },
 
+  'trigger.manual_dispatch': {
+    type: 'trigger.manual_dispatch',
+    kind: 'trigger',
+    label: 'Disparo manual (CSV)',
+    description: 'Inicia o fluxo via upload manual de lista. O botão "Disparar agora" aparece no editor quando o workflow está ativo e tem esse gatilho.',
+    icon: Send,
+    color: 'violet',
+    defaultData: {},
+    fields: [],
+  },
+
   /* ---------- ACTIONS ---------- */
   'action.send_whatsapp': {
     type: 'action.send_whatsapp',

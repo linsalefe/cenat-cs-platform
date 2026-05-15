@@ -52,27 +52,6 @@ interface CourseOption {
 }
 
 type SendMode = 'all' | 'course' | 'individual' | 'csv';
-type DestinationType = 'template' | 'workflow';
-
-interface WorkflowOption {
-  id: number;
-  name: string;
-  status: string;
-}
-
-interface DispatchBatchStatus {
-  id: number;
-  status: string;
-  total_recipients: number;
-  dispatched: number;
-  skipped_active: number;
-  skipped_no_student: number;
-  skipped_no_phone: number;
-  failed: number;
-  processed: number;
-  progress_pct: number;
-  finished_at: string | null;
-}
 
 const statusStyles: Record<string, { label: string; color: string; icon: any }> = {
   APPROVED: { label: 'Aprovado', color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
@@ -131,13 +110,6 @@ export default function NewBroadcastPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Destino do disparo (F3.E)
-  const [destination, setDestination] = useState<DestinationType>('template');
-  const [workflows, setWorkflows] = useState<WorkflowOption[]>([]);
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<number | null>(null);
-  const [loadingWorkflows, setLoadingWorkflows] = useState(false);
-  const [dispatchBatch, setDispatchBatch] = useState<DispatchBatchStatus | null>(null);
-
   // CSV
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<{
@@ -154,7 +126,6 @@ export default function NewBroadcastPage() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
   useEffect(() => { if (user) { loadTemplates(); loadCourses(); loadChannels(); } }, [user]);
-  useEffect(() => { if (user && destination === 'workflow') loadWorkflows(); }, [user, destination]);
 
   /* ─── CSV helpers ─── */
 
@@ -263,22 +234,6 @@ export default function NewBroadcastPage() {
     }
   };
 
-  const loadWorkflows = async () => {
-    try {
-      setLoadingWorkflows(true);
-      const res = await api.get('/workflows', { params: { status: 'active' } });
-      const list: WorkflowOption[] = (res.data || []).filter(
-        (w: WorkflowOption) => w.status === 'active'
-      );
-      setWorkflows(list);
-    } catch (e) {
-      console.error(e);
-      toast.error('Erro ao carregar workflows');
-    } finally {
-      setLoadingWorkflows(false);
-    }
-  };
-
   const loadTemplates = async () => {
     try {
       const res = await api.get('/whatsapp/templates');
@@ -378,49 +333,6 @@ export default function NewBroadcastPage() {
   };
 
   const handleSend = async () => {
-    // ─── F3.E: Branch destino=workflow + modo=csv ──────────────────────
-    if (destination === 'workflow') {
-      if (sendMode !== 'csv') {
-        toast.error('No MVP só CSV dispara workflow. Outros modos em breve.');
-        return;
-      }
-      if (!selectedWorkflowId) { toast.error('Selecione um workflow'); return; }
-      if (!csvFile || !csvPreview || csvPreview.error || csvPreview.validRows === 0) {
-        toast.error('Selecione um CSV válido antes de disparar');
-        return;
-      }
-      const wfName = workflows.find(w => w.id === selectedWorkflowId)?.name || '';
-      if (!confirm(
-        `Disparar workflow "${wfName}" pra ${csvPreview.validRows} aluno(s) válido(s)? ` +
-        `Quem já estiver em régua ativa será pulado.`
-      )) return;
-
-      setSaving(true);
-      setDispatchBatch(null);
-      try {
-        const fd = new FormData();
-        fd.append('file', csvFile);
-        const res = await api.post(`/workflows/${selectedWorkflowId}/dispatch-csv`, fd);
-        toast.success('Disparo iniciado. Acompanhe o progresso abaixo.');
-        const batchId = res.data.batch_id;
-        const poll = async () => {
-          try {
-            const sres = await api.get(`/workflows/dispatch-batches/${batchId}`);
-            setDispatchBatch(sres.data);
-            if (sres.data.status === 'completed' || sres.data.status === 'failed') return;
-            setTimeout(poll, 3000);
-          } catch {
-            setTimeout(poll, 5000);
-          }
-        };
-        poll();
-      } catch (error: any) {
-        toast.error(error.response?.data?.detail || 'Erro ao disparar workflow');
-      } finally { setSaving(false); }
-      return;
-    }
-    // ─── /F3.E ─────────────────────────────────────────────────────────
-
     const tpl = templates.find(t => t.name === selectedTemplate);
     if (!tpl) { toast.error('Selecione um template'); return; }
     if (tpl.status !== 'APPROVED') { toast.error('Só é possível enviar templates aprovados'); return; }
@@ -529,65 +441,7 @@ export default function NewBroadcastPage() {
           <p className="text-sm text-muted-foreground mt-1">Envie mensagens pelo WhatsApp para seus alunos</p>
         </div>
 
-        {/* F3.E — Destino do disparo */}
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h2 className="text-base font-semibold text-foreground mb-3">O que disparar?</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {([
-              { key: 'template' as DestinationType, label: 'Template único', desc: '1 mensagem aprovada pela Meta' },
-              { key: 'workflow' as DestinationType, label: 'Workflow (régua)', desc: 'Sequência configurada no editor' },
-            ]).map((opt) => {
-              const active = destination === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setDestination(opt.key)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
-                    active ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-                  }`}
-                >
-                  <p className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>{opt.label}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{opt.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-          {destination === 'workflow' && (
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2">
-              MVP: só modo &quot;Upload CSV&quot; funciona com workflow. Demais modos em breve.
-            </p>
-          )}
-
-          {destination === 'workflow' && (
-            <div className="mt-4">
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Workflow ativo
-              </label>
-              {loadingWorkflows ? (
-                <p className="text-xs italic text-muted-foreground">Carregando workflows…</p>
-              ) : workflows.length === 0 ? (
-                <p className="text-xs italic text-amber-700">
-                  Nenhum workflow ativo. Ative um workflow em <code>/workflows</code> primeiro.
-                </p>
-              ) : (
-                <select
-                  value={selectedWorkflowId ?? ''}
-                  onChange={(e) => setSelectedWorkflowId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                >
-                  <option value="">Selecione…</option>
-                  {workflows.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* PASSO 1 — Selecionar Template */}
-        {destination === 'template' && (
         <div className="bg-card rounded-2xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -739,11 +593,9 @@ export default function NewBroadcastPage() {
             </div>
           )}
         </div>
-        )}
 
-        {/* PASSO 2 — Para quem enviar (modo workflow também usa, mas só sendMode=csv) */}
-        {((destination === 'template' && selectedTemplate && selectedTpl?.status === 'APPROVED') ||
-          destination === 'workflow') && (
+        {/* PASSO 2 — Para quem enviar */}
+        {selectedTemplate && selectedTpl?.status === 'APPROVED' && (
           <div className="bg-card rounded-2xl border border-border p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
@@ -988,40 +840,6 @@ export default function NewBroadcastPage() {
                     <option value="logged">Já acessou</option>
                     <option value="never_logged">Nunca acessou</option>
                   </select>
-                </div>
-              </div>
-            )}
-
-            {dispatchBatch && (
-              <div className="mb-4 p-4 rounded-xl border border-border bg-muted/30">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    Disparo batch #{dispatchBatch.id}
-                  </p>
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
-                    dispatchBatch.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                    dispatchBatch.status === 'failed' ? 'bg-red-100 text-red-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {dispatchBatch.status}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
-                  <div
-                    className="h-full bg-primary transition-all duration-500"
-                    style={{ width: `${dispatchBatch.progress_pct}%` }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div><span className="text-muted-foreground">Total:</span> <strong>{dispatchBatch.total_recipients}</strong></div>
-                  <div><span className="text-muted-foreground">Processados:</span> <strong>{dispatchBatch.processed}</strong></div>
-                  <div className="text-emerald-700"><span className="text-muted-foreground">Disparados:</span> <strong>{dispatchBatch.dispatched}</strong></div>
-                  <div className="text-amber-700"><span className="text-muted-foreground">Já em régua:</span> <strong>{dispatchBatch.skipped_active}</strong></div>
-                  <div className="text-muted-foreground"><span className="text-muted-foreground">Sem aluno:</span> <strong>{dispatchBatch.skipped_no_student}</strong></div>
-                  <div className="text-muted-foreground"><span className="text-muted-foreground">Sem fone:</span> <strong>{dispatchBatch.skipped_no_phone}</strong></div>
-                  {dispatchBatch.failed > 0 && (
-                    <div className="text-red-700 col-span-2"><span className="text-muted-foreground">Falharam:</span> <strong>{dispatchBatch.failed}</strong></div>
-                  )}
                 </div>
               </div>
             )}

@@ -43,6 +43,9 @@ EVENT_TO_TRIGGER: dict[str, str] = {
     "nps_low": "trigger.nps_low",
     "ticket_opened": "trigger.ticket_opened",
     "onboarding_entered": "trigger.onboarding_entered",
+    # trigger.manual_dispatch NÃO está aqui de propósito — esse trigger não
+    # é disparado por evento automático. Só serve como ponto de entrada
+    # pra dispatch manual via _run_csv_batch / endpoint dispatch-csv.
 }
 
 # Ordem das prioridades de ticket (pra trigger.ticket_opened)
@@ -93,6 +96,11 @@ def _trigger_matches(
     """Avalia se o aluno+contexto satisfaz a config do trigger node."""
     t_type = trigger_node.get("type") or ""
     data = trigger_node.get("data") or {}
+
+    # trigger.manual_dispatch nunca é acionado por evento automático.
+    # Só serve como ponto de entrada pra dispatch via CSV.
+    if t_type == "trigger.manual_dispatch":
+        return False
 
     if t_type == "trigger.risk_critical":
         min_level = data.get("min_level") or "alto"
