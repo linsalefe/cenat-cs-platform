@@ -115,6 +115,11 @@ function WorkflowEditor() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  const hasManualTrigger = useMemo(
+    () => nodes.some((n) => n.type === 'trigger.manual_dispatch'),
+    [nodes]
+  );
   const [dirty, setDirty] = useState(false);
   const firstLoad = useRef(true);
 
@@ -306,11 +311,6 @@ function WorkflowEditor() {
       </AppLayout>
     );
   }
-
-  const hasManualTrigger = useMemo(
-    () => nodes.some((n) => n.type === 'trigger.manual_dispatch'),
-    [nodes]
-  );
 
   if (!workflow) return null;
 
