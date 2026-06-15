@@ -177,3 +177,51 @@ def normalize_br_phone(phone: str) -> str:
             return f"55{ddd}9{number}"
 
     return phone_clean
+
+
+async def upload_media(file_bytes: bytes, mime_type: str, filename: str, channel_slug: str | None = None) -> str:
+    """Faz upload de mídia para a Meta e retorna o media_id."""
+    channel = _get_channel(channel_slug)
+    url = f"{GRAPH_API_URL}/{channel.phone_number_id}/media"
+    headers = {"Authorization": f"Bearer {channel.token}"}
+    files = {
+        "file": (filename, file_bytes, mime_type),
+        "messaging_product": (None, "whatsapp"),
+        "type": (None, mime_type),
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, headers=headers, files=files)
+        data = r.json()
+    media_id = data.get("id")
+    if not media_id:
+        raise ValueError(f"Falha no upload de mídia: {data}")
+    return media_id
+
+
+async def send_media_message(phone: str, media_id: str, media_type: str, channel_slug: str | None = None, caption: str = None, filename: str = None) -> dict:
+    """Envia mensagem de mídia (image/audio/video/document) via Meta Cloud API.
+    NÃO registra no banco — quem chama é responsável por salvar a mensagem."""
+    channel = _get_channel(channel_slug)
+    phone_clean = format_phone(phone)
+    url = f"{GRAPH_API_URL}/{channel.phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {channel.token}",
+        "Content-Type": "application/json",
+    }
+    media_obj = {"id": media_id}
+    if caption and media_type in ("image", "video", "document"):
+        media_obj["caption"] = caption
+    if filename and media_type == "document":
+        media_obj["filename"] = filename
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_clean,
+        "type": media_type,
+        media_type: media_obj,
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, json=payload, headers=headers)
+        data = r.json()
+    if r.status_code == 200 and "messages" in data:
+        return {"status": "sent", "message_id": data["messages"][0]["id"], "to": phone_clean, "channel": channel.slug}
+    return {"status": "error", "error": data.get("error", {}).get("message", str(data)), "to": phone_clean, "channel": channel.slug}

@@ -81,22 +81,44 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                 from_number = message.get("from", "")
                 message_id = message.get("id", "")
 
-                # Extrai texto
+                # Extrai texto / mídia.
+                # body = placeholder usado por ticket, workflow e preview da lista (NÃO mexer no fluxo).
+                # conv_content = referência da mídia que a bolha da conversa vai renderizar.
                 body = ""
+                conv_content = None      # None => usa body
+                conv_msg_type = "text"
+
+                def _media_ref(mtype: str) -> str:
+                    obj = message.get(mtype, {}) or {}
+                    mid = obj.get("id", "")
+                    mime = obj.get("mime_type", "application/octet-stream")
+                    fname = obj.get("filename", "") or mtype
+                    return f"media:{mid}|{mime}|{fname}"
+
                 if msg_type == "text":
                     body = message.get("text", {}).get("body", "")
                 elif msg_type == "image":
                     body = message.get("image", {}).get("caption", "[Imagem]") or "[Imagem]"
+                    conv_content = _media_ref("image")
+                    conv_msg_type = "image"
                 elif msg_type == "audio":
                     body = "[Áudio]"
+                    conv_content = _media_ref("audio")
+                    conv_msg_type = "audio"
                 elif msg_type == "video":
                     body = "[Vídeo]"
+                    conv_content = _media_ref("video")
+                    conv_msg_type = "video"
                 elif msg_type == "document":
                     body = "[Documento]"
+                    conv_content = _media_ref("document")
+                    conv_msg_type = "document"
                 elif msg_type == "location":
                     body = "[Localização]"
                 elif msg_type == "sticker":
                     body = "[Figurinha]"
+                    conv_content = _media_ref("sticker")
+                    conv_msg_type = "image"
                 # F3.C: rastreia botão clicado pra retomar workflows waiting_button depois
                 clicked_button_text: str = ""
                 clicked_button_legacy_id: str = ""  # pra journey_service legado
@@ -155,10 +177,16 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                 db = next(get_db())
 
                 try:
-                    # Salva mensagem na conversa
+                    # Salva mensagem na conversa (mídia => guarda referência; preview limpo no body)
                     try:
                         conversation_service.add_inbound_message(
-                            db=db, phone=phone, content=body, message_sid=message_id, channel=channel_slug
+                            db=db,
+                            phone=phone,
+                            content=conv_content if conv_content else body,
+                            message_sid=message_id,
+                            channel=channel_slug,
+                            message_type=conv_msg_type,
+                            preview=body if conv_content else None,
                         )
                     except Exception as e:
                         print(f"Erro ao salvar mensagem na conversa: {e}")

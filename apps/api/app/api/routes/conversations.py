@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 
 from app.core.deps import get_db, get_current_user
+from app.core.whatsapp_channels import get_channel
+from app.integrations.whatsapp_meta import GRAPH_API_URL
 from app.services import conversation_service
-from app.models.conversation import Conversation, ConversationStatus, MessageSenderType
+from app.models.conversation import Conversation, ConversationMessage, ConversationStatus, MessageSenderType
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -56,6 +60,7 @@ def serialize_message(msg) -> dict:
         "sender_type": msg.sender_type.value if hasattr(msg.sender_type, "value") else msg.sender_type,
         "sender_user_id": msg.sender_user_id,
         "content": msg.content,
+        "message_type": getattr(msg, "message_type", "text") or "text",
         "message_sid": msg.message_sid,
         "status": msg.status,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,
@@ -176,3 +181,95 @@ def change_status(
         raise HTTPException(status_code=400, detail=f"Status inválido: {data.status}")
     conv = conversation_service.change_status(db, conversation_id, new_status)
     return serialize_conversation(conv)
+
+
+# ========================
+# MÍDIA
+# ========================
+
+MEDIA_TYPE_MAP = {"image": "image", "document": "document", "audio": "audio", "video": "video"}
+MEDIA_PREVIEW = {"image": "[Imagem]", "audio": "[Áudio]", "video": "[Vídeo]", "document": "[Documento]"}
+
+
+@router.post("/{conversation_id}/media")
+async def send_conversation_media(
+    conversation_id: int,
+    file: UploadFile = File(...),
+    type: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Envia mídia (imagem/áudio/vídeo/documento) para o contato via WhatsApp."""
+    from app.integrations.whatsapp_meta import upload_media, send_media_message
+
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+
+    media_type = MEDIA_TYPE_MAP.get(type, "document")
+    channel_slug = conversation.channel or "cs"
+    file_bytes = await file.read()
+    mime_type = file.content_type or "application/octet-stream"
+    filename = file.filename or "arquivo"
+
+    try:
+        media_id = await upload_media(file_bytes, mime_type, filename, channel_slug=channel_slug)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Falha no upload da mídia: {e}")
+
+    caption = filename if media_type == "document" else None
+    result = await send_media_message(
+        conversation.contact_phone, media_id, media_type,
+        channel_slug=channel_slug, caption=caption,
+        filename=filename if media_type == "document" else None,
+    )
+    if result.get("status") != "sent":
+        raise HTTPException(status_code=502, detail=f"Falha no envio: {result.get('error')}")
+
+    content = f"media:{media_id}|{mime_type}|{filename}"
+    message = conversation_service.add_outbound_message(
+        db=db,
+        conversation_id=conversation_id,
+        content=content,
+        sender_user_id=current_user.id,
+        sender_type=MessageSenderType.AGENT,
+        message_sid=result.get("message_id"),
+        message_type=media_type,
+        preview=MEDIA_PREVIEW.get(media_type, "[Mídia]"),
+    )
+    return {"message": serialize_message(message), "whatsapp": result}
+
+
+@router.get("/media/{media_id}")
+async def get_conversation_media(media_id: str, channel: str = "cs", db: Session = Depends(get_db)):
+    """Proxy público que baixa a mídia da Meta. Só serve media_id já salvo em conversation_messages."""
+    exists = (
+        db.query(ConversationMessage)
+        .filter(ConversationMessage.content.like(f"media:{media_id}|%"))
+        .first()
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="Mídia não encontrada")
+
+    ch = get_channel(channel)
+    if not ch or not ch.is_configured:
+        raise HTTPException(status_code=400, detail="Canal inválido")
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        meta = await client.get(
+            f"{GRAPH_API_URL}/{media_id}",
+            headers={"Authorization": f"Bearer {ch.token}"},
+        )
+        url_data = meta.json()
+        media_url = url_data.get("url")
+        if not media_url:
+            raise HTTPException(status_code=404, detail="URL da mídia não encontrada")
+        media_resp = await client.get(
+            media_url, headers={"Authorization": f"Bearer {ch.token}"}
+        )
+
+    return Response(
+        content=media_resp.content,
+        media_type=url_data.get("mime_type", "application/octet-stream"),
+        headers={"Cache-Control": "public, max-age=86400"},
+    )

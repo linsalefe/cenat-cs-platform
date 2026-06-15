@@ -56,6 +56,7 @@ class ConversationMessage(Base):
     sender_type = Column(Enum(MessageSenderType), nullable=False)
     sender_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     content = Column(Text, nullable=False)
+    message_type = Column(String(20), default="text", nullable=False)
     message_sid = Column(String(100), nullable=True)
     status = Column(String(50), default="sent")
     created_at = Column(DateTime, default=datetime.utcnow)

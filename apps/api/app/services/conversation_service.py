@@ -53,7 +53,7 @@ def get_or_create_conversation(db: Session, phone: str, channel: str = "cs") -> 
     return conversation
 
 
-def add_inbound_message(db: Session, phone: str, content: str, message_sid: str = None, channel: str = "cs") -> ConversationMessage:
+def add_inbound_message(db: Session, phone: str, content: str, message_sid: str = None, channel: str = "cs", message_type: str = "text", preview: str = None) -> ConversationMessage:
     """Registra mensagem recebida do contato"""
     # Deduplicação: se já existe mensagem com esse message_sid, ignora
     if message_sid:
@@ -70,13 +70,15 @@ def add_inbound_message(db: Session, phone: str, content: str, message_sid: str 
         direction=MessageDirection.INBOUND,
         sender_type=MessageSenderType.STUDENT,
         content=content,
+        message_type=message_type,
         message_sid=message_sid,
         status="received",
     )
     db.add(message)
 
     conversation.last_message_at = datetime.utcnow()
-    conversation.last_message_preview = content[:255] if content else ""
+    _preview = preview if preview else content
+    conversation.last_message_preview = _preview[:255] if _preview else ""
     conversation.unread_count = (conversation.unread_count or 0) + 1
 
     if conversation.status == ConversationStatus.RESOLVED:
@@ -94,6 +96,8 @@ def add_outbound_message(
     sender_user_id: int = None,
     sender_type: MessageSenderType = MessageSenderType.AGENT,
     message_sid: str = None,
+    message_type: str = "text",
+    preview: str = None,
 ) -> ConversationMessage:
     """Registra mensagem enviada pela equipe"""
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
@@ -106,13 +110,15 @@ def add_outbound_message(
         sender_type=sender_type,
         sender_user_id=sender_user_id,
         content=content,
+        message_type=message_type,
         message_sid=message_sid,
         status="sent",
     )
     db.add(message)
 
     conversation.last_message_at = datetime.utcnow()
-    conversation.last_message_preview = content[:255] if content else ""
+    _preview = preview if preview else content
+    conversation.last_message_preview = _preview[:255] if _preview else ""
 
     if conversation.status == ConversationStatus.OPEN:
         conversation.status = ConversationStatus.IN_PROGRESS

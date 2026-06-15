@@ -20,6 +20,10 @@ import {
   XCircle,
   CheckCircle2,
   Loader2,
+  Paperclip,
+  FileText,
+  Image as ImageIcon,
+  Mic,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -28,6 +32,7 @@ interface Conversation {
   id: number;
   contact_phone: string;
   contact_name: string | null;
+  channel: string;
   student_id: number | null;
   assigned_to_id: number | null;
   assigned_to: { id: number; name: string } | null;
@@ -45,6 +50,7 @@ interface Message {
   sender_type: string;
   sender_user_id: number | null;
   content: string;
+  message_type: string;
   message_sid: string | null;
   status: string;
   created_at: string;
@@ -62,6 +68,9 @@ export default function ConversationsPage() {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -75,6 +84,7 @@ export default function ConversationsPage() {
   const [newMessage, setNewMessage] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -168,6 +178,36 @@ export default function ConversationsPage() {
     }
   };
 
+  const handleFileUpload = async (file: File, type: 'image' | 'document' | 'audio') => {
+    if (!selectedConversation || sending) return;
+    const limits: Record<string, number> = {
+      image: 5 * 1024 * 1024,
+      audio: 16 * 1024 * 1024,
+      document: 20 * 1024 * 1024,
+    };
+    if (file.size > (limits[type] || limits.document)) {
+      toast.error('Arquivo muito grande');
+      return;
+    }
+    setShowAttachMenu(false);
+    setSending(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', type);
+      await api.post(`/conversations/${selectedConversation.id}/media`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const res = await api.get(`/conversations/${selectedConversation.id}/messages`);
+      setMessages(res.data);
+      loadConversations();
+    } catch (e) {
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -241,6 +281,47 @@ export default function ConversationsPage() {
   });
 
   const totalUnread = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
+
+  const mediaUrl = (content: string, channel: string) => {
+    const mediaId = content.split('|')[0].replace('media:', '');
+    return `/api/conversations/media/${mediaId}?channel=${channel || 'cs'}`;
+  };
+
+  const renderContent = (msg: Message) => {
+    const ch = selectedConversation?.channel || 'cs';
+    const isMedia = msg.content.startsWith('media:');
+    if (isMedia && msg.message_type === 'image') {
+      const url = mediaUrl(msg.content, ch);
+      return (
+        <img src={url} alt="imagem" className="max-w-[240px] rounded-lg cursor-pointer"
+          onClick={() => window.open(url, '_blank')} />
+      );
+    }
+    if (isMedia && msg.message_type === 'audio') {
+      return (
+        <audio controls className="max-w-[240px]">
+          <source src={mediaUrl(msg.content, ch)} type={msg.content.split('|')[1] || 'audio/ogg'} />
+        </audio>
+      );
+    }
+    if (isMedia && msg.message_type === 'video') {
+      return (
+        <video controls className="max-w-[240px] rounded-lg">
+          <source src={mediaUrl(msg.content, ch)} type={msg.content.split('|')[1] || 'video/mp4'} />
+        </video>
+      );
+    }
+    if (isMedia && msg.message_type === 'document') {
+      const fname = msg.content.split('|')[2] || 'documento';
+      return (
+        <a href={mediaUrl(msg.content, ch)} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm text-primary underline">
+          <FileText className="w-4 h-4" /> {fname}
+        </a>
+      );
+    }
+    return <p className="text-sm text-foreground whitespace-pre-wrap break-words">{msg.content}</p>;
+  };
 
   if (authLoading || loading) {
     return (
@@ -499,7 +580,7 @@ export default function ConversationsPage() {
                                       {(msg.sender_type as string) === 'bot' ? '🤖 Bot' : 'Atendente'}
                                     </p>
                                   )}
-                                  <p className="text-sm text-foreground whitespace-pre-wrap break-words">{msg.content}</p>
+                                  {renderContent(msg)}
                                   <div className={`flex items-center gap-1 mt-1 ${isOutbound ? 'justify-end' : ''}`}>
                                     <span className="text-[10px] text-muted-foreground">{formatTime(msg.created_at)}</span>
                                     {isOutbound && (
@@ -523,6 +604,34 @@ export default function ConversationsPage() {
                   {/* Input */}
                   <div className="px-4 py-3 bg-[#f0f2f5] border-t border-border">
                     <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowAttachMenu(!showAttachMenu)}
+                          disabled={sending}
+                          className="flex items-center justify-center w-11 h-11 rounded-xl bg-card border border-border text-muted-foreground hover:bg-muted transition-all disabled:opacity-50"
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </button>
+                        {showAttachMenu && (
+                          <div className="absolute bottom-full left-0 mb-2 bg-card rounded-xl border border-border shadow-lg overflow-hidden z-10 min-w-[160px]">
+                            <button onClick={() => imageInputRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted text-left text-sm">
+                              <ImageIcon className="w-4 h-4 text-primary" /> Imagem
+                            </button>
+                            <button onClick={() => documentInputRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted text-left text-sm">
+                              <FileText className="w-4 h-4 text-primary" /> Documento
+                            </button>
+                            <button onClick={() => audioInputRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted text-left text-sm">
+                              <Mic className="w-4 h-4 text-primary" /> Áudio
+                            </button>
+                          </div>
+                        )}
+                        <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'image'); e.target.value = ''; }} />
+                        <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'document'); e.target.value = ''; }} />
+                        <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'audio'); e.target.value = ''; }} />
+                      </div>
                       <input
                         ref={inputRef}
                         type="text"
