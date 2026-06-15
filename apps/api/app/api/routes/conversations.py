@@ -1,3 +1,7 @@
+import os
+import shutil
+import subprocess
+import tempfile
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
@@ -191,6 +195,39 @@ MEDIA_TYPE_MAP = {"image": "image", "document": "document", "audio": "audio", "v
 MEDIA_PREVIEW = {"image": "[Imagem]", "audio": "[Áudio]", "video": "[Vídeo]", "document": "[Documento]"}
 
 
+def _transcode_audio_to_ogg(raw: bytes, src_mime: str) -> tuple[bytes, str, str] | None:
+    """Converte áudio (webm/mp4...) para ogg/opus via ffmpeg.
+    Retorna (bytes, mime, filename) ou None se já for ogg / ffmpeg ausente / falha."""
+    if "ogg" in (src_mime or ""):
+        return None
+    if not shutil.which("ffmpeg"):
+        return None
+    fin_path = fout_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".in", delete=False) as fin:
+            fin.write(raw)
+            fin_path = fin.name
+        fout_path = fin_path + ".ogg"
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", fin_path, "-c:a", "libopus", "-b:a", "32k", fout_path],
+            check=True, capture_output=True, timeout=30,
+        )
+        with open(fout_path, "rb") as f:
+            out = f.read()
+        if out:
+            return out, "audio/ogg", "audio.ogg"
+    except Exception:
+        return None
+    finally:
+        for p in (fin_path, fout_path):
+            if p and os.path.exists(p):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+    return None
+
+
 @router.post("/{conversation_id}/media")
 async def send_conversation_media(
     conversation_id: int,
@@ -211,6 +248,12 @@ async def send_conversation_media(
     file_bytes = await file.read()
     mime_type = file.content_type or "application/octet-stream"
     filename = file.filename or "arquivo"
+
+    # Áudio gravado no navegador costuma vir como webm (Chrome). WhatsApp só toca voz em ogg/opus.
+    if media_type == "audio":
+        converted = _transcode_audio_to_ogg(file_bytes, mime_type)
+        if converted:
+            file_bytes, mime_type, filename = converted
 
     try:
         media_id = await upload_media(file_bytes, mime_type, filename, channel_slug=channel_slug)

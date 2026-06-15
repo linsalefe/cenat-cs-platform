@@ -24,6 +24,7 @@ import {
   FileText,
   Image as ImageIcon,
   Mic,
+  X,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -71,6 +72,9 @@ export default function ConversationsPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -85,6 +89,8 @@ export default function ConversationsPage() {
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -206,6 +212,81 @@ export default function ConversationsPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const pickAudioMime = () => {
+    const candidates = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+    for (const c of candidates) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  };
+
+  const formatRecordingTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const startRecording = async () => {
+    if (!selectedConversation || sending) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = pickAudioMime();
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const type = recorder.mimeType || 'audio/webm';
+        const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : 'webm';
+        const blob = new Blob(audioChunksRef.current, { type });
+        if (blob.size > 0) {
+          const file = new File([blob], `audio.${ext}`, { type });
+          await handleFileUpload(file, 'audio');
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime((p) => p + 1), 1000);
+    } catch (err) {
+      toast.error('Não foi possível acessar o microfone');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingTime(0);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingTime(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -632,33 +713,63 @@ export default function ConversationsPage() {
                         <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
                           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'audio'); e.target.value = ''; }} />
                       </div>
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        placeholder="Digite uma mensagem..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={sending}
-                        className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-sm
-                          focus:border-primary focus:ring-4 focus:ring-primary/10
-                          transition-all duration-200 outline-none
-                          disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                      <button
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim() || sending}
-                        className="flex items-center justify-center w-11 h-11 rounded-xl
-                          bg-primary text-white hover:bg-[#1e4f72]
-                          transition-all duration-200
-                          disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {sending ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
+                      {isRecording ? (
+                        <div className="flex-1 flex items-center justify-between px-4 py-3 bg-card border border-red-200 rounded-xl">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-sm font-medium text-red-600 tabular-nums">{formatRecordingTime(recordingTime)}</span>
+                            <span className="text-xs text-muted-foreground">Gravando…</span>
+                          </div>
+                          <button onClick={cancelRecording} className="text-muted-foreground hover:text-red-500 transition-colors">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          placeholder="Digite uma mensagem..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          disabled={sending}
+                          className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-sm
+                            focus:border-primary focus:ring-4 focus:ring-primary/10
+                            transition-all duration-200 outline-none
+                            disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      )}
+                      {isRecording ? (
+                        <button
+                          onClick={stopRecording}
+                          className="flex items-center justify-center w-11 h-11 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all duration-200"
+                          title="Enviar áudio"
+                        >
                           <Send className="w-5 h-5" />
-                        )}
-                      </button>
+                        </button>
+                      ) : sending ? (
+                        <button
+                          disabled
+                          className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-white opacity-50"
+                        >
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        </button>
+                      ) : newMessage.trim() ? (
+                        <button
+                          onClick={sendMessage}
+                          className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-white hover:bg-[#1e4f72] transition-all duration-200"
+                        >
+                          <Send className="w-5 h-5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={startRecording}
+                          className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary text-white hover:bg-[#1e4f72] transition-all duration-200"
+                          title="Gravar áudio"
+                        >
+                          <Mic className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </>
