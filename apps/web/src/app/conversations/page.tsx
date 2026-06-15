@@ -69,6 +69,10 @@ export default function ConversationsPage() {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendingRef = useRef(false);
+  const lastMsgIdRef = useRef<number | null>(null);
+  const prevUnreadRef = useRef(0);
+  const notifReadyRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -105,7 +109,7 @@ export default function ConversationsPage() {
   useEffect(() => {
     if (user) {
       loadConversations();
-      const interval = setInterval(loadConversations, 10000);
+      const interval = setInterval(loadConversations, 5000);
       return () => clearInterval(interval);
     }
   }, [user, channelFilter]);
@@ -113,6 +117,70 @@ export default function ConversationsPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // mantém um ref espelhando `sending` (pra ler dentro do polling sem recriar o intervalo)
+  useEffect(() => {
+    sendingRef.current = sending;
+  }, [sending]);
+
+  // Polling de mensagens da conversa aberta (3s) — só atualiza quando muda
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const convId = selectedConversation.id;
+
+    const poll = async () => {
+      if (sendingRef.current) return; // não atropela envio otimista
+      try {
+        const res = await api.get(`/conversations/${convId}/messages`);
+        const data: Message[] = res.data;
+        const lastId = data.length ? data[data.length - 1].id : null;
+
+        setMessages((prev) => {
+          const prevLast = prev.length ? prev[prev.length - 1].id : null;
+          if (prevLast === lastId && prev.length === data.length) return prev;
+          return data;
+        });
+
+        // se a última mensagem é nova e é recebida, marca como lida
+        if (lastId && lastId !== lastMsgIdRef.current) {
+          const last = data[data.length - 1];
+          if (last && last.direction === 'inbound') {
+            api.patch(`/conversations/${convId}/read`).then(() => loadConversations()).catch(() => {});
+          }
+          lastMsgIdRef.current = lastId;
+        }
+      } catch {
+        // silencioso: tenta de novo no próximo ciclo
+      }
+    };
+
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [selectedConversation]);
+
+  // Som + título da aba conforme não-lidas (exclui a conversa aberta)
+  useEffect(() => {
+    const openId = selectedConversation?.id;
+    const totalUnread = conversations.reduce(
+      (sum, c) => sum + (c.id === openId ? 0 : (c.unread_count || 0)),
+      0,
+    );
+
+    document.title = totalUnread > 0 ? `(${totalUnread}) Conversas · CENAT` : 'Conversas · CENAT';
+
+    if (notifReadyRef.current && totalUnread > prevUnreadRef.current) {
+      playNotification();
+    }
+    prevUnreadRef.current = totalUnread;
+    notifReadyRef.current = true;
+  }, [conversations, selectedConversation]);
+
+  // Restaura o título ao sair da página
+  useEffect(() => {
+    return () => {
+      document.title = 'CENAT';
+    };
+  }, []);
 
   const loadConversations = async () => {
     try {
@@ -340,6 +408,28 @@ export default function ConversationsPage() {
     if (d.toDateString() === today.toDateString()) return 'Hoje';
     if (d.toDateString() === yesterday.toDateString()) return 'Ontem';
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  };
+
+  const playNotification = () => {
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.32);
+      osc.onended = () => ctx.close();
+    } catch {
+      // ignora se o navegador bloquear
+    }
   };
 
   const formatPhone = (phone: string) => {
