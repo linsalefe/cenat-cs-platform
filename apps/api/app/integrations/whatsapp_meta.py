@@ -80,7 +80,7 @@ async def send_message(phone: str, message: str, channel_slug: str | None = None
             }
 
 
-async def send_template(phone: str, template_name: str, language: str = "pt_BR", components: list = None, channel_slug: str | None = None) -> dict:
+async def send_template(phone: str, template_name: str, language: str = "pt_BR", components: list = None, channel_slug: str | None = None, register: bool = True) -> dict:
     """Envia mensagem de template aprovado pela Meta"""
     channel = _get_channel(channel_slug)
     phone_clean = format_phone(phone)
@@ -119,7 +119,8 @@ async def send_template(phone: str, template_name: str, language: str = "pt_BR",
                             params.append(param["text"])
                 if params:
                     preview = f"[Template: {template_name}] ({', '.join(params)})"
-            _register_outbound(phone_clean, preview, msg_id)
+            if register:
+                _register_outbound(phone_clean, preview, msg_id)
             return {
                 "status": "sent",
                 "message_id": msg_id,

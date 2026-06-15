@@ -38,6 +38,13 @@ class StatusRequest(BaseModel):
     status: str
 
 
+class TemplateMessageRequest(BaseModel):
+    template_name: str
+    language: str = "pt_BR"
+    params: list[str] = []
+    rendered_text: str = ""
+
+
 # ========================
 # SERIALIZAÇÃO
 # ========================
@@ -350,3 +357,51 @@ async def get_conversation_media(media_id: str, channel: str = "cs", db: Session
         media_type=url_data.get("mime_type", "application/octet-stream"),
         headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+@router.post("/{conversation_id}/template")
+async def send_conversation_template(
+    conversation_id: int,
+    data: TemplateMessageRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Envia um template aprovado para o contato da conversa e salva o texto renderizado."""
+    from app.integrations.whatsapp_meta import send_template
+
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+
+    channel_slug = conversation.channel or "cs"
+
+    components = None
+    if data.params:
+        components = [{
+            "type": "body",
+            "parameters": [{"type": "text", "text": p} for p in data.params],
+        }]
+
+    result = await send_template(
+        conversation.contact_phone,
+        data.template_name,
+        language=data.language,
+        components=components,
+        channel_slug=channel_slug,
+        register=False,
+    )
+    if result.get("status") != "sent":
+        raise HTTPException(status_code=502, detail=f"Falha no envio: {result.get('error')}")
+
+    content = data.rendered_text.strip() if (data.rendered_text and data.rendered_text.strip()) else f"[Template: {data.template_name}]"
+    message = conversation_service.add_outbound_message(
+        db=db,
+        conversation_id=conversation_id,
+        content=content,
+        sender_user_id=current_user.id,
+        sender_type=MessageSenderType.AGENT,
+        message_sid=result.get("message_id"),
+        message_type="text",
+        preview=content[:255],
+    )
+    return {"message": serialize_message(message), "whatsapp": result}

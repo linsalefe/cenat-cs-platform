@@ -30,6 +30,7 @@ import {
   StickyNote,
   Plus,
   Info,
+  LayoutTemplate,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -111,6 +112,12 @@ export default function ConversationsPage() {
   const [newTag, setNewTag] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
+  const [templateParams, setTemplateParams] = useState<string[]>([]);
+  const [sendingTemplate, setSendingTemplate] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -474,6 +481,63 @@ export default function ConversationsPage() {
       toast.error('Erro ao salvar nota');
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const openTemplates = async () => {
+    if (!selectedConversation) return;
+    setShowTemplates(true);
+    setSelectedTemplate(null);
+    setLoadingTemplates(true);
+    try {
+      const res = await api.get('/whatsapp/templates', {
+        params: { channel: selectedConversation.channel || 'cs' },
+      });
+      setTemplates((res.data || []).filter((t: any) => t.status === 'APPROVED'));
+    } catch {
+      toast.error('Erro ao carregar templates');
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const pickTemplate = (t: any) => {
+    setSelectedTemplate(t);
+    setTemplateParams(Array.from({ length: t.param_count || 0 }, () => ''));
+  };
+
+  const renderTemplatePreview = () => {
+    if (!selectedTemplate) return '';
+    let text = selectedTemplate.body || '';
+    templateParams.forEach((p, i) => {
+      text = text.split(`{{${i + 1}}}`).join(p || `{{${i + 1}}}`);
+    });
+    return text;
+  };
+
+  const sendTemplate = async () => {
+    if (!selectedConversation || !selectedTemplate) return;
+    if (templateParams.some((p) => !p.trim())) {
+      toast.error('Preencha todas as variáveis');
+      return;
+    }
+    setSendingTemplate(true);
+    try {
+      await api.post(`/conversations/${selectedConversation.id}/template`, {
+        template_name: selectedTemplate.name,
+        language: selectedTemplate.language || 'pt_BR',
+        params: templateParams,
+        rendered_text: renderTemplatePreview(),
+      });
+      setShowTemplates(false);
+      setSelectedTemplate(null);
+      const res = await api.get(`/conversations/${selectedConversation.id}/messages`);
+      setMessages(res.data);
+      loadConversations();
+    } catch {
+      toast.error('Erro ao enviar template');
+    } finally {
+      setSendingTemplate(false);
     }
   };
 
@@ -963,6 +1027,14 @@ export default function ConversationsPage() {
                         <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
                           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, 'audio'); e.target.value = ''; }} />
                       </div>
+                      <button
+                        onClick={openTemplates}
+                        disabled={sending}
+                        className="flex items-center justify-center w-11 h-11 rounded-xl bg-card border border-border text-muted-foreground hover:bg-muted transition-all disabled:opacity-50"
+                        title="Enviar template"
+                      >
+                        <LayoutTemplate className="w-5 h-5" />
+                      </button>
                       {isRecording ? (
                         <div className="flex-1 flex items-center justify-between px-4 py-3 bg-card border border-red-200 rounded-xl">
                           <div className="flex items-center gap-2">
@@ -1134,6 +1206,67 @@ export default function ConversationsPage() {
                         </div>
                       </div>
                     </>
+                  )}
+                  {showTemplates && (
+                    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowTemplates(false)}>
+                      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                          <h3 className="font-semibold text-foreground">{selectedTemplate ? 'Enviar template' : 'Templates'}</h3>
+                          <button onClick={() => setShowTemplates(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                          {loadingTemplates ? (
+                            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                          ) : selectedTemplate ? (
+                            <div className="space-y-4">
+                              <button onClick={() => setSelectedTemplate(null)} className="text-xs text-primary flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Voltar</button>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{selectedTemplate.name}</p>
+                                <p className="text-[11px] text-muted-foreground">{selectedTemplate.language} · {selectedTemplate.category}</p>
+                              </div>
+                              {templateParams.map((p, i) => (
+                                <div key={i}>
+                                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">{`Variável {{${i + 1}}}`}</label>
+                                  <input
+                                    value={p}
+                                    onChange={(e) => setTemplateParams((prev) => prev.map((x, idx) => (idx === i ? e.target.value : x)))}
+                                    className="w-full mt-1 px-3 py-2 text-sm bg-muted/40 border border-border rounded-lg outline-none focus:border-primary"
+                                    placeholder={`Valor para {{${i + 1}}}`}
+                                  />
+                                </div>
+                              ))}
+                              <div>
+                                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">Pré-visualização</p>
+                                <div className="px-3 py-2 text-sm bg-[#d9fdd3] rounded-lg whitespace-pre-wrap break-words text-foreground">{renderTemplatePreview()}</div>
+                              </div>
+                              <button
+                                onClick={sendTemplate}
+                                disabled={sendingTemplate}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-[#1e4f72] disabled:opacity-50"
+                              >
+                                {sendingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Enviar
+                              </button>
+                            </div>
+                          ) : templates.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-8">Nenhum template aprovado neste canal.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {templates.map((t) => (
+                                <button
+                                  key={t.id || t.name}
+                                  onClick={() => pickTemplate(t)}
+                                  className="w-full text-left px-3 py-2.5 rounded-xl border border-border hover:bg-muted transition-all"
+                                >
+                                  <p className="text-sm font-medium text-foreground">{t.name}</p>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{t.body}</p>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </>
               ) : (
