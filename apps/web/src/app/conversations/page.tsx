@@ -96,6 +96,9 @@ export default function ConversationsPage() {
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sdrFilter, setSdrFilter] = useState<'all' | 'unassigned' | number>('all');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string>('all');
@@ -529,12 +532,22 @@ export default function ConversationsPage() {
     return phone;
   };
 
+  const availableTags = Array.from(new Set(conversations.flatMap((c) => c.tags || []))).sort();
+
   const filteredConversations = conversations.filter((c) => {
     const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(search.toLowerCase()) ||
       c.contact_phone.includes(search);
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesSdr =
+      sdrFilter === 'all'
+        ? true
+        : sdrFilter === 'unassigned'
+        ? !c.assigned_to_id
+        : c.assigned_to_id === sdrFilter;
+    const matchesTag = !tagFilter || (c.tags || []).includes(tagFilter);
+    const matchesUnread = !unreadOnly || (c.unread_count || 0) > 0;
+    return matchesSearch && matchesStatus && matchesSdr && matchesTag && matchesUnread;
   });
 
   const totalUnread = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0);
@@ -675,6 +688,47 @@ export default function ConversationsPage() {
                     </button>
                   ))}
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setUnreadOnly(!unreadOnly)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
+                      unreadOnly ? 'bg-primary text-white' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    Não lidas
+                  </button>
+                  <select
+                    value={sdrFilter === 'all' ? 'all' : sdrFilter === 'unassigned' ? 'unassigned' : String(sdrFilter)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSdrFilter(v === 'all' ? 'all' : v === 'unassigned' ? 'unassigned' : Number(v));
+                    }}
+                    className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-muted/50 border border-border rounded-lg outline-none focus:border-primary"
+                  >
+                    <option value="all">Todos os SDRs</option>
+                    <option value="unassigned">Sem responsável</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {availableTags.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {availableTags.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTagFilter(tagFilter === t ? null : t)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                          tagFilter === t ? 'bg-primary text-white' : 'bg-primary/10 text-primary hover:bg-primary/15'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Conversations List */}
@@ -735,6 +789,18 @@ export default function ConversationsPage() {
                             </span>
                           )}
                         </div>
+                        {(conversation.tags || []).length > 0 && (
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {(conversation.tags || []).slice(0, 3).map((t) => (
+                              <span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-primary/10 text-primary">
+                                {t}
+                              </span>
+                            ))}
+                            {(conversation.tags || []).length > 3 && (
+                              <span className="text-[9px] text-muted-foreground">+{(conversation.tags || []).length - 3}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
