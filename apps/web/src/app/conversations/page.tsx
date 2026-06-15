@@ -25,6 +25,11 @@ import {
   Image as ImageIcon,
   Mic,
   X,
+  Tag,
+  ChevronDown,
+  StickyNote,
+  Plus,
+  Info,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -38,6 +43,8 @@ interface Conversation {
   assigned_to_id: number | null;
   assigned_to: { id: number; name: string } | null;
   status: string;
+  tags: string[];
+  notes: string;
   last_message_at: string | null;
   last_message_preview: string | null;
   unread_count: number;
@@ -95,6 +102,12 @@ export default function ConversationsPage() {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [users, setUsers] = useState<{ id: number; name: string; role?: string }[]>([]);
+  const [showCrmPanel, setShowCrmPanel] = useState(false);
+  const [showSdrMenu, setShowSdrMenu] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -117,6 +130,17 @@ export default function ConversationsPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // carrega usuários (para o seletor de SDR responsável)
+  useEffect(() => {
+    if (user) loadUsers();
+  }, [user]);
+
+  // sincroniza o rascunho de notas ao trocar de conversa
+  useEffect(() => {
+    setNotesDraft(selectedConversation?.notes || '');
+    setShowSdrMenu(false);
+  }, [selectedConversation?.id]);
 
   // mantém um ref espelhando `sending` (pra ler dentro do polling sem recriar o intervalo)
   useEffect(() => {
@@ -385,6 +409,68 @@ export default function ConversationsPage() {
       setSelectedConversation((prev) => prev ? { ...prev, status: newStatus } : null);
     } catch (error) {
       toast.error('Erro ao atualizar status');
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const res = await api.get('/users');
+      setUsers((res.data || []).filter((u: any) => u.is_active !== false));
+    } catch {
+      // silencioso
+    }
+  };
+
+  const assignTo = async (userId: number | null) => {
+    if (!selectedConversation) return;
+    try {
+      await api.patch(`/conversations/${selectedConversation.id}/assign`, { user_id: userId });
+      const u = userId ? users.find((x) => x.id === userId) : null;
+      setSelectedConversation((prev) =>
+        prev ? { ...prev, assigned_to_id: userId, assigned_to: u ? { id: u.id, name: u.name } : null } : null,
+      );
+      setShowSdrMenu(false);
+      loadConversations();
+    } catch {
+      toast.error('Erro ao atribuir');
+    }
+  };
+
+  const saveTags = async (tags: string[]) => {
+    if (!selectedConversation) return;
+    try {
+      await api.patch(`/conversations/${selectedConversation.id}/tags`, { tags });
+      setSelectedConversation((prev) => (prev ? { ...prev, tags } : null));
+      loadConversations();
+    } catch {
+      toast.error('Erro ao salvar tags');
+    }
+  };
+
+  const addTag = () => {
+    const t = newTag.trim();
+    if (!t || !selectedConversation) return;
+    const current = selectedConversation.tags || [];
+    if (!current.includes(t)) saveTags([...current, t]);
+    setNewTag('');
+  };
+
+  const removeTag = (t: string) => {
+    if (!selectedConversation) return;
+    saveTags((selectedConversation.tags || []).filter((x) => x !== t));
+  };
+
+  const saveNotes = async () => {
+    if (!selectedConversation) return;
+    if (notesDraft === (selectedConversation.notes || '')) return;
+    setSavingNotes(true);
+    try {
+      await api.patch(`/conversations/${selectedConversation.id}/notes`, { notes: notesDraft });
+      setSelectedConversation((prev) => (prev ? { ...prev, notes: notesDraft } : null));
+    } catch {
+      toast.error('Erro ao salvar nota');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -689,6 +775,14 @@ export default function ConversationsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowCrmPanel(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+                        title="Detalhes do contato"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                        Detalhes
+                      </button>
                       {!selectedConversation.assigned_to_id && (
                         <button
                           onClick={assignToMe}
@@ -862,6 +956,119 @@ export default function ConversationsPage() {
                       )}
                     </div>
                   </div>
+                  {showCrmPanel && (
+                    <>
+                      <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowCrmPanel(false)} />
+                      <div className="fixed top-0 right-0 h-full w-[340px] max-w-[90vw] bg-card border-l border-border shadow-xl z-50 flex flex-col overflow-y-auto">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                          <h3 className="font-semibold text-foreground">Detalhes do contato</h3>
+                          <button onClick={() => setShowCrmPanel(false)} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        <div className="p-4 space-y-5">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={selectedConversation.contact_name || selectedConversation.contact_phone} size="md" />
+                            <div>
+                              <p className="font-medium text-foreground text-sm">{selectedConversation.contact_name || formatPhone(selectedConversation.contact_phone)}</p>
+                              <p className="text-xs text-muted-foreground">{formatPhone(selectedConversation.contact_phone)}</p>
+                            </div>
+                          </div>
+
+                          {/* SDR responsável */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">SDR responsável</p>
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowSdrMenu(!showSdrMenu)}
+                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted transition-all"
+                              >
+                                <span className={`text-sm font-medium ${selectedConversation.assigned_to ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {selectedConversation.assigned_to?.name || 'Sem responsável'}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showSdrMenu ? 'rotate-180' : ''}`} />
+                              </button>
+                              {showSdrMenu && (
+                                <div className="absolute top-full left-0 right-0 mt-1.5 bg-card rounded-xl border border-border shadow-lg z-10 max-h-[240px] overflow-y-auto">
+                                  <button onClick={() => assignTo(null)} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm text-muted-foreground">Sem responsável</button>
+                                  {users.map((u) => (
+                                    <button key={u.id} onClick={() => assignTo(u.id)} className="w-full text-left px-3 py-2.5 hover:bg-muted text-sm text-foreground">{u.name}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Status */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Status</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(['open', 'in_progress', 'resolved', 'closed'] as const).map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => changeStatus(s)}
+                                  className={`px-2.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                                    selectedConversation.status === s
+                                      ? `${statusConfig[s]?.bg || 'bg-primary/10'} ${statusConfig[s]?.color || 'text-primary'} border-transparent`
+                                      : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'
+                                  }`}
+                                >
+                                  {statusConfig[s]?.label || s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Tags */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <Tag className="w-3.5 h-3.5" /> Tags
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                              {(selectedConversation.tags || []).length === 0 && (
+                                <span className="text-xs text-muted-foreground">Nenhuma tag</span>
+                              )}
+                              {(selectedConversation.tags || []).map((t) => (
+                                <span key={t} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-primary/10 text-primary">
+                                  {t}
+                                  <button onClick={() => removeTag(t)} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                value={newTag}
+                                onChange={(e) => setNewTag(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                                placeholder="Nova tag"
+                                className="flex-1 px-3 py-2 text-sm bg-muted/40 border border-border rounded-lg outline-none focus:border-primary"
+                              />
+                              <button onClick={addTag} className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-white hover:bg-[#1e4f72]">
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Notas internas */}
+                          <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <StickyNote className="w-3.5 h-3.5" /> Notas internas
+                            </p>
+                            <textarea
+                              value={notesDraft}
+                              onChange={(e) => setNotesDraft(e.target.value)}
+                              onBlur={saveNotes}
+                              rows={5}
+                              placeholder="Anotações sobre o contato (visível só para a equipe)…"
+                              className="w-full px-3 py-2 text-sm bg-muted/40 border border-border rounded-lg outline-none focus:border-primary resize-none"
+                            />
+                            {savingNotes && <p className="text-[11px] text-muted-foreground mt-1">Salvando…</p>}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 /* Empty State */

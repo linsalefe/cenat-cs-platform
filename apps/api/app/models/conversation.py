@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -39,6 +39,8 @@ class Conversation(Base):
     last_message_at = Column(DateTime, nullable=True)
     last_message_preview = Column(String(255), nullable=True)
     unread_count = Column(Integer, default=0)
+    tags = Column(JSON, nullable=True, default=list)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

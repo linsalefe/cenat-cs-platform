@@ -161,14 +161,45 @@ def get_conversation_messages(db: Session, conversation_id: int) -> list:
 
 
 def assign_conversation(db: Session, conversation_id: int, user_id: int) -> Conversation:
-    """Atribui conversa a um atendente"""
+    """Atribui conversa a um atendente (user_id=None remove a atribuição)"""
     conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
     if not conversation:
         raise ValueError("Conversa não encontrada")
 
     conversation.assigned_to_id = user_id
-    if conversation.status == ConversationStatus.OPEN:
+    if user_id is not None and conversation.status == ConversationStatus.OPEN:
         conversation.status = ConversationStatus.IN_PROGRESS
+
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+
+def update_tags(db: Session, conversation_id: int, tags: list) -> Conversation:
+    """Atualiza tags da conversa (remove vazios e duplicados)"""
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise ValueError("Conversa não encontrada")
+
+    clean = []
+    for t in (tags or []):
+        t = (t or "").strip()
+        if t and t not in clean:
+            clean.append(t)
+    conversation.tags = clean
+
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+
+def update_notes(db: Session, conversation_id: int, notes: str) -> Conversation:
+    """Atualiza notas internas da conversa"""
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise ValueError("Conversa não encontrada")
+
+    conversation.notes = notes or ""
 
     db.commit()
     db.refresh(conversation)

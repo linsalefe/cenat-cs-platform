@@ -23,7 +23,15 @@ class SendMessageRequest(BaseModel):
 
 
 class AssignRequest(BaseModel):
-    user_id: int
+    user_id: Optional[int] = None
+
+
+class TagsRequest(BaseModel):
+    tags: list[str] = []
+
+
+class NotesRequest(BaseModel):
+    notes: str = ""
 
 
 class StatusRequest(BaseModel):
@@ -51,6 +59,8 @@ def serialize_conversation(conv: Conversation) -> dict:
         "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
         "last_message_preview": conv.last_message_preview,
         "unread_count": conv.unread_count or 0,
+        "tags": conv.tags or [],
+        "notes": conv.notes or "",
         "created_at": conv.created_at.isoformat() if conv.created_at else None,
     }
 
@@ -155,8 +165,32 @@ def assign_conversation(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Atribui conversa a um atendente"""
+    """Atribui conversa a um atendente (user_id=null remove a atribuição)"""
     conv = conversation_service.assign_conversation(db, conversation_id, data.user_id)
+    return serialize_conversation(conv)
+
+
+@router.patch("/{conversation_id}/tags")
+def update_tags(
+    conversation_id: int,
+    data: TagsRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Atualiza as tags da conversa"""
+    conv = conversation_service.update_tags(db, conversation_id, data.tags)
+    return serialize_conversation(conv)
+
+
+@router.patch("/{conversation_id}/notes")
+def update_notes(
+    conversation_id: int,
+    data: NotesRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Atualiza as notas internas da conversa"""
+    conv = conversation_service.update_notes(db, conversation_id, data.notes)
     return serialize_conversation(conv)
 
 
