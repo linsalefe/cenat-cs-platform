@@ -25,6 +25,17 @@ def test_only_digits_any_phone_format():
 def test_translate_from_to_same_length():
     # As strings FROM/TO do translate() precisam ter o mesmo tamanho.
     assert len(_ACCENT_FROM) == len(_ACCENT_TO)
+    # Cobre minúsculas (24) + maiúsculas (24) acentuadas.
+    assert len(_ACCENT_FROM) == 48
+
+
+def test_translate_covers_upper_and_lower():
+    # Maiúsculas e minúsculas acentuadas estão mapeadas (translate roda antes do lower).
+    assert "Á" in _ACCENT_FROM and "á" in _ACCENT_FROM
+    assert "Ç" in _ACCENT_FROM and "ç" in _ACCENT_FROM
+    # Cada acento maiúsculo mapeia pro ASCII maiúsculo correspondente.
+    assert _ACCENT_TO[_ACCENT_FROM.index("Á")] == "A"
+    assert _ACCENT_TO[_ACCENT_FROM.index("Ç")] == "C"
 
 
 def test_escape_like_wildcards():

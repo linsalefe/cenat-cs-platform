@@ -10,10 +10,12 @@ import unicodedata
 
 from sqlalchemy import and_, func, literal, or_
 
-# Mapa de acentos pro translate() do Postgres. Como a coluna passa por lower()
-# antes, basta cobrir as minúsculas. FROM e TO PRECISAM ter o mesmo tamanho.
-_ACCENT_FROM = "áàâãäéèêëíìîïóòôõöúùûüçñ"
-_ACCENT_TO = "aaaaaeeeeiiiiooooouuuucn"
+# Mapa de acentos pro translate() do Postgres. Cobre minúsculas E maiúsculas
+# acentuadas, porque o translate() é aplicado ANTES do lower() — assim a busca
+# não depende do lower() do Postgres entender acento (que varia com o locale).
+# FROM e TO PRECISAM ter o mesmo tamanho.
+_ACCENT_FROM = "áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ"
+_ACCENT_TO = "aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN"
 assert len(_ACCENT_FROM) == len(_ACCENT_TO), (
     "FROM/TO do translate precisam ter o mesmo tamanho "
     f"({len(_ACCENT_FROM)} != {len(_ACCENT_TO)})"
@@ -52,7 +54,8 @@ def student_search_clause(term: str):
     """
     from app.models.student import Student
 
-    norm_name = func.translate(func.lower(Student.name), _ACCENT_FROM, _ACCENT_TO)
+    # translate ANTES do lower: independe do locale do Postgres pra tirar acento
+    norm_name = func.lower(func.translate(Student.name, _ACCENT_FROM, _ACCENT_TO))
     norm_email = func.lower(Student.email)
 
     conditions = []
