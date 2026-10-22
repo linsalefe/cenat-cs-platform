@@ -8,7 +8,38 @@ from app.models.student import Student
 
 from app.services import asaas_service
 
+import calendar
+from datetime import datetime, timedelta
+
 router = APIRouter(prefix="/asaas", tags=["asaas"])
+
+
+def _period_range(period: str, now: datetime) -> tuple[str, str]:
+    """Retorna (start_date, end_date) no formato YYYY-MM-DD para o período.
+
+    Função pura (testável). Critérios:
+      - today: só o dia de hoje;
+      - 7d / 30d: janela retroativa até hoje;
+      - month: dia 1 até o ÚLTIMO dia do mês atual (mesmo critério do Asaas);
+      - last_month: mês anterior inteiro (dia 1 ao último dia).
+    """
+    if period == "today":
+        d = now.strftime("%Y-%m-%d")
+        return d, d
+    if period == "7d":
+        return (now - timedelta(days=7)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d")
+    if period == "30d":
+        return (now - timedelta(days=30)).strftime("%Y-%m-%d"), now.strftime("%Y-%m-%d")
+    if period == "last_month":
+        last_prev = now.replace(day=1) - timedelta(days=1)  # último dia do mês anterior
+        start = f"{last_prev.year:04d}-{last_prev.month:02d}-01"
+        end = f"{last_prev.year:04d}-{last_prev.month:02d}-{last_prev.day:02d}"
+        return start, end
+    # month (default): dia 1 até o último dia do mês atual
+    last_day = calendar.monthrange(now.year, now.month)[1]
+    start = f"{now.year:04d}-{now.month:02d}-01"
+    end = f"{now.year:04d}-{now.month:02d}-{last_day:02d}"
+    return start, end
 
 
 @router.post("/sync-customers")
@@ -73,31 +104,23 @@ async def sync_customers(
 
 @router.get("/summary")
 async def financial_summary(
-    period: str = Query("month", description="today, 7d, 30d, month"),
+    period: str = Query("month", description="today, 7d, 30d, month, last_month"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("financial", "read")),
 ):
-    """Resumo financeiro agregado com filtro de período"""
+    """Resumo financeiro agregado com filtro de período.
+
+    Todos os status (RECEIVED, CONFIRMED, PENDING, OVERDUE) filtram por
+    vencimento dentro do intervalo (dueDate[ge]..dueDate[le]), mesmo critério
+    que o Asaas usa — inclusive OVERDUE, que antes somava todo o histórico.
+    """
     from sqlalchemy import func, case
-    from datetime import datetime, timedelta
     import pytz
 
     tz = pytz.timezone("America/Sao_Paulo")
     now = datetime.now(tz)
 
-    # Define intervalo de datas
-    if period == "today":
-        start_date = now.strftime("%Y-%m-%d")
-        end_date = start_date
-    elif period == "7d":
-        start_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-        end_date = now.strftime("%Y-%m-%d")
-    elif period == "30d":
-        start_date = (now - timedelta(days=30)).strftime("%Y-%m-%d")
-        end_date = now.strftime("%Y-%m-%d")
-    else:  # month
-        start_date = now.strftime("%Y-%m-01")
-        end_date = now.strftime("%Y-%m-%d")
+    start_date, end_date = _period_range(period, now)
 
     # Dados dos alunos (sem filtro de data — é snapshot)
     result = db.query(
@@ -126,13 +149,10 @@ async def financial_summary(
                         "status": status,
                         "limit": 100,
                         "offset": offset,
+                        # Vencimento dentro do intervalo pra TODOS os status (inclusive OVERDUE)
+                        "dueDate[ge]": start_date,
+                        "dueDate[le]": end_date,
                     }
-                    if status in ["RECEIVED", "CONFIRMED", "PENDING"]:
-                        params["dueDate[ge]"] = start_date
-                        params["dueDate[le]"] = end_date
-                    elif status == "OVERDUE":
-                        # Vencidas: todas até hoje
-                        params["dueDate[le]"] = end_date
 
                     r = await client.get(f"{base_url}/payments", headers=headers, params=params)
                     data = r.json()
@@ -146,20 +166,30 @@ async def financial_summary(
                 key = status.lower()
                 payments_data[key] = all_payments
 
-        received_value = sum(p.get("value", 0) for p in payments_data["received"])
-        confirmed_value = sum(p.get("value", 0) for p in payments_data["confirmed"])
-        pending_value = sum(p.get("value", 0) for p in payments_data["pending"])
-        overdue_value = sum(p.get("value", 0) for p in payments_data["overdue"])
+        def _agg(payments: list) -> dict:
+            return {
+                "count": len(payments),
+                "value": sum(p.get("value", 0) or 0 for p in payments),
+                "net_value": sum(p.get("netValue", 0) or 0 for p in payments),
+                "customers": len({p.get("customer") for p in payments if p.get("customer")}),
+            }
 
-        received_count = len(payments_data["received"])
-        confirmed_count = len(payments_data["confirmed"])
-        pending_count = len(payments_data["pending"])
-        overdue_count = len(payments_data["overdue"])
+        payments_summary = {
+            "received": _agg(payments_data["received"]),
+            "confirmed": _agg(payments_data["confirmed"]),
+            "pending": _agg(payments_data["pending"]),
+            "overdue": _agg(payments_data["overdue"]),
+        }
 
     except Exception as e:
         print(f"⚠️ Erro ao buscar totais ASAAS: {e}")
-        received_value = confirmed_value = pending_value = overdue_value = 0
-        received_count = confirmed_count = pending_count = overdue_count = 0
+        _empty = {"count": 0, "value": 0, "net_value": 0, "customers": 0}
+        payments_summary = {
+            "received": dict(_empty),
+            "confirmed": dict(_empty),
+            "pending": dict(_empty),
+            "overdue": dict(_empty),
+        }
 
     return {
         "period": period,
@@ -172,12 +202,7 @@ async def financial_summary(
             "sem_vinculo": result.sem_vinculo_count,
             "total_overdue": float(result.total_overdue),
         },
-        "payments": {
-            "received": {"count": received_count, "value": received_value},
-            "confirmed": {"count": confirmed_count, "value": confirmed_value},
-            "pending": {"count": pending_count, "value": pending_value},
-            "overdue": {"count": overdue_count, "value": overdue_value},
-        },
+        "payments": payments_summary,
     }
 
 @router.post("/sync-financial")

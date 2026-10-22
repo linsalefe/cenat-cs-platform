@@ -41,6 +41,18 @@ def sync_moodle_students():
     sync_students_from_moodle()
 
 
+def sync_attendance_job():
+    """Job que sincroniza presenças do Moodle (entre o sync de alunos e o recálculo de risco)"""
+    print("📋 Iniciando sync diário de presenças...")
+    from app.jobs.sync_attendance import run_sync
+
+    try:
+        stats = run_sync()
+        print(f"✅ Sync de presenças concluído: {stats}")
+    except Exception as e:
+        print(f"❌ Erro no job de presenças: {e}")
+
+
 def run_triggers():
     """Job que executa todos os triggers ativos (sistema legacy)"""
     print("🎯 Iniciando execução de triggers...")
@@ -177,6 +189,14 @@ def start_scheduler():
     )
 
     scheduler.add_job(
+        sync_attendance_job,
+        trigger=CronTrigger(hour=5, minute=30),
+        id="sync_attendance_daily",
+        name="Sincronização diária de presenças do Moodle",
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
         recalculate_all_risks,
         trigger=CronTrigger(hour=6, minute=0),
         id="recalculate_risks_daily",
@@ -241,6 +261,7 @@ def start_scheduler():
     scheduler.start()
     print("⏰ Scheduler iniciado:")
     print("   - Sync Moodle: 5h diariamente")
+    print("   - Sync de presenças: 5h30 diariamente")
     print("   - Recálculo de riscos: 6h diariamente")
     print("   - Execução de triggers legacy: 7h diariamente")
     print("   - Réguas de jornada: a cada 5 minutos")

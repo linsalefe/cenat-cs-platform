@@ -10,6 +10,7 @@ from app.core.permissions import require_permission
 from app.models.user import User
 from app.models.student import Student
 from app.models.moodle_signal import MoodleSignal
+from app.core.search import student_search_clause
 from app.integrations import moodle
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -34,10 +35,9 @@ def list_students(
     """Lista alunos com filtros"""
     q = db.query(Student)
     
-    # Busca por nome ou email
+    # Busca por nome (sem acento), e-mail, telefone ou CPF
     if search:
-        term = f"%{search}%"
-        q = q.filter(or_(Student.name.ilike(term), Student.email.ilike(term)))
+        q = q.filter(student_search_clause(search))
     
     # Filtro Moodle
     if moodle_status == "linked":

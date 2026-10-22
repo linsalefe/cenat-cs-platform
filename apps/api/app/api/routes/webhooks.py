@@ -95,6 +95,10 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     fname = obj.get("filename", "") or mtype
                     return f"media:{mid}|{mime}|{fname}"
 
+                # F3.C: rastreia botão clicado pra retomar workflows waiting_button depois
+                clicked_button_text: str = ""
+                clicked_button_legacy_id: str = ""  # pra journey_service legado
+
                 if msg_type == "text":
                     body = message.get("text", {}).get("body", "")
                 elif msg_type == "image":
@@ -119,11 +123,7 @@ async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
                     body = "[Figurinha]"
                     conv_content = _media_ref("sticker")
                     conv_msg_type = "image"
-                # F3.C: rastreia botão clicado pra retomar workflows waiting_button depois
-                clicked_button_text: str = ""
-                clicked_button_legacy_id: str = ""  # pra journey_service legado
-
-                if msg_type == "interactive":
+                elif msg_type == "interactive":
                     interactive = message.get("interactive", {})
                     btn_reply = interactive.get("button_reply", {})
                     if btn_reply:

@@ -41,6 +41,7 @@ interface StudentPreview {
   name: string;
   email: string;
   phone: string;
+  has_phone?: boolean;
   primary_course_name: string | null;
   financial_status: string | null;
 }
@@ -296,7 +297,7 @@ export default function NewBroadcastPage() {
     if (term.length < 2) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const res = await api.get(`/broadcasts/preview?search=${encodeURIComponent(term)}&limit=10`);
+      const res = await api.get(`/broadcasts/preview?search=${encodeURIComponent(term)}&limit=20&include_without_phone=true`);
       setSearchResults(res.data.data || []);
     } catch {} finally { setSearching(false); }
   };
@@ -307,6 +308,7 @@ export default function NewBroadcastPage() {
   }, [searchTerm]);
 
   const addStudent = (student: StudentPreview) => {
+    if (student.has_phone === false) return; // sem telefone não pode ser selecionado
     if (!selectedStudents.find(s => s.id === student.id)) {
       setSelectedStudents(prev => [...prev, student]);
     }
@@ -681,7 +683,7 @@ export default function NewBroadcastPage() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Digite o nome ou email..."
+                    placeholder="Nome, e-mail, telefone ou CPF"
                     className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                   />
                   {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70 animate-spin" />}
@@ -689,27 +691,32 @@ export default function NewBroadcastPage() {
 
                 {searchResults.length > 0 && (
                   <div className="mt-2 border border-border rounded-xl overflow-hidden bg-card shadow-lg">
-                    {searchResults.map((s) => (
+                    {searchResults.map((s) => {
+                      const noPhone = s.has_phone === false;
+                      return (
                       <button
                         key={s.id}
                         onClick={() => addStudent(s)}
-                        disabled={!!selectedStudents.find(ss => ss.id === s.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-gray-50 last:border-0 disabled:opacity-40"
+                        disabled={noPhone || !!selectedStudents.find(ss => ss.id === s.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-gray-50 last:border-0 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {s.name?.charAt(0)?.toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                          <p className="text-xs text-muted-foreground/70 truncate">{s.phone} · {s.primary_course_name || 'Sem curso'}</p>
+                          <p className="text-xs text-muted-foreground/70 truncate">{s.phone || s.email} · {s.primary_course_name || 'Sem curso'}</p>
                         </div>
-                        {selectedStudents.find(ss => ss.id === s.id) ? (
+                        {noPhone ? (
+                          <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">sem telefone</span>
+                        ) : selectedStudents.find(ss => ss.id === s.id) ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                         ) : (
                           <span className="text-xs text-primary font-medium flex-shrink-0">Adicionar</span>
                         )}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

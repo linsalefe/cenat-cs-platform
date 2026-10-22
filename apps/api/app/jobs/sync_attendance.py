@@ -48,7 +48,18 @@ async def sync_attendance_data(db: Session) -> dict:
     students = db.query(Student).filter(Student.moodle_user_id.isnot(None)).all()
     student_map = {s.moodle_user_id: s for s in students}
 
-    stats = {"sessions": 0, "records": 0, "new": 0, "students_updated": 0, "errors": 0}
+    stats = {"sessions": 0, "records": 0, "new": 0, "updated": 0, "students_updated": 0, "errors": 0}
+
+    # Prefetch dos registros existentes em 1 query: (moodle_user_id, session_id) -> record
+    existing_records = {}
+    if student_map:
+        for r in db.query(AttendanceRecord).filter(
+            AttendanceRecord.moodle_user_id.in_(list(student_map.keys()))
+        ).all():
+            existing_records[(r.moodle_user_id, r.session_id)] = r
+
+    # Contagem de acrônimos vistos (ex.: {"Pr": 1200, "Au": 340, ...})
+    acronym_counts: dict[str, int] = {}
 
     # Estrutura pra calcular consecutivas: {moodle_user_id: {course_id: [(session_date, status)]}}
     all_records = {}
@@ -90,14 +101,12 @@ async def sync_attendance_data(db: Session) -> dict:
 
                         student = student_map[moodle_uid]
                         stats["records"] += 1
+                        acronym_counts[status] = acronym_counts.get(status, 0) + 1
 
-                        # Salva registro individual (upsert)
-                        existing = db.query(AttendanceRecord).filter(
-                            AttendanceRecord.moodle_user_id == moodle_uid,
-                            AttendanceRecord.session_id == session_id,
-                        ).first()
+                        # Salva registro individual (upsert via prefetch)
+                        existing = existing_records.get((moodle_uid, session_id))
 
-                        if not existing:
+                        if existing is None:
                             record = AttendanceRecord(
                                 student_id=student.id,
                                 moodle_user_id=moodle_uid,
@@ -108,7 +117,12 @@ async def sync_attendance_data(db: Session) -> dict:
                                 status=status,
                             )
                             db.add(record)
+                            existing_records[(moodle_uid, session_id)] = record
                             stats["new"] += 1
+                        elif existing.status != status:
+                            # Status mudou no Moodle (ex.: ? -> Au): atualiza
+                            existing.status = status
+                            stats["updated"] += 1
 
                         # Acumula pra calcular consecutivas depois
                         if moodle_uid not in all_records:
@@ -124,11 +138,13 @@ async def sync_attendance_data(db: Session) -> dict:
     db.flush()
 
     # Calcula resumos por aluno
+    updated_student_ids = []
     for moodle_uid, courses_data in all_records.items():
         if moodle_uid not in student_map:
             continue
 
         student = student_map[moodle_uid]
+        updated_student_ids.append(student.id)
         total_sessions = 0
         total_absences = 0
         max_consecutive = 0
@@ -176,6 +192,9 @@ async def sync_attendance_data(db: Session) -> dict:
         stats["students_updated"] += 1
 
     db.commit()
+    print(f"📊 Acrônimos encontrados: {acronym_counts}")
+    print(f"✅ Presenças: {stats}")
+    stats["student_ids"] = updated_student_ids
     return stats
 
 
