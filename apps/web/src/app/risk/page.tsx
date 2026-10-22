@@ -21,6 +21,7 @@ import {
   Ticket,
   UserX,
   Users,
+  RefreshCw,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -107,13 +108,21 @@ export default function RiskDashboard() {
   const [selectedLevel, setSelectedLevel] = useState<string>('high');
   const [selectedTrend, setSelectedTrend] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [creatingTicketFor, setCreatingTicketFor] = useState<number | null>(null);
+  const [syncingAttendance, setSyncingAttendance] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
   useEffect(() => { if (user) loadSummary(); }, [user]);
-  useEffect(() => { if (user) loadStudents(); }, [user, selectedLevel, selectedTrend, currentPage]);
+  useEffect(() => { if (user) loadStudents(); }, [user, selectedLevel, selectedTrend, currentPage, debouncedSearch]);
+
+  // Debounce da busca: 300ms, volta pra página 1
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchTerm.trim()); setCurrentPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const loadSummary = async () => {
     try {
@@ -127,15 +136,35 @@ export default function RiskDashboard() {
   const loadStudents = async () => {
     try {
       setLoading(true);
-      let url = `/risk/students/at-risk?level=${selectedLevel}&page=${currentPage}&per_page=30`;
-      if (selectedTrend) url += `&trend=${selectedTrend}`;
-      const res = await api.get(url);
+      const params = new URLSearchParams();
+      params.append('page', String(currentPage));
+      params.append('per_page', '30');
+      if (debouncedSearch) {
+        // Busca server-side em todos os níveis (ignora level/trend)
+        params.append('search', debouncedSearch);
+      } else {
+        params.append('level', selectedLevel);
+        if (selectedTrend) params.append('trend', selectedTrend);
+      }
+      const res = await api.get(`/risk/students/at-risk?${params.toString()}`);
       setStudents(res.data.data);
       setPagination(res.data.pagination);
     } catch (err) {
       console.error('Erro ao carregar alunos:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncAttendance = async () => {
+    setSyncingAttendance(true);
+    try {
+      await api.post('/attendance/sync');
+      toast.success('Sincronização iniciada, atualize em alguns minutos');
+    } catch (err) {
+      toast.error('Erro ao iniciar sincronização');
+    } finally {
+      setSyncingAttendance(false);
     }
   };
 
@@ -157,14 +186,6 @@ export default function RiskDashboard() {
       setCreatingTicketFor(null);
     }
   };
-
-  const filtered = searchTerm
-    ? students.filter(
-        (s) =>
-          s.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.student_email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : students;
 
   const atRiskTotal = (summary?.critical || 0) + (summary?.high || 0);
 
@@ -198,6 +219,14 @@ export default function RiskDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={syncAttendance}
+              disabled={syncingAttendance}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-xl hover:bg-muted/50 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncingAttendance ? 'animate-spin' : ''}`} />
+              Sincronizar presenças
+            </button>
             {(summary?.trends?.worsening || 0) > 0 && (
               <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl">
                 <TrendingUp className="w-4 h-4 text-red-600" />
@@ -325,14 +354,17 @@ export default function RiskDashboard() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
             <input
               type="text"
-              placeholder="Buscar por nome ou email..."
+              placeholder="Buscar por nome, e-mail, telefone ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl
-                focus:border-primary focus:ring-4 focus:ring-primary/10 
+                focus:border-primary focus:ring-4 focus:ring-primary/10
                 transition-all duration-200 outline-none"
             />
           </div>
+          {debouncedSearch && (
+            <p className="mt-2 text-xs text-muted-foreground">Buscando em todos os níveis</p>
+          )}
         </div>
 
         {/* Students List */}
@@ -342,7 +374,7 @@ export default function RiskDashboard() {
           }`}
           style={{ transitionDelay: '300ms' }}
         >
-          {filtered.length === 0 ? (
+          {students.length === 0 ? (
             <div className="bg-card rounded-2xl border border-border p-12 text-center">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-8 h-8 text-muted-foreground/70" />
@@ -352,7 +384,7 @@ export default function RiskDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((student) => {
+              {students.map((student) => {
                 const config = levelConfig[student.level] || levelConfig.medium;
                 const trend = trendConfig[student.trend] || trendConfig.stable;
                 const TrendIcon = trend.icon;

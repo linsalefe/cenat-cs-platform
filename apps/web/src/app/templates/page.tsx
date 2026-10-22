@@ -425,7 +425,7 @@ export default function TemplatesPage() {
 
       {/* Detalhe lateral */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg flex flex-col">
           {selected && (
             <>
               <DialogHeader>
@@ -435,7 +435,7 @@ export default function TemplatesPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4">
+              <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">Status</p>
                   {(() => {
@@ -515,7 +515,7 @@ export default function TemplatesPage() {
 
       {/* Criar template */}
       <Dialog open={createOpen} onOpenChange={(o) => !o && !creating && setCreateOpen(false)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg flex flex-col">
           <DialogHeader>
             <DialogTitle>Novo template</DialogTitle>
             <DialogDescription>
@@ -523,7 +523,7 @@ export default function TemplatesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1 min-h-0 overflow-y-auto">
             <div>
               <label className="text-xs font-medium text-foreground block mb-1.5">
                 Nome <span className="text-destructive">*</span>
@@ -562,7 +562,7 @@ export default function TemplatesPage() {
                 rows={6}
                 placeholder="Olá {{1}}, sua mensalidade do curso {{2}} vence amanhã."
                 maxLength={1024}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-none font-mono"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-y min-h-[140px] max-h-[40vh] font-mono"
               />
               <div className="flex justify-between text-[11px] text-muted-foreground mt-1">
                 <span>Use {'{{1}}, {{2}}...'} para variáveis dinâmicas.</span>
@@ -573,7 +573,7 @@ export default function TemplatesPage() {
             {cBody && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1.5">Preview</p>
-                <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {cBody.replace(/\{\{1\}\}/g, 'João').replace(/\{\{2\}\}/g, 'Psicologia Clínica').replace(/\{\{(\d+)\}\}/g, 'valor$1')}
                 </div>
               </div>

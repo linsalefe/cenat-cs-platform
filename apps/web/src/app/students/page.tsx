@@ -317,7 +317,7 @@ export default function StudentsPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
               <input
                 type="text"
-                placeholder="Buscar por nome ou email..."
+                placeholder="Buscar por nome, e-mail, telefone ou CPF..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl
@@ -365,7 +365,7 @@ export default function StudentsPage() {
           {showFilters && (
             <div className="bg-card border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Curso */}
-              <div>
+              <div className="lg:col-span-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase mb-1.5 block">Curso</label>
                 <select
                   value={filterCourse}
@@ -376,7 +376,7 @@ export default function StudentsPage() {
                   <option value="">Todos os cursos</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name.length > 50 ? c.name.slice(0, 50) + '...' : c.name} ({c.count})
+                      {c.name} ({c.count})
                     </option>
                   ))}
                 </select>
@@ -459,9 +459,12 @@ export default function StudentsPage() {
                 </span>
               )}
               {filterCourse && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 text-sm rounded-full border border-purple-100">
-                  <GraduationCap className="w-3 h-3" /> {courses.find(c => String(c.id) === filterCourse)?.name?.slice(0, 30) || 'Curso'}...
-                  <button onClick={() => setFilterCourse('')} className="ml-1 hover:text-purple-900"><X className="w-3 h-3" /></button>
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 text-sm rounded-full border border-purple-100 max-w-[28rem]">
+                  <GraduationCap className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate" title={courses.find(c => String(c.id) === filterCourse)?.name || 'Curso'}>
+                    {courses.find(c => String(c.id) === filterCourse)?.name || 'Curso'}
+                  </span>
+                  <button onClick={() => setFilterCourse('')} className="ml-1 flex-shrink-0 hover:text-purple-900"><X className="w-3 h-3" /></button>
                 </span>
               )}
             </div>
@@ -532,9 +535,7 @@ export default function StudentsPage() {
                           <td className="px-4 py-4">
                             {student.primary_course_name ? (
                               <span className="text-xs text-muted-foreground line-clamp-2" title={student.primary_course_name}>
-                                {student.primary_course_name.length > 40
-                                  ? student.primary_course_name.slice(0, 40) + '...'
-                                  : student.primary_course_name}
+                                {student.primary_course_name}
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground/50">—</span>

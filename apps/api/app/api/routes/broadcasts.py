@@ -14,6 +14,7 @@ from app.core.deps import get_current_user, get_db
 from app.models.broadcast import Broadcast, BroadcastLog
 from app.models.student import Student
 from app.models.user import User
+from app.core.search import student_search_clause
 
 
 # ========================
@@ -147,8 +148,12 @@ class BroadcastFilters(BaseModel):
 # FILTROS REUTILIZÁVEIS
 # ========================
 
-def apply_student_filters(query, filters: dict):
-    """Aplica filtros ao query de alunos — mesma lógica da rota /students"""
+def apply_student_filters(query, filters: dict, require_phone: bool = True):
+    """Aplica filtros ao query de alunos — mesma lógica da rota /students.
+
+    require_phone=True (padrão): só alunos com telefone (envio/contagem).
+    require_phone=False: inclui alunos sem telefone (só a busca individual usa isso).
+    """
 
     login_status = filters.get("login_status")
     if login_status == "never_logged":
@@ -177,11 +182,11 @@ def apply_student_filters(query, filters: dict):
 
     search = filters.get("search")
     if search:
-        term = f"%{search}%"
-        query = query.filter(or_(Student.name.ilike(term), Student.email.ilike(term)))
+        query = query.filter(student_search_clause(search))
 
     # Apenas alunos com telefone (senão não dá pra enviar WhatsApp)
-    query = query.filter(Student.phone.isnot(None), Student.phone != "")
+    if require_phone:
+        query = query.filter(Student.phone.isnot(None), Student.phone != "")
 
     return query
 
@@ -197,12 +202,17 @@ def preview_students(
     financial_status: Optional[str] = Query(None),
     course_id: Optional[int] = Query(None),
     search: Optional[str] = Query(None),
+    include_without_phone: bool = Query(False),
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("broadcasts", "read")),
 ):
-    """Preview dos alunos que serão impactados pelo disparo"""
+    """Preview dos alunos que serão impactados pelo disparo.
+
+    include_without_phone=True (busca do disparo individual) traz também alunos
+    sem telefone, que vêm marcados com has_phone=false para desabilitar no front.
+    """
     filters = {
         "login_status": login_status,
         "docs_status": docs_status,
@@ -211,7 +221,7 @@ def preview_students(
         "search": search,
     }
 
-    q = apply_student_filters(db.query(Student), filters)
+    q = apply_student_filters(db.query(Student), filters, require_phone=not include_without_phone)
     total = q.count()
     students = q.order_by(Student.name).offset(skip).limit(limit).all()
 
@@ -224,6 +234,7 @@ def preview_students(
                 "name": s.name,
                 "email": s.email,
                 "phone": s.phone,
+                "has_phone": bool(s.phone and s.phone.strip()),
                 "primary_course_name": s.primary_course_name,
                 "financial_status": s.financial_status,
                 "documents_count": s.documents_count or 0,

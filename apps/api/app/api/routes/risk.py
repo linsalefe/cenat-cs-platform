@@ -9,6 +9,7 @@ from app.models.student import Student
 from app.models.risk_score import RiskScore, RiskLevel
 from app.models.risk_history import RiskHistory
 from app.services.risk_service import calculate_student_risk
+from app.core.search import student_search_clause
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 
@@ -68,14 +69,53 @@ def calculate_risk(
 def get_students_at_risk(
     level: str = Query(None, description="Filtrar por nível: critical, high, medium, low"),
     trend: str = Query(None, description="Filtrar por tendência: worsening, stable, improving"),
+    search: str = Query(None, description="Busca por nome, e-mail, telefone ou CPF (ignora level/trend e busca em todos os níveis)"),
     page: int = Query(1, ge=1),
     per_page: int = Query(30, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Lista alunos em risco com paginação e filtro de tendência"""
+    """Lista alunos em risco com paginação e filtro de tendência.
+
+    Quando `search` vem preenchido, ignora `level`/`trend` e busca em TODOS os
+    alunos (inclusive os que ainda não têm score — que é calculado na hora só
+    para os itens da página).
+    """
+    search = (search or "").strip()
+    if search:
+        base = (
+            db.query(Student, RiskScore)
+            .outerjoin(RiskScore, RiskScore.student_id == Student.id)
+            .filter(student_search_clause(search))
+        )
+        total = base.count()
+        total_pages = (total + per_page - 1) // per_page
+        offset = (page - 1) * per_page
+        rows = (
+            base.order_by(RiskScore.score.desc().nullslast(), Student.name)
+            .offset(offset)
+            .limit(per_page)
+            .all()
+        )
+
+        students = []
+        for student, rs in rows:
+            if rs is None:
+                rs = calculate_student_risk(db, student)
+            students.append(build_student_risk_response(student, rs))
+
+        return {
+            "data": students,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+            },
+        }
+
     query = db.query(RiskScore).join(Student)
-    
+
     if level:
         try:
             risk_level = RiskLevel(level)

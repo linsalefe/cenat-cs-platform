@@ -62,11 +62,18 @@ interface Summary {
     total_overdue: number;
   };
   payments: {
-    received: { count: number; value: number };
-    confirmed: { count: number; value: number };
-    pending: { count: number; value: number };
-    overdue: { count: number; value: number };
+    received: PaymentAgg;
+    confirmed: PaymentAgg;
+    pending: PaymentAgg;
+    overdue: PaymentAgg;
   };
+}
+
+interface PaymentAgg {
+  count: number;
+  value: number;
+  net_value: number;
+  customers: number;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; border: string; icon: any }> = {
@@ -98,6 +105,7 @@ const periods = [
   { key: 'today', label: 'Hoje' },
   { key: '7d', label: '7 dias' },
   { key: 'month', label: 'Este mês' },
+  { key: 'last_month', label: 'Mês passado' },
   { key: '30d', label: '30 dias' },
 ];
 
@@ -189,6 +197,11 @@ export default function FinancialPage() {
   const closeModal = () => { setSelectedStudent(null); setPayments([]); setFinancialSummary(null); };
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatDM = (iso?: string) => {
+    if (!iso) return '';
+    const [, m, d] = iso.split('-');
+    return `${d}/${m}`;
+  };
   const formatDate = (d: string) => {
     const [y, m, day] = d.split('-');
     return day ? `${day}/${m}/${y}` : d;
@@ -258,8 +271,15 @@ export default function FinancialPage() {
 
         {/* Situação das Cobranças */}
         <div className="bg-card rounded-2xl border border-border p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-foreground">Situação das cobranças</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-lg font-semibold text-foreground">Situação das cobranças</h2>
+              {summary?.start_date && summary?.end_date && (
+                <span className="text-xs text-muted-foreground">
+                  {formatDM(summary.start_date)} a {formatDM(summary.end_date)}
+                </span>
+              )}
+            </div>
             <div className="flex bg-muted rounded-xl p-1">
               {periods.map((pr) => (
                 <button
@@ -289,12 +309,13 @@ export default function FinancialPage() {
                 <p className="text-2xl font-bold text-emerald-600 mb-1">
                   {formatCurrency(p?.received.value || 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(p?.received.net_value || 0)} líquido</p>
                 <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-emerald-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.received.count || 0} cobranças</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.received.customers || 0} clientes · {p?.received.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
@@ -305,12 +326,13 @@ export default function FinancialPage() {
                 <p className="text-2xl font-bold text-blue-600 mb-1">
                   {formatCurrency(p?.confirmed.value || 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(p?.confirmed.net_value || 0)} líquido</p>
                 <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-blue-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.confirmed.count || 0} cobranças</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.confirmed.customers || 0} clientes · {p?.confirmed.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
@@ -321,12 +343,13 @@ export default function FinancialPage() {
                 <p className="text-2xl font-bold text-amber-600 mb-1">
                   {formatCurrency(p?.pending.value || 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(p?.pending.net_value || 0)} líquido</p>
                 <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-amber-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.pending.count || 0} cobranças</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.pending.customers || 0} clientes · {p?.pending.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
@@ -337,12 +360,13 @@ export default function FinancialPage() {
                 <p className="text-2xl font-bold text-red-600 mb-1">
                   {formatCurrency(p?.overdue.value || 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(p?.overdue.net_value || 0)} líquido</p>
                 <div className="w-full h-2 bg-muted rounded-full mt-3 mb-4">
                   <div className="h-2 bg-red-500 rounded-full" style={{ width: '100%' }} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.overdue.count || 0} cobranças</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{p?.overdue.customers || 0} clientes · {p?.overdue.count || 0} cobranças</span>
                   </div>
                 </div>
               </div>
