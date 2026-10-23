@@ -18,7 +18,7 @@ class RiskScore(Base):
     __tablename__ = "risk_scores"
 
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False, index=True, unique=True)
     
     # Score final (0-100, quanto maior = mais risco)
     score = Column(Float, default=0.0)
