@@ -99,7 +99,11 @@ def get_students_at_risk(
         )
 
         students = []
+        seen = set()
         for student, rs in rows:
+            if student.id in seen:
+                continue
+            seen.add(student.id)
             if rs is None:
                 rs = calculate_student_risk(db, student)
             students.append(build_student_risk_response(student, rs))
@@ -114,7 +118,8 @@ def get_students_at_risk(
             },
         }
 
-    query = db.query(RiskScore).join(Student)
+    # Filtro, ordenação e resposta usam a MESMA linha de risk_scores
+    query = db.query(RiskScore, Student).join(Student, Student.id == RiskScore.student_id)
 
     if level:
         try:
@@ -132,14 +137,21 @@ def get_students_at_risk(
     total_pages = (total + per_page - 1) // per_page
     
     offset = (page - 1) * per_page
-    risk_scores = query.order_by(RiskScore.score.desc()).offset(offset).limit(per_page).all()
-    
+    rows = (
+        query.order_by(RiskScore.score.desc(), Student.name, RiskScore.student_id)
+        .offset(offset)
+        .limit(per_page)
+        .all()
+    )
+
     students = []
-    for rs in risk_scores:
-        student = db.query(Student).filter(Student.id == rs.student_id).first()
-        if student:
-            students.append(build_student_risk_response(student, rs))
-    
+    seen = set()
+    for rs, student in rows:
+        if student.id in seen:
+            continue
+        seen.add(student.id)
+        students.append(build_student_risk_response(student, rs))
+
     return {
         "data": students,
         "pagination": {

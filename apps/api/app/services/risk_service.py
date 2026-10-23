@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models.student import Student
 from app.models.moodle_signal import MoodleSignal
@@ -310,14 +311,23 @@ def calculate_student_risk(db: Session, student: Student) -> RiskScore:
     level = determine_risk_level(final_score)
     
     # ── 8. PERSISTE ──
-    risk_score = db.query(RiskScore).filter(
-        RiskScore.student_id == student.id
-    ).first()
-    
-    if not risk_score:
-        risk_score = RiskScore(student_id=student.id)
-        db.add(risk_score)
-    
+    # Upsert à prova de concorrência (job das 06:00, recálculo pós-sync de
+    # presenças e score na hora da busca podem rodar juntos): o INSERT só cria
+    # a linha se ainda não existir (índice único uq_risk_scores_student_id) e o
+    # FOR UPDATE serializa quem for atualizar o mesmo aluno até o commit.
+    db.execute(
+        pg_insert(RiskScore)
+        .values(student_id=student.id)
+        .on_conflict_do_nothing(index_elements=[RiskScore.student_id])
+    )
+    risk_score = (
+        db.query(RiskScore)
+        .filter(RiskScore.student_id == student.id)
+        .with_for_update()
+        .populate_existing()
+        .one()
+    )
+
     # Indicadores ativos (pra debug/transparência)
     active_indicators = [k for k, (s, has) in scores.items() if has]
     factors.append(f"Indicadores: {', '.join(active_indicators)} ({len(active_indicators)}/5)")

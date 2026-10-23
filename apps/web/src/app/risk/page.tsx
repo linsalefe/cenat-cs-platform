@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import AppLayout from '@/components/AppLayout';
@@ -112,6 +112,8 @@ export default function RiskDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [creatingTicketFor, setCreatingTicketFor] = useState<number | null>(null);
   const [syncingAttendance, setSyncingAttendance] = useState(false);
+  // Id da última requisição de alunos: respostas antigas (fora de ordem) são ignoradas
+  const studentsRequestId = useRef(0);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!authLoading && !user) router.push('/login'); }, [user, authLoading, router]);
@@ -134,6 +136,7 @@ export default function RiskDashboard() {
   };
 
   const loadStudents = async () => {
+    const requestId = ++studentsRequestId.current;
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -147,12 +150,21 @@ export default function RiskDashboard() {
         if (selectedTrend) params.append('trend', selectedTrend);
       }
       const res = await api.get(`/risk/students/at-risk?${params.toString()}`);
-      setStudents(res.data.data);
+      if (requestId !== studentsRequestId.current) return;
+      // Defesa extra: um aluno por student_id
+      const seen = new Set<number>();
+      const unique = (res.data.data as StudentAtRisk[]).filter((s) => {
+        if (seen.has(s.student_id)) return false;
+        seen.add(s.student_id);
+        return true;
+      });
+      setStudents(unique);
       setPagination(res.data.pagination);
     } catch (err) {
+      if (requestId !== studentsRequestId.current) return;
       console.error('Erro ao carregar alunos:', err);
     } finally {
-      setLoading(false);
+      if (requestId === studentsRequestId.current) setLoading(false);
     }
   };
 
