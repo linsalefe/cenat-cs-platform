@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
-from fastapi import APIRouter, Request, Header
+import httpx
+from fastapi import APIRouter, BackgroundTasks, Request, Header
 from fastapi.responses import Response
 from typing import Optional
 
@@ -9,6 +10,8 @@ from app.models.student import Student
 from app.services import asaas_service
 
 ASAAS_WEBHOOK_TOKEN = os.getenv("ASAAS_WEBHOOK_TOKEN", "")
+# Repasse dos eventos pro CENAT Cobrança AI (ex.: https://cobranca.../api/webhook/asaas). Vazio = desligado.
+COBRANCA_WEBHOOK_URL = os.getenv("COBRANCA_WEBHOOK_URL", "")
 
 router = APIRouter(prefix="/webhook", tags=["webhooks"])
 
@@ -25,9 +28,25 @@ FINANCIAL_EVENTS = {
 }
 
 
+async def forward_to_cobranca(raw_body: bytes):
+    """Repassa o evento cru pro Cobrança AI (fire and forget, depois de responder o Asaas)"""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                COBRANCA_WEBHOOK_URL,
+                content=raw_body,
+                headers={"Content-Type": "application/json", "asaas-access-token": ASAAS_WEBHOOK_TOKEN},
+            )
+        if r.status_code >= 400:
+            print(f"⚠️ Repasse ASAAS → Cobrança: status {r.status_code}")
+    except Exception as e:
+        print(f"⚠️ Repasse ASAAS → Cobrança falhou: {e}")
+
+
 @router.post("/asaas")
 async def asaas_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     asaas_access_token: Optional[str] = Header(None),
 ):
     """Recebe eventos do ASAAS em tempo real"""
@@ -36,6 +55,10 @@ async def asaas_webhook(
     if ASAAS_WEBHOOK_TOKEN and asaas_access_token != ASAAS_WEBHOOK_TOKEN:
         print(f"⚠️ ASAAS webhook: token inválido")
         return Response(status_code=200)  # Retorna 200 pra não pausar a fila
+
+    # Repassa todo evento autenticado, antes dos filtros abaixo (o Cobrança AI filtra o que interessa)
+    if COBRANCA_WEBHOOK_URL:
+        background_tasks.add_task(forward_to_cobranca, await request.body())
 
     try:
         body = await request.json()
